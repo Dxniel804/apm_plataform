@@ -20,10 +20,24 @@ from sqlalchemy.engine import make_url
 
 from app.db.posture import check_posture
 from tests.dbsupport import ScratchDb, run_alembic
+from tests.financial.test_isolation import TABLES as FINANCIAL_TABLES
 
 CI_ADMIN = "apm_ci_admin"
 DATABASE = "apm_h1"
-EXPECTED_TABLES = {"alembic_version", "memberships", "organizations", "schools", "users"}
+EXPECTED_TABLES = {
+    "alembic_version",
+    "memberships",
+    "organizations",
+    "schools",
+    "users",
+    *FINANCIAL_TABLES,
+}
+# 11 policies of the tenancy tables, plus one SELECT, one INSERT and (where a column can be
+# updated) one UPDATE policy on each of the 13 financial tables: 37, audit_logs and
+# expense_attachments having no UPDATE.
+EXPECTED_POLICIES = 11 + 37
+# 2 helpers of the tenancy core (app_org, app_school) plus the 35 functions of revision 0007.
+EXPECTED_FUNCTIONS = 2 + 35
 
 
 @dataclass(frozen=True)
@@ -138,7 +152,11 @@ def test_upgrade_creates_everything_as_a_createrole_admin(clean_cluster: CleanCl
     result = run_alembic(clean_cluster.database, "upgrade", "head")
 
     assert result.returncode == 0, result.stderr
-    assert _catalog(clean_cluster) == {"tables": EXPECTED_TABLES, "policies": 11, "functions": 2}
+    assert _catalog(clean_cluster) == {
+        "tables": EXPECTED_TABLES,
+        "policies": EXPECTED_POLICIES,
+        "functions": EXPECTED_FUNCTIONS,
+    }
     # (superuser, bypassrls, replication, createdb, createrole, login, inherit)
     assert _roles(clean_cluster) == {
         "apm_app": (False, False, False, False, False, True, False),
@@ -174,7 +192,11 @@ def test_downgrade_and_upgrade_again_work_for_that_admin(clean_cluster: CleanClu
     assert _roles(clean_cluster) == {}  # the admin created them, so it can drop them
     again = run_alembic(clean_cluster.database, "upgrade", "head")
     assert again.returncode == 0, again.stderr
-    assert _catalog(clean_cluster) == {"tables": EXPECTED_TABLES, "policies": 11, "functions": 2}
+    assert _catalog(clean_cluster) == {
+        "tables": EXPECTED_TABLES,
+        "policies": EXPECTED_POLICIES,
+        "functions": EXPECTED_FUNCTIONS,
+    }
     repeated = run_alembic(clean_cluster.database, "upgrade", "head")
     assert repeated.returncode == 0 and "Running upgrade" not in repeated.stderr
 
@@ -271,4 +293,4 @@ def test_the_documented_remedy_works_admin_option_on_the_existing_roles(
     result = run_alembic(clean_cluster.database, "upgrade", "head")
 
     assert result.returncode == 0, result.stderr
-    assert _catalog(clean_cluster)["policies"] == 11
+    assert _catalog(clean_cluster)["policies"] == EXPECTED_POLICIES
