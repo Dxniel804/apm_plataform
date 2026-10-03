@@ -24,6 +24,7 @@ FINANCIAL_TABLES = {
     "expenses",
     "financial_transactions",
     "monthly_closings",
+    "payment_accounts",
     "pix_charges",
     "refunds",
     "reimbursements",
@@ -37,9 +38,9 @@ EXPECTED_TABLES = {
     "schools",
     "users",
 } | FINANCIAL_TABLES
-# 11 policies of the tenancy tables + 34 of the financial ones (12 select, 12 insert, 10 update);
-# 2 context functions + 26 financial functions (all SECURITY INVOKER, see test_financial_triggers).
-EXPECTED_CATALOG = {"tables": EXPECTED_TABLES, "policies": 45, "functions": 28}
+# 11 policies of the tenancy tables + 37 of the financial ones (13 select, 13 insert, 11 update);
+# 2 context functions + 32 financial functions (all SECURITY INVOKER, see test_financial_triggers).
+EXPECTED_CATALOG = {"tables": EXPECTED_TABLES, "policies": 48, "functions": 34}
 CANARY_PASSWORD = "CanaryPw7Hx3Zq"  # noqa: S105  (fake, only ever used offline or in a unit test)
 
 

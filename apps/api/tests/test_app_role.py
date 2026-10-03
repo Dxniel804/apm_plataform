@@ -213,7 +213,7 @@ def test_there_is_no_system_mode_or_open_policy(admin_engine: Engine) -> None:
             text("SELECT policyname, coalesce(qual, ''), coalesce(with_check, '') FROM pg_policies")
         ).all()
 
-    assert len(policies) == 45  # 11 of the tenancy tables + 34 of the financial ones (0007)
+    assert len(policies) == 48  # 11 of the tenancy tables + 37 of the financial ones (0007)
     for name, qual, check in policies:
         assert qual.strip().lower() != "true", name
         assert check.strip().lower() != "true", name
