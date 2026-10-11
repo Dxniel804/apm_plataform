@@ -1,5 +1,7 @@
 # APM Digital
 
+> **Nota (2026-10, ADR-020).** Este é o planejamento original e está desatualizado em um ponto: **cada escola é um cliente separado**. Não existe acesso de rede/organização a várias escolas, nem o papel de administrador de rede; a organização é só a conta de uma única escola. Os papéis vigentes e as regras estão em [tenancy.md](tenancy.md) e [auth.md](auth.md).
+
 ## 1. Visão geral
 
 O **APM Digital** será uma plataforma destinada a escolas e redes de ensino para centralizar, organizar e automatizar a gestão financeira da APM (Associação de Pais e Mestres).

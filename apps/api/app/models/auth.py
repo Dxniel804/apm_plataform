@@ -114,10 +114,6 @@ class Invitation(TimestampMixin, Base):
             r"email ~ '^[^@\s]+@[^@\s]+$' AND email = lower(email)", name="email_format"
         ),
         CheckConstraint(_in_list("role", ROLES), name="role_valid"),
-        CheckConstraint(
-            "role <> 'organization_admin' OR school_id IS NULL",
-            name="organization_admin_is_org_wide",
-        ),
         CheckConstraint("expires_at > created_at", name="expires_after_creation"),
         CheckConstraint(
             "(accepted_at IS NULL) = (accepted_user_id IS NULL)", name="accepted_has_a_user"
@@ -143,7 +139,7 @@ class Invitation(TimestampMixin, Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("organizations.id", ondelete="RESTRICT")
     )
-    school_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    school_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     email: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(Text)
     token_hash: Mapped[bytes] = mapped_column(LargeBinary)

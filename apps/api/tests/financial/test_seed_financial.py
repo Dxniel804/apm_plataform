@@ -149,18 +149,18 @@ def test_the_seed_writes_categories_and_demonstration_movements_and_repeats_clea
 
         # The application role sees the movements of ITS organization only.
         with admin.connect() as connection:
-            rede: Any = connection.execute(
-                text("SELECT id FROM organizations WHERE slug = 'demo-rede'")
+            aurora: Any = connection.execute(
+                text("SELECT id FROM organizations WHERE slug = 'demo-aurora-conta'")
             ).scalar_one()
-            instituto: Any = connection.execute(
-                text("SELECT id FROM organizations WHERE slug = 'demo-instituto'")
+            central: Any = connection.execute(
+                text("SELECT id FROM organizations WHERE slug = 'demo-central-conta'")
             ).scalar_one()
-        with transaction(app, context=TenantContext(rede)) as connection:
+        with transaction(app, context=TenantContext(aurora)) as connection:
             assert (
                 connection.execute(text("SELECT count(*) FROM financial_transactions")).scalar_one()
-                == 2 * MOVEMENTS_PER_SCHOOL
+                == MOVEMENTS_PER_SCHOOL
             )
-        with transaction(app, context=TenantContext(instituto)) as connection:
+        with transaction(app, context=TenantContext(central)) as connection:
             assert (
                 connection.execute(text("SELECT count(*) FROM financial_transactions")).scalar_one()
                 == MOVEMENTS_PER_SCHOOL

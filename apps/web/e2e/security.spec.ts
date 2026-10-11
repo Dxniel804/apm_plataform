@@ -34,12 +34,12 @@ test("/api e /api/* continuam fora do proxy de CSP (a resposta e da API, via rew
   expect(response.headers()["content-security-policy"]).toBeUndefined();
 });
 
-test("N11: /favicon.ico e /icon.svg existem (o Safari nao usa SVG e pedia o .ico)", async ({ request }) => {
+test("N11: /favicon.ico e /icon.png existem (o Safari nao usa SVG e pedia o .ico)", async ({ request }) => {
   const ico = await request.get("/favicon.ico");
   expect(ico.status()).toBe(200);
   expect(ico.headers()["content-type"]).toMatch(/image\/(x-icon|vnd\.microsoft\.icon)/);
   expect((await ico.body()).length).toBeGreaterThan(200);
-  expect((await request.get("/icon.svg")).status()).toBe(200);
+  expect((await request.get("/icon.png")).status()).toBe(200);
 });
 
 test("N11: a pagina declara os icones e nao gera 404 de favicon no navegador", async ({ page }) => {

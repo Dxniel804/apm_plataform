@@ -55,9 +55,7 @@ def membership_out(row: MembershipRow) -> MembershipOut:
         organization=OrganizationRef(
             id=row.organization_id, name=row.organization_name, slug=row.organization_slug
         ),
-        school=None
-        if row.school_id is None
-        else SchoolRef(id=row.school_id, name=row.school_name or "", slug=row.school_slug or ""),
+        school=SchoolRef(id=row.school_id, name=row.school_name, slug=row.school_slug),
         role=row.role,  # type: ignore[arg-type]
     )
 

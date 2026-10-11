@@ -16,8 +16,9 @@ from app.db.base import Base
 from app.models.mixins import TimestampMixin, uuid_pk
 
 # platform_admin is NOT here on purpose: a platform role does not belong to an organization
-# (ADR-014). The permission matrix per role lives in code, not in tables (TASK-004).
-ROLES = ("organization_admin", "school_admin", "treasurer", "staff", "viewer")
+# (ADR-014). Neither is a role that spans schools: each school is a separate customer (ADR-020).
+# The permission matrix per role lives in code, not in tables (TASK-004).
+ROLES = ("school_admin", "treasurer", "staff", "viewer")
 STATUSES = ("invited", "active", "suspended", "revoked")
 
 
@@ -26,7 +27,7 @@ def _in_list(column: str, values: tuple[str, ...]) -> str:
 
 
 class Membership(TimestampMixin, Base):
-    """What a user may do in a tenant. school_id NULL means the whole organization.
+    """What a user may do in a school. The organization is the account of that one school (ADR-020).
 
     The application role cannot INSERT memberships nor UPDATE user_id, organization_id or school_id
     (migration 0005, docs/tenancy.md): creating one goes through the invitation flow of TASK-004.
@@ -34,8 +35,7 @@ class Membership(TimestampMixin, Base):
 
     __tablename__ = "memberships"
     __table_args__ = (
-        # A row can never mix an organization with a school of another one. With school_id NULL
-        # the constraint is not checked (MATCH SIMPLE), which is how org-wide access is stored.
+        # A row can never mix an organization with a school of another one.
         ForeignKeyConstraint(
             ["school_id", "organization_id"],
             ["schools.id", "schools.organization_id"],
@@ -46,10 +46,6 @@ class Membership(TimestampMixin, Base):
         UniqueConstraint("id", "user_id", name="uq_memberships_id_user_id"),
         CheckConstraint(_in_list("role", ROLES), name="role_valid"),
         CheckConstraint(_in_list("status", STATUSES), name="status_valid"),
-        CheckConstraint(
-            "role <> 'organization_admin' OR school_id IS NULL",
-            name="organization_admin_is_org_wide",
-        ),
         Index(
             "uq_memberships_user_org_school",
             "user_id",
@@ -57,13 +53,6 @@ class Membership(TimestampMixin, Base):
             "school_id",
             unique=True,
             postgresql_where=text("school_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_memberships_user_org_wide",
-            "user_id",
-            "organization_id",
-            unique=True,
-            postgresql_where=text("school_id IS NULL"),
         ),
         Index("ix_memberships_user_id", "user_id"),
         Index("ix_memberships_organization_id", "organization_id"),
@@ -75,6 +64,6 @@ class Membership(TimestampMixin, Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("organizations.id", ondelete="RESTRICT")
     )
-    school_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    school_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     role: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, server_default=text("'invited'"))

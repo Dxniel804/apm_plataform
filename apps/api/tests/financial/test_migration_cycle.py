@@ -27,7 +27,7 @@ def _module() -> Any:
 
 
 BASE: str = _module().down_revision
-HEAD_LABEL = "0009_expiry_job (head)"
+HEAD_LABEL = "0010_one_school_per_account (head)"
 FINANCIAL = {
     "audit_logs", "categories", "contributions", "expense_attachments", "expenses",
     "financial_transactions", "monthly_closings", "payment_accounts", "pix_charges", "refunds",
@@ -69,13 +69,12 @@ def _seed_tenancy(database: ScratchDb) -> None:
     engine = create_engine(database.admin_url)
     try:
         with engine.begin() as conn:
-            org = uuid.uuid4()
-            conn.execute(
-                text("INSERT INTO organizations (id, name, slug) VALUES (:o, 'Cycle', :s)"),
-                {"o": org, "s": f"cycle-{org.hex[:8]}"},
-            )
-            for i in range(3):
-                school, user = uuid.uuid4(), uuid.uuid4()
+            for i in range(3):  # one school per organization: the head refuses a network (ADR-020)
+                org, school, user = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+                conn.execute(
+                    text("INSERT INTO organizations (id, name, slug) VALUES (:o, 'Cycle', :s)"),
+                    {"o": org, "s": f"cycle-{i}-{org.hex[:8]}"},
+                )
                 conn.execute(
                     text(
                         "INSERT INTO schools (id, organization_id, name, slug) VALUES (:s, :o, 'S', :slug)"

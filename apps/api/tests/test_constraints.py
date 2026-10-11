@@ -42,27 +42,44 @@ def test_composite_fk_rejects_a_school_of_another_organization(
     assert _violated(error.value) == "fk_memberships_school_id_organization_id_schools"
 
 
-def test_composite_fk_accepts_a_school_of_the_same_organization(
+def test_composite_fk_accepts_the_school_of_the_organization(
     admin_engine: Engine, tenants: Tenants
 ) -> None:
     with transaction(admin_engine) as connection:
-        _insert_membership(connection, tenants, school=tenants.school_a2)
+        _insert_membership(connection, tenants, school=tenants.school_a1)
 
 
-def test_membership_without_school_means_the_whole_organization(
-    admin_engine: Engine, tenants: Tenants
-) -> None:
-    with transaction(admin_engine) as connection:
+def test_a_membership_always_names_a_school(admin_engine: Engine, tenants: Tenants) -> None:
+    """ADR-020: there is no membership of a whole organization (school_id is NOT NULL)."""
+    with transaction(admin_engine) as connection, pytest.raises(IntegrityError) as error:
         _insert_membership(connection, tenants, school=None, role="treasurer")
+
+    assert getattr(error.value.orig.diag, "column_name", None) == "school_id"  # type: ignore[union-attr]
 
 
 def test_membership_still_needs_an_existing_organization(
     admin_engine: Engine, tenants: Tenants
 ) -> None:
     with transaction(admin_engine) as connection, pytest.raises(IntegrityError) as error:
-        _insert_membership(connection, tenants, school=None, org=uuid.uuid4())
+        _insert_membership(connection, tenants, org=uuid.uuid4())
 
-    assert _violated(error.value) == "fk_memberships_organization_id_organizations"
+    assert _violated(error.value) in {
+        "fk_memberships_organization_id_organizations",
+        "fk_memberships_school_id_organization_id_schools",
+    }
+
+
+def test_an_organization_holds_only_one_school(admin_engine: Engine, tenants: Tenants) -> None:
+    """ADR-020: each school is a separate customer, so no organization can have a second one."""
+    with transaction(admin_engine) as connection, pytest.raises(IntegrityError) as error:
+        connection.execute(
+            text(
+                "INSERT INTO schools (organization_id, name, slug) VALUES (:org, 'Second', :slug)"
+            ),
+            {"org": tenants.org_a, "slug": f"second-{uuid.uuid4().hex[:10]}"},
+        )
+
+    assert _violated(error.value) == "uq_schools_organization_id"
 
 
 def test_school_slug_is_unique_across_organizations(admin_engine: Engine, tenants: Tenants) -> None:
@@ -138,11 +155,11 @@ def test_check_constraints_reject_bad_values(
     ("overrides", "constraint"),
     [
         # platform_admin is deliberately not a membership role (ADR-014).
-        ({"role": "platform_admin", "school": None}, "ck_memberships_role_valid"),
+        ({"role": "platform_admin"}, "ck_memberships_role_valid"),
         ({"role": "owner"}, "ck_memberships_role_valid"),
         ({"status": "deleted"}, "ck_memberships_status_valid"),
-        # An organization admin is organization-wide: it cannot be pinned to one school.
-        ({"role": "organization_admin"}, "ck_memberships_organization_admin_is_org_wide"),
+        # The role that spanned the schools of a network does not exist any more (ADR-020).
+        ({"role": "organization_admin"}, "ck_memberships_role_valid"),
     ],
 )
 def test_membership_checks(
@@ -158,11 +175,15 @@ def test_every_membership_role_in_the_spec_is_accepted(
     admin_engine: Engine, tenants: Tenants
 ) -> None:
     with transaction(admin_engine) as connection:
-        _insert_membership(connection, tenants, school=None, role="organization_admin")
-        _insert_membership(connection, tenants, school=tenants.school_a1, role="school_admin")
-        _insert_membership(connection, tenants, school=tenants.school_a2, role="treasurer")
+        _insert_membership(connection, tenants, role="school_admin")
+        _insert_membership(connection, tenants, role="treasurer", user=tenants.user_a2)
+        _insert_membership(connection, tenants, role="staff", user=tenants.user_b1)
         _insert_membership(
-            connection, tenants, school=tenants.school_a2, role="staff", user=tenants.user_a1
+            connection,
+            tenants,
+            role="viewer",
+            org=tenants.org_b,
+            school=tenants.school_b1,
         )
 
 
@@ -171,10 +192,5 @@ def test_one_membership_per_user_and_scope(admin_engine: Engine, tenants: Tenant
         _insert_membership(connection, tenants, school=tenants.school_a1)
         with pytest.raises(IntegrityError) as school_error:
             _insert_membership(connection, tenants, school=tenants.school_a1, role="staff")
-    with transaction(admin_engine) as connection:
-        _insert_membership(connection, tenants, school=None)
-        with pytest.raises(IntegrityError) as org_error:
-            _insert_membership(connection, tenants, school=None, role="staff")
 
     assert _violated(school_error.value) == "uq_memberships_user_org_school"
-    assert _violated(org_error.value) == "uq_memberships_user_org_wide"

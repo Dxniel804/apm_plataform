@@ -63,13 +63,13 @@ def test_the_user_of_another_tenant_is_invisible_to_begin_with(
     assert _b_only_user_rows(app_engine, tenants, _context(context_name, tenants)) == [0, 0, 0]
 
 
-@pytest.mark.parametrize("school", ["org-wide", "school-a1"])
+@pytest.mark.parametrize("school", ["no-school", "school-a1"])
 @pytest.mark.parametrize("context_name", CONTEXTS)
 def test_inserting_a_membership_of_a_user_of_another_tenant_is_denied(
     app_engine: Engine, tenants: Tenants, context_name: str, school: str
 ) -> None:
     sql, params = _insert_membership_of(
-        tenants.user_b1, tenants, None if school == "org-wide" else tenants.school_a1
+        tenants.user_b1, tenants, None if school == "no-school" else tenants.school_a1
     )
 
     with (

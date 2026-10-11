@@ -173,7 +173,7 @@ def test_a_membership_that_was_added_later_shows_up_without_a_new_login(
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
                 "VALUES (:u, :o, :s, 'viewer', 'active')"
             ),
-            {"u": user.id, "o": world.org_a, "s": world.school_a2},
+            {"u": user.id, "o": world.org_a2, "s": world.school_a2},
         )
 
     assert len(api.get(ME).json()["memberships"]) == 2
@@ -210,20 +210,21 @@ def test_each_role_reaches_exactly_its_own_scope(
     for label, user in {
         "school-a1": users.make("staff", org="a", school="1"),
         "school-a2": users.make("viewer", org="a", school="2"),
-        "org-a": users.make("organization_admin", org="a", school=None),
+        "admin-a1": users.make("school_admin", org="a"),
         "school-b1": users.make("staff", org="b", school="1"),
-        "org-b": users.make("organization_admin", org="b", school=None),
+        "admin-b1": users.make("school_admin", org="b"),
     }.items():
         client = apis.make(configure=_tenant_routes)
         client.login(user)
         seen[label] = _slugs(client, world)
 
+    # Nobody reaches more than ONE school, whatever the role (ADR-020).
     assert seen == {
         "school-a1": {f"t4-a1-{world.suffix}"},
         "school-a2": {f"t4-a2-{world.suffix}"},
-        "org-a": {f"t4-a1-{world.suffix}", f"t4-a2-{world.suffix}"},
+        "admin-a1": {f"t4-a1-{world.suffix}"},
         "school-b1": {f"t4-b1-{world.suffix}"},
-        "org-b": {f"t4-b1-{world.suffix}"},
+        "admin-b1": {f"t4-b1-{world.suffix}"},
     }
 
 
@@ -298,8 +299,8 @@ def test_the_permission_map_matches_what_the_roles_of_the_database_allow(
 
 def test_what_each_role_may_do() -> None:
     everything = set(Permission)
-    assert permissions_for("organization_admin") == everything
-    assert permissions_for("school_admin") == everything - {Permission.MONTHS_REOPEN}
+    assert permissions_for("school_admin") == everything  # includes reopening a closed month
+    assert permissions_for("organization_admin") == frozenset()  # the role of a network is gone
     assert permissions_for("treasurer") == {
         Permission.CONTRIBUTIONS_RECORD_CASH,
         Permission.EXPENSES_READ_ALL,
@@ -316,9 +317,9 @@ def test_what_each_role_may_do() -> None:
         assert permissions_for(unknown) == frozenset()  # a role that does not exist can do nothing
 
 
-def test_only_the_organization_admin_can_reopen_a_month_and_nobody_else_manages_access() -> None:
+def test_only_the_school_admin_can_reopen_a_month_and_nobody_else_manages_access() -> None:
     can_reopen = {r for r, p in ROLE_PERMISSIONS.items() if Permission.MONTHS_REOPEN in p}
     can_invite = {r for r, p in ROLE_PERMISSIONS.items() if Permission.INVITATIONS_CREATE in p}
 
-    assert can_reopen == {"organization_admin"}
-    assert can_invite == {"organization_admin", "school_admin"}
+    assert can_reopen == {"school_admin"}
+    assert can_invite == {"school_admin"}

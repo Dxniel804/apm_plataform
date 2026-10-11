@@ -11,13 +11,23 @@ The **tenant is the organization**; a school is a sub-scope of it. Every table i
 | `organizations` | the tenant | `slug` unique (lowercase, digits, hyphens) |
 | `schools` | sub-scope of an organization | `organization_id NOT NULL` → organizations; `slug` **globally** unique (the public portal resolves `/apm/{slug}`, ADR-010); `UNIQUE (id, organization_id)` is the target of the composite foreign keys |
 | `users` | **global identity** (not tenant data) | e-mail unique **ignoring case** (`UNIQUE INDEX ON lower(email)`); `password_hash` nullable (nobody without one can log in; see [auth.md](auth.md)) |
-| `memberships` | what a user may do in a tenant | `user_id`, `organization_id NOT NULL`, `school_id` NULL = the whole organization, `role`, `status` |
+| `memberships` | what a user may do in a tenant | `user_id`, `organization_id NOT NULL`, `school_id NOT NULL` (always one school), `role`, `status` |
 
-`memberships` is where isolation is enforced by shape: `FOREIGN KEY (school_id, organization_id) REFERENCES schools (id, organization_id)` means a row can never name an organization and a school that belong to different tenants. With `school_id` NULL the constraint is skipped (`MATCH SIMPLE`), which is how organization-wide access is stored; `organization_id` still has its own foreign key.
+`memberships` is where isolation is enforced by shape: `FOREIGN KEY (school_id, organization_id) REFERENCES schools (id, organization_id)` means a row can never name an organization and a school that belong to different tenants. `school_id` is `NOT NULL` since 0010 (ADR-020), so the constraint always applies; `organization_id` still has its own foreign key.
 
-Roles (a text `CHECK`, not a native enum, so migrating is easy): `organization_admin` (only with `school_id` NULL), `school_admin`, `treasurer`, `staff`, `viewer`. Statuses: `invited` (default), `active`, `suspended`, `revoked`. The permission matrix (role → permissions) lives **in code** (`app/auth/permissions.py`, see [auth.md](auth.md)), not in tables.
+Roles (a text `CHECK`, not a native enum, so migrating is easy): `school_admin`, `treasurer`, `staff`, `viewer` (the role of a network, `organization_admin`, was removed by 0010, ADR-020). Statuses: `invited` (default), `active`, `suspended`, `revoked`. The permission matrix (role → permissions) lives **in code** (`app/auth/permissions.py`, see [auth.md](auth.md)), not in tables.
 
 **Why `platform_admin` is not a membership role.** A platform administrator does not belong to an organization, and `memberships.organization_id` is `NOT NULL` on purpose. Putting a platform role there would either force a fake organization or weaken the invariant that every membership row has a tenant. Platform flows (jobs, super admin, creating tenants) need their own ADR and their own database role (ADR-014).
+
+## One school per account (ADR-020)
+
+Each school is a separate customer, so **nothing crosses schools**: there is no role, no membership and no query that spans two of them.
+
+- The organization is only the **account** of that one school. `uq_schools_organization_id` (a unique index on `schools (organization_id)`) lets an organization hold a single school, so a context that names only the organization can never see another one. The rest of the schema keeps its `organization_id`, with the composite foreign keys, and nothing had to be rewritten.
+- `memberships.school_id` and `invitations.school_id` are `NOT NULL`. The role `organization_admin`, the only one that spanned schools, and the consolidated statement `org_statement_summary` were removed (migration 0010).
+- A person who works in two schools has two memberships, each one granted by the invitation of that school; nothing gives automatic access from one to the other. The site switches between them with `POST /auth/context`.
+- Reopening a closed month and approving an expense above the limit moved to the `school_admin`. The `treasurer` who closes a month still cannot reopen it.
+- The migration refuses to run, with a message, when an organization has more than one school or a membership or invitation has no school: a school cannot move to another organization (the ledger is frozen), so a development database that still has a network is recreated and seeded again.
 
 ## The tenant context
 
@@ -30,7 +40,7 @@ public.app_school()  -- nullif(current_setting('app.school_id', true), '')::uuid
 
 Both are `STABLE`, `SECURITY INVOKER`, with a fixed `search_path = pg_catalog`, owned by `apm_owner`. **`SECURITY DEFINER` functions exist only on a closed list**: none among the context functions, the three of migration 0006 (see [auth.md](auth.md)), the three of 0008 and the one of 0009 (see [financial-model.md](financial-model.md)), all owned by `apm_definer`. A test enumerates every function and fails on any other.
 
-Context semantics: `(organization, None)` is an organization-wide context (every school of it); `(organization, school)` is "working inside that school" (only that school's rows).
+Context semantics: `(organization, None)` names only the organization and, since an organization holds ONE school (ADR-020), sees exactly what `(organization, school)` sees: that school's rows. A context that names a school that is not the organization's sees nothing. The API always builds the context from a membership, and a membership always names its school.
 
 ### The helper (`app/db/tenant.py`)
 
@@ -62,7 +72,7 @@ Scope predicate `P(org, school)`: `org = app_org() AND (app_school() IS NULL OR 
 | `memberships` | `P(organization_id, school_id)` | `P(organization_id, school_id)` (only the owner can: `apm_app` has no `INSERT`) | `P(organization_id, school_id)` | `P(organization_id, school_id)` |
 | `users` | a **visible** membership of that user exists (`EXISTS` over `memberships` with `P`) | no policy | no policy | no policy |
 
-A **tenant hop** (an `UPDATE` or `INSERT` that tries to move a row to another organization, school or user) is stopped in layers. For `apm_app` the column privileges stop it first (`permission denied`: it cannot update `organization_id`, `school_id`, `user_id` or `id`, nor insert memberships). Behind that, `WITH CHECK` on the policies and the composite foreign key still stop the owner, who has every privilege (the tests run every hop as both roles and assert which layer refused it). An organization-wide membership row (`school_id` NULL) only shows up in an organization-wide context.
+A **tenant hop** (an `UPDATE` or `INSERT` that tries to move a row to another organization, school or user) is stopped in layers. For `apm_app` the column privileges stop it first (`permission denied`: it cannot update `organization_id`, `school_id`, `user_id` or `id`, nor insert memberships). Behind that, `WITH CHECK` on the policies and the composite foreign key still stop the owner, who has every privilege (the tests run every hop as both roles and assert which layer refused it).
 
 No policy is `USING (true)` and nothing reads a "system" flag: the legacy `app.sistema = 'on'` switch, which any injected SQL could flip, does not exist here.
 

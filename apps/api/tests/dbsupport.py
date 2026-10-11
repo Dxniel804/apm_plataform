@@ -23,16 +23,21 @@ def with_database(url: str, database: str) -> str:
 
 @dataclass(frozen=True)
 class Tenants:
-    """Two organizations and a handful of rows in each, created fresh for a test session."""
+    """Three accounts and a handful of rows in each, created fresh for a test session.
+
+    Each school is a separate customer (ADR-020): an organization holds exactly ONE school, so there
+    is no organization with two schools and no membership that spans schools.
+    """
 
     org_a: uuid.UUID
     org_b: uuid.UUID
+    org_a2: uuid.UUID  # the account of school A2
     school_a1: uuid.UUID
     school_a2: uuid.UUID
     school_b1: uuid.UUID
     user_a1: uuid.UUID  # staff of school A1
     user_a2: uuid.UUID  # viewer of school A2
-    user_admin_a: uuid.UUID  # organization_admin of A (whole organization)
+    user_admin_a: uuid.UUID  # school_admin of school A1
     user_b1: uuid.UUID  # staff of school B1
     user_free: uuid.UUID  # no membership anywhere
     membership_a1: uuid.UUID
@@ -49,24 +54,35 @@ def create_tenants(connection: Connection) -> Tenants:
     ids = {
         name: uuid.uuid4() for name in Tenants.__annotations__ if name not in ("slugs", "emails")
     }
-    slugs = tuple(f"t3-{name}-{suffix}" for name in ("org-a", "org-b", "s-a1", "s-a2", "s-b1"))
+    slugs = tuple(
+        f"t3-{name}-{suffix}" for name in ("org-a", "org-b", "s-a1", "s-a2", "s-b1", "org-a2")
+    )
     emails = tuple(
         f"t3-{name}-{suffix}@example.test" for name in ("a1", "a2", "admin-a", "b1", "free")
     )
     connection.execute(
         text(
             "INSERT INTO organizations (id, name, slug) "
-            "VALUES (:a, 'Org A', :sa), (:b, 'Org B', :sb)"
+            "VALUES (:a, 'Org A', :sa), (:b, 'Org B', :sb), (:a2, 'Org A2', :sa2)"
         ),
-        {"a": ids["org_a"], "b": ids["org_b"], "sa": slugs[0], "sb": slugs[1]},
+        {
+            "a": ids["org_a"],
+            "b": ids["org_b"],
+            "a2": ids["org_a2"],
+            "sa": slugs[0],
+            "sb": slugs[1],
+            "sa2": slugs[5],
+        },
     )
     connection.execute(
         text(
             "INSERT INTO schools (id, organization_id, name, slug) VALUES "
-            "(:a1, :a, 'School A1', :s1), (:a2, :a, 'School A2', :s2), (:b1, :b, 'School B1', :s3)"
+            "(:a1, :a, 'School A1', :s1), (:a2, :a2o, 'School A2', :s2), "
+            "(:b1, :b, 'School B1', :s3)"
         ),
         {
             "a": ids["org_a"],
+            "a2o": ids["org_a2"],
             "b": ids["org_b"],
             "a1": ids["school_a1"],
             "a2": ids["school_a2"],
@@ -84,8 +100,8 @@ def create_tenants(connection: Connection) -> Tenants:
         )
     for key, user, org, school, role in (
         ("membership_a1", "user_a1", "org_a", "school_a1", "staff"),
-        ("membership_a2", "user_a2", "org_a", "school_a2", "viewer"),
-        ("membership_admin_a", "user_admin_a", "org_a", None, "organization_admin"),
+        ("membership_a2", "user_a2", "org_a2", "school_a2", "viewer"),
+        ("membership_admin_a", "user_admin_a", "org_a", "school_a1", "school_admin"),
         ("membership_b1", "user_b1", "org_b", "school_b1", "staff"),
     ):
         connection.execute(
@@ -97,7 +113,7 @@ def create_tenants(connection: Connection) -> Tenants:
                 "id": ids[key],
                 "user": ids[user],
                 "org": ids[org],
-                "school": ids[school] if school else None,
+                "school": ids[school],
                 "role": role,
             },
         )
@@ -136,7 +152,7 @@ def purge_financial(connection: Connection, org_ids: list[uuid.UUID]) -> None:
 
 def delete_tenants(connection: Connection, tenants: Tenants) -> None:
     """Remove exactly the rows create_tenants made (and anything a test left under them)."""
-    org_ids = [tenants.org_a, tenants.org_b]
+    org_ids = [tenants.org_a, tenants.org_b, tenants.org_a2]
     purge_financial(connection, org_ids)
     connection.execute(
         text("DELETE FROM memberships WHERE organization_id = ANY(:o)"), {"o": org_ids}

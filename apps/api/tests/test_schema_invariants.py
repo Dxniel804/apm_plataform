@@ -165,7 +165,13 @@ def test_a_slug_with_a_good_format_is_accepted(
         else "INSERT INTO organizations (name, slug) VALUES ('x', :slug)"
     )
     with transaction(admin_engine) as connection:
-        connection.execute(text(sql), {"org": tenants.org_a, "slug": unique})
+        org = tenants.org_a
+        if table == "schools":  # an organization holds one school (ADR-020): this one is new
+            org = connection.execute(
+                text("INSERT INTO organizations (name, slug) VALUES ('x', :s) RETURNING id"),
+                {"s": f"o-{unique}"},
+            ).scalar_one()
+        connection.execute(text(sql), {"org": org, "slug": unique})
 
 
 # --- S4 to S6: the foreign keys exist, with the exact shape and RESTRICT -------------------------
@@ -274,9 +280,9 @@ def test_a_membership_needs_an_existing_user(admin_engine: Engine, tenants: Tena
         connection.execute(
             text(
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-                "VALUES (:u, :o, NULL, 'viewer', 'active')"
+                "VALUES (:u, :o, :s, 'viewer', 'active')"
             ),
-            {"u": uuid.uuid4(), "o": tenants.org_a},
+            {"u": uuid.uuid4(), "o": tenants.org_a, "s": tenants.school_a1},
         )
     assert _constraint(error.value) == "fk_memberships_user_id_users"
 
@@ -361,12 +367,8 @@ EXPECTED_AUTH_CHECKS = {
     ),
     "ck_invitations_role_valid": (
         "invitations",
-        "CHECK ((role = ANY (ARRAY['organization_admin'::text, 'school_admin'::text, "
-        "'treasurer'::text, 'staff'::text, 'viewer'::text])))",
-    ),
-    "ck_invitations_organization_admin_is_org_wide": (
-        "invitations",
-        "CHECK (((role <> 'organization_admin'::text) OR (school_id IS NULL)))",
+        "CHECK ((role = ANY (ARRAY['school_admin'::text, 'treasurer'::text, 'staff'::text, "
+        "'viewer'::text])))",
     ),
     "ck_invitations_expires_after_creation": (
         "invitations",
@@ -451,11 +453,8 @@ def _auth_check_cases(tenants: Tenants) -> list[tuple[str, str, dict[str, Any]]]
         ("ck_invitations_email_format", _INVITATION, inv(tenants, email="nobody")),
         ("ck_invitations_email_format", _INVITATION, inv(tenants, email="Mixed@Example.test")),
         ("ck_invitations_role_valid", _INVITATION, inv(tenants, role="owner")),
-        (
-            "ck_invitations_organization_admin_is_org_wide",
-            _INVITATION,
-            inv(tenants, role="organization_admin"),
-        ),
+        # The role of a network does not exist any more (ADR-020).
+        ("ck_invitations_role_valid", _INVITATION, inv(tenants, role="organization_admin")),
         (
             "ck_invitations_expires_after_creation",
             _INVITATION.replace("now() + interval '1 hour'", "now() - interval '1 hour'"),

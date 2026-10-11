@@ -52,7 +52,7 @@ describe("/painel no servidor", () => {
     const session = parseSession(sessionBody()) as Session;
     const html = await render({ state: "authenticated", session });
     expect(html).toContain("Pessoa de Teste");
-    expect(html).toContain("Rede Teste");
+    expect(html).toContain("Escola Outra");
     expect(html).not.toContain("Protótipo");
     expect(html).not.toMatch(/R\$\s?\d/); // nenhum valor no HTML do servidor
     // nada do CSRF nem de sessao vai para o HTML

@@ -52,7 +52,6 @@ Row = repository.Row
 ORIGIN_BY_ROLE = {
     "staff": "TEACHER",
     "school_admin": "DIRECTOR",
-    "organization_admin": "DIRECTOR",
     "treasurer": "MANAGEMENT",
 }
 DEFAULT_ORIGIN = "EMPLOYEE"

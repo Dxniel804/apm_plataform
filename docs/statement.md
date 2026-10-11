@@ -74,5 +74,5 @@ A reopened closing has no PDF (`409 closing_reopened`).
 
 - The channel is not a column of `statement_entries` (it would need a migration; the contributions PDF reads it directly instead).
 - The report does not break the collection down by week, nor by class.
-- A consolidated view of several schools (`org_statement_summary`) has no route: in the MVP a person belongs to one school.
+- There is no consolidated view of several schools: each school is a separate customer (ADR-020), and `org_statement_summary` was dropped.
 - Section B of the monthly PDF does not say who requested, approved and paid an expense: `statement_entries` does not carry them.

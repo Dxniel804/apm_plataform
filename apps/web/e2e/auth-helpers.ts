@@ -22,9 +22,10 @@ export function demoPassword(): string | null {
   }
 }
 
-export const ANA = { email: "ana.admin@example.test", name: "Ana Administradora (demo)", organization: "Rede Escolar Demo" };
+/** Administradora da Escola Horizonte (demo). Cada escola e um cliente (ADR-020): nao existe administrador de rede. */
+export const ANA = { email: "ana.admin@example.test", name: "Ana Administradora (demo)", school: "Escola Horizonte (demo)" };
 /** Tesoureira da Escola Aurora (demo): tem statement:read, contributions:record_cash e reports:read. */
-export const CARLA = { email: "carla.tesoureira@example.test", name: "Carla Tesoureira (demo)", organization: "Rede Escolar Demo", school: "Escola Aurora (demo)" };
+export const CARLA = { email: "carla.tesoureira@example.test", name: "Carla Tesoureira (demo)", school: "Escola Aurora (demo)" };
 /** Leitora da Escola Horizonte (demo): so reports:read_aggregate (o resumo do mes). */
 export const ELISA = { email: "elisa.leitora@example.test", school: "Escola Horizonte (demo)" };
 
@@ -45,9 +46,9 @@ export async function openMenuIfNeeded(page: Page): Promise<void> {
   if (await button.isVisible()) await button.click();
 }
 
-/** A API so aceita pedidos que mudam dados das origens de PUBLIC_ORIGINS de desenvolvimento (:3100, :3101 e :3102). */
+/** A API so aceita pedidos que mudam dados das origens de PUBLIC_ORIGINS de desenvolvimento (:3100 a :3102 e :3110 a :3119). */
 export function apiAcceptsThisOrigin(): boolean {
-  return /^http:\/\/(127\.0\.0\.1|localhost):310[0-2]$/.test(process.env.E2E_BASE_URL ?? "");
+  return /^http:\/\/(127\.0\.0\.1|localhost):31(0[0-2]|1[0-9])$/.test(process.env.E2E_BASE_URL ?? "");
 }
 
 export const PAULA = { email: "paula.professora@example.test", name: "Paula Professora (demo)" };

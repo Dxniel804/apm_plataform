@@ -23,7 +23,7 @@ export function ContextChooser({ session, busy, signingOut, problem, onSelect, o
       <h1 className="text-title sm:text-[2.25rem]">{none ? "Sem vínculo ativo" : "Onde você vai atuar?"}</h1>
       <p className="mt-2 text-body text-ink-2">
         {none
-          ? `${session.user.fullName}, a sua conta ainda não tem vínculo ativo com nenhuma APM. Peça um convite a quem administra a sua organização.`
+          ? `${session.user.fullName}, a sua conta ainda não tem vínculo ativo com nenhuma APM. Peça um convite a quem administra a sua escola.`
           : `${session.user.fullName}, a sua conta tem mais de um vínculo. Escolha com qual deles você quer entrar agora.`}
       </p>
       {!none && (

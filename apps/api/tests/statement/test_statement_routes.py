@@ -274,7 +274,7 @@ def test_pending_lists_what_is_outside_the_balance(scene: Scene, login: Login) -
 @pytest.mark.parametrize(
     ("role", "statement", "summary", "pending"),
     [
-        ("admin", 200, 200, 200),  # organization_admin
+        ("admin", 200, 200, 200),  # school_admin
         ("school_admin", 200, 200, 200),
         ("treasurer", 200, 200, 200),
         ("viewer", 403, 200, 403),  # aggregate reports only
@@ -311,11 +311,10 @@ def test_a_school_outside_the_session_is_a_404_identical_to_one_that_does_not_ex
     api = login(scene.users["treasurer"])
     unknown = uuid4()
     foreign = scene.other.school  # a school of ANOTHER organization
-    sibling = scene.sibling_school  # same organization, but not the school of this membership
 
     answers = {
         label: api.get(statement_path(school, tail), params={"period": MARCH})
-        for label, school in (("unknown", unknown), ("foreign", foreign), ("sibling", sibling))
+        for label, school in (("unknown", unknown), ("foreign", foreign))
         for tail in ("", "/summary", "/pending")
     }
 
@@ -331,17 +330,13 @@ def test_a_school_outside_the_session_is_a_404_identical_to_one_that_does_not_ex
         }, label
 
 
-def test_an_organization_wide_admin_reaches_every_school_of_the_organization_and_no_other(
-    scene: Scene, login: Login
-) -> None:
+def test_a_school_admin_reaches_its_own_school_and_no_other(scene: Scene, login: Login) -> None:
     api = login(scene.users["admin"])
 
     own = api.get(statement_path(scene.fresh.school), params={"period": MARCH})
-    sibling = api.get(statement_path(scene.sibling_school), params={"period": MARCH})
     foreign = api.get(statement_path(scene.other.school), params={"period": MARCH})
 
     assert own.status_code == 200 and len(own.json()["items"]) == 6
-    assert sibling.status_code == 200 and sibling.json()["items"] == []
     assert foreign.status_code == 404
 
 

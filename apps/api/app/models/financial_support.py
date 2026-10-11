@@ -143,7 +143,7 @@ class SchoolSettings(ScopeMixin, TimestampMixin, Base):
     )
     brand_accent: Mapped[str] = mapped_column(Text, server_default=text("'#0a84ff'"))
     brand_accent_contrast: Mapped[str] = mapped_column(Text, server_default=text("'#ffffff'"))
-    # NULL = off. An expense above it needs the organization administrator (rule in the service).
+    # NULL = off. An expense above it needs the school administrator (rule in the service).
     approval_limit_cents: Mapped[int | None] = mapped_column(BigInteger)
 
 

@@ -20,7 +20,7 @@ def test_staff_see_their_own_and_whoever_reads_all_sees_every_expense_of_the_sch
     beto = scene.person("staff", label="beto")
     treasurer = scene.person("treasurer", label="treasurer")
     director = scene.person("school_admin", label="director")
-    admin = scene.person("organization_admin", school=None, label="admin")
+    admin = scene.person("school_admin", label="admin")
     mine, theirs = scene.draft(ana), scene.draft(beto)
 
     assert ids(ana.get("/expenses")) == [mine["id"]]

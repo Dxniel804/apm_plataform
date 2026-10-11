@@ -18,6 +18,9 @@ class School(TimestampMixin, Base):
         CheckConstraint(f"slug ~ '{SLUG_PATTERN}'", name="slug_format"),
         CheckConstraint("length(btrim(name)) > 0", name="name_not_blank"),
         Index("ix_schools_organization_id", "organization_id"),
+        # One school per organization (ADR-020): the organization is the account of that school, so
+        # a context that names only the organization can never see another school.
+        Index("uq_schools_organization_id", "organization_id", unique=True),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()

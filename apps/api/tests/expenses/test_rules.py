@@ -11,12 +11,11 @@ from tests.expenses.support import Client, Scene
 # --- the author never decides ---------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("role", ["school_admin", "organization_admin"])
+@pytest.mark.parametrize("role", ["school_admin"])
 def test_the_author_never_approves_rejects_or_asks_a_correction_of_their_own_expense(
     scene: Scene, role: str
 ) -> None:
-    school = None if role == "organization_admin" else "1"
-    author = scene.person(role, school=school, label="author")
+    author = scene.person(role, label="author")
     other = scene.person("school_admin", label="other")
     expense = scene.submitted(author)
 

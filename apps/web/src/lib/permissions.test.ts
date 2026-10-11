@@ -4,7 +4,7 @@ import { areaHref, areasFor, homeArea } from "./permissions";
 // Permissoes REAIS de cada papel (docs/auth.md e GET /auth/me).
 const STAFF = ["expenses:read_own", "expenses:submit"];
 const TREASURER = ["contributions:record_cash", "expenses:approve", "expenses:read_all", "months:close", "refunds:register", "reimbursements:register", "reports:read", "statement:read"];
-const SCHOOL_ADMIN = [...TREASURER, "expenses:read_own", "expenses:submit", "invitations:create", "memberships:manage", "organization:update", "reports:read_aggregate", "school:update"];
+const SCHOOL_ADMIN = [...TREASURER, "expenses:read_own", "expenses:submit", "invitations:create", "memberships:manage", "months:reopen", "organization:update", "reports:read_aggregate", "school:update"];
 const VIEWER = ["reports:read_aggregate"];
 
 describe("areasFor", () => {
@@ -17,12 +17,13 @@ describe("areasFor", () => {
     expect(areasFor(TREASURER)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: false });
   });
 
-  it("diretor (school_admin): tudo, menos reabrir mes; envia e analisa", () => {
-    expect(areasFor(SCHOOL_ADMIN)).toMatchObject({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: true, closeMonths: true, reopenMonths: false });
+  it("administrador da escola (school_admin): tudo, inclusive reabrir mes; envia e analisa", () => {
+    expect(areasFor(SCHOOL_ADMIN)).toMatchObject({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: true, closeMonths: true, reopenMonths: true });
   });
 
-  it("administrador da organizacao: reabrir mes so com months:reopen", () => {
-    expect(areasFor([...SCHOOL_ADMIN, "months:reopen"]).reopenMonths).toBe(true);
+  it("reabrir mes so com months:reopen (ADR-020: so o administrador da escola)", () => {
+    expect(areasFor(SCHOOL_ADMIN.filter((p) => p !== "months:reopen")).reopenMonths).toBe(false);
+    expect(areasFor(TREASURER).reopenMonths).toBe(false);
   });
 
   it("viewer: resumo e fechamento so de leitura, sem despesas e sem fechar", () => {

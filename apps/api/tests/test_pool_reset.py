@@ -258,7 +258,7 @@ def test_the_second_checkout_applies_the_tenant_context(
                 text("SELECT count(*) FROM schools WHERE id = ANY(:ids)"),
                 {"ids": [tenants.school_a1, tenants.school_a2, tenants.school_b1]},
             ).scalar_one()
-            assert count == 2
+            assert count == 1  # the one school of the organization (ADR-020)
             # And the context is still there for a SECOND statement of the same transaction.
             organization: Any = session.execute(
                 text("SELECT current_setting('app.organization_id', true)")

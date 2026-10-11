@@ -7,7 +7,7 @@ import { InfoIcon } from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import { api, type AcceptedInvitation } from "@/lib/api";
 import { describeAuthError, describeFieldError } from "@/lib/auth-messages";
-import { ROLE_LABELS, membershipScope, membershipTitle } from "@/lib/roles";
+import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 
 const MIN_PASSWORD = 12;
 const MAX_PASSWORD = 128;
@@ -110,7 +110,7 @@ export function AcceptInvitationForm({
           <div>
             <dt className="inline font-semibold text-ink">Onde: </dt>
             <dd className="inline text-ink-2">
-              {membershipTitle(membership)} ({membershipScope(membership)})
+              {membershipTitle(membership)}
             </dd>
           </div>
           <div>

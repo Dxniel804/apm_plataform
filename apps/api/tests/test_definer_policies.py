@@ -69,8 +69,8 @@ def _scene(connection: Connection) -> Scene:
             {"id": ids[key], "e": f"dp-{key}-{suffix}@example.test"},
         )
     memberships: dict[str, uuid.UUID] = {}
-    # One user per status (a user has one organization-wide membership per organization); only
-    # the active one is school-scoped, which is what makes the school visible to the definer.
+    # One user per status. Only the active one is visible to the definer, which is what makes the
+    # school and the organization visible to it (the other two are of the same school).
     for status, user, role in (
         ("active", "user", "staff"),
         ("suspended", "user_s", "viewer"),
@@ -86,7 +86,7 @@ def _scene(connection: Connection) -> Scene:
                 "id": memberships[status],
                 "u": ids[user],
                 "o": ids["org_m"],
-                "s": ids["school_m"] if status == "active" else None,
+                "s": ids["school_m"],
                 "r": role,
                 "st": status,
             },
@@ -107,12 +107,13 @@ def _scene(connection: Connection) -> Scene:
             text(
                 "INSERT INTO invitations (id, organization_id, school_id, email, role, token_hash, "
                 "invited_by_user_id, created_at, expires_at, accepted_at, accepted_user_id, "
-                "revoked_at) VALUES (:id, :o, NULL, :e, 'viewer', decode(:h, 'hex'), :u, "
+                "revoked_at) VALUES (:id, :o, :s, :e, 'viewer', decode(:h, 'hex'), :u, "
                 ":created, :expires, :accepted_at, :accepted_user, :revoked_at)"
             ),
             {
                 "id": invitations[state],
                 "o": ids["org_m"],
+                "s": ids["school_m"],
                 "e": f"dp-{state}-{suffix}@example.test",
                 "h": uuid.uuid4().hex * 2,
                 "u": ids["user"],
@@ -214,7 +215,12 @@ def test_the_definer_can_only_create_an_active_membership(
     admin_engine: Engine, status: str
 ) -> None:
     with as_definer(admin_engine) as (connection, scene):
-        params = {"u": scene.new_user, "o": scene.org_with_member, "s": None, "status": status}
+        params = {
+            "u": scene.new_user,
+            "o": scene.org_with_member,
+            "s": scene.school_with_member,
+            "status": status,
+        }
         refused(connection, _MEMBERSHIP, params, ROW_LEVEL_SECURITY)
 
 
@@ -223,7 +229,12 @@ def test_the_definer_creates_an_active_membership(admin_engine: Engine) -> None:
     with as_definer(admin_engine) as (connection, scene):
         result = connection.execute(
             text(_MEMBERSHIP),
-            {"u": scene.new_user, "o": scene.org_with_member, "s": None, "status": "active"},
+            {
+                "u": scene.new_user,
+                "o": scene.org_with_member,
+                "s": scene.school_with_member,
+                "status": "active",
+            },
         )
 
     assert result.rowcount == 1

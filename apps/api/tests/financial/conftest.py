@@ -38,7 +38,8 @@ class Ledger:
     """Rows of the schools of the `tenants` fixture. School A1 is the subject of the matrix."""
 
     fresh: Fresh  # a wrapper so the builders can be reused: org A, school A1, members of A1
-    school_a3: uuid.UUID  # a school of organization A with NO settings row (settings insert test)
+    school_a3: uuid.UUID  # a school with NO settings row (settings insert test)
+    org_a3: uuid.UUID  # the account of school_a3 (one school per organization, ADR-020)
     # financial_transactions of A1
     cash_contribution: uuid.UUID  # PAID, CASH
     pix_pending: uuid.UUID  # PENDING_PAYMENT, PIX, with a PENDING charge
@@ -119,14 +120,14 @@ def _bare_transaction(
 
 @pytest.fixture(scope="session")
 def ledger(admin_engine: Engine, tenants: Tenants) -> Iterator[Ledger]:
-    """Needs the Tenants of the tenancy tests: org A (schools A1, A2) and org B (school B1)."""
+    """Needs the Tenants of the tenancy tests: accounts A (school A1), A2 (school A2) and B (B1)."""
     with admin_engine.begin() as conn:
         categories_a1 = create_categories(conn, tenants.org_a, tenants.school_a1)
         account_a1 = create_account(conn, tenants.org_a, tenants.school_a1)
         a1 = Fresh(
             org=tenants.org_a,
             school=tenants.school_a1,
-            admin=tenants.user_admin_a,  # org-wide membership of A
+            admin=tenants.user_admin_a,  # school_admin of A1
             treasurer=tenants.user_admin_a,  # decides (the submitter is another user)
             staff=tenants.user_a1,  # staff membership of A1
             outsider=tenants.user_free,
@@ -138,13 +139,17 @@ def ledger(admin_engine: Engine, tenants: Tenants) -> Iterator[Ledger]:
             cat_refund=categories_a1["refund"],
         )
         now = utc(2026, 1, 1)
-        school_a3 = uuid.uuid4()
+        school_a3, org_a3 = uuid.uuid4(), uuid.uuid4()
+        conn.execute(
+            text("INSERT INTO organizations (id, name, slug) VALUES (:id, 'Org A3', :slug)"),
+            {"id": org_a3, "slug": f"t5-oa3-{uuid.uuid4().hex[:10]}"},
+        )
         conn.execute(
             text(
                 "INSERT INTO schools (id, organization_id, name, slug) "
                 "VALUES (:id, :org, 'School A3', :slug)"
             ),
-            {"id": school_a3, "org": tenants.org_a, "slug": f"t5-a3-{uuid.uuid4().hex[:10]}"},
+            {"id": school_a3, "org": org_a3, "slug": f"t5-a3-{uuid.uuid4().hex[:10]}"},
         )
         conn.execute(text("SET LOCAL session_replication_role = replica"))
         conn.execute(text("DELETE FROM school_settings WHERE school_id = :s"), {"s": school_a3})
@@ -220,11 +225,11 @@ def ledger(admin_engine: Engine, tenants: Tenants) -> Iterator[Ledger]:
         ).scalar_one()
 
         # Rows of the other schools.
-        categories_a2 = create_categories(conn, tenants.org_a, tenants.school_a2)
-        account_a2 = create_account(conn, tenants.org_a, tenants.school_a2)
+        categories_a2 = create_categories(conn, tenants.org_a2, tenants.school_a2)
+        account_a2 = create_account(conn, tenants.org_a2, tenants.school_a2)
         a2 = Fresh(
-            org=tenants.org_a, school=tenants.school_a2, admin=tenants.user_admin_a,
-            treasurer=tenants.user_admin_a, staff=tenants.user_a2, outsider=tenants.user_free,
+            org=tenants.org_a2, school=tenants.school_a2, admin=tenants.user_a2,
+            treasurer=tenants.user_a2, staff=tenants.user_a2, outsider=tenants.user_free,
             account=account_a2, cat_in=categories_a2["parent_contribution"],
             cat_other=categories_a2["donation"], cat_out=categories_a2["school_supplies"],
             cat_reimb=categories_a2["teacher_reimbursement"], cat_refund=categories_a2["refund"],
@@ -251,7 +256,7 @@ def ledger(admin_engine: Engine, tenants: Tenants) -> Iterator[Ledger]:
         _ = make_school  # noqa: F841 (kept for tests that import it from here)
 
     yield Ledger(
-        fresh=a1, school_a3=school_a3, cash_contribution=cash, pix_pending=pix_pending,
+        fresh=a1, school_a3=school_a3, org_a3=org_a3, cash_contribution=cash, pix_pending=pix_pending,
         pix_pending_2=pix_pending_2, pix_review=pix_review, pix_charge=pix_charge,
         expense_draft=expense_draft, expense_submitted=expense_submitted,
         expense_paid=expense_paid, expense_collaborator=expense_collaborator,

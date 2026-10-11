@@ -227,13 +227,12 @@ FUNCTIONS = {
     },
 }
 # The financial schema (0007, ADR-015): 35 functions, none of them SECURITY DEFINER, all owned by
-# apm_owner with a fixed search_path. The 7 that the application calls (the statement, the pending
-# list, the consolidated view and the closing checks) are STABLE with EXECUTE for apm_app; the 28
+# apm_owner with a fixed search_path. The 6 that the application calls (the statement, the pending
+# list and the closing checks) are STABLE with EXECUTE for apm_app; the 28
 # trigger functions are VOLATILE and executable by no role but the owner.
 FINANCIAL_CALLABLE_FUNCTIONS = (
     "statement_entries(uuid,date,date,text,uuid,text,uuid)",
     "statement_summary(uuid,date,date)",
-    "org_statement_summary(uuid,date,date)",
     "statement_pending(uuid)",
     "closing_entries_hash(uuid,date,date)",
     "closing_breakdown(uuid,date,date)",

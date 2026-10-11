@@ -29,7 +29,7 @@ The active membership in a response carries the **permissions** of its role, so 
 
 ### Invitation, then acceptance
 
-1. An administrator calls `POST /invitations`. The organization is the one of the **active membership**. An `organization_admin` may invite any role; a `school_admin` only into their school and never an `organization_admin` (`INVITABLE_ROLES` in `app/auth/permissions.py`). A school-scoped inviter cannot name another school, and an `organization_admin` invitation cannot carry a school.
+1. An administrator calls `POST /invitations`. The organization is the one of the **active membership**. A `school_admin` invites any of the four roles, always into their own school (`INVITABLE_ROLES` in `app/auth/permissions.py`, ADR-020): naming another school is `403`, and the role of a network no longer exists (`422`).
 2. The API stores `SHA-256(token)` (the token has 256 bits and is shown once), valid for **72 hours**, single use. Only one live invitation exists per (organization, e-mail, school): an expired one is revoked to free the slot, a live one answers `409 invitation_pending`, an existing member answers `409 already_member`.
 3. The link (`PUBLIC_BASE_URL/accept-invitation?token=...`) is written to the **outbox** (see [E-mail](#e-mail-the-outbox)).
 4. The invitee calls `POST /invitations/accept`.
@@ -240,7 +240,7 @@ No log line, error or traceback of the API carries a password, a hash, a token o
 
 ## Permissions
 
-The map role to permissions is **code**, `ROLE_PERMISSIONS` in `app/auth/permissions.py` (ADR-016): `organization_admin` everything; `school_admin` everything except `months:reopen`; `treasurer` cash contributions, reading and approving expenses, reimbursements, refunds, closing months, statement and reports; `staff` submitting and reading their **own** expenses; `viewer` aggregate reports only. The financial permissions exist now and get their routes in the financial tasks.
+The map role to permissions is **code**, `ROLE_PERMISSIONS` in `app/auth/permissions.py` (ADR-016): `school_admin` everything, including `months:reopen` (ADR-020: there is no role above a school); `treasurer` cash contributions, reading and approving expenses, reimbursements, refunds, closing months, statement and reports; `staff` submitting and reading their **own** expenses; `viewer` aggregate reports only. The financial permissions exist now and get their routes in the financial tasks.
 
 ## Threats considered
 
@@ -265,7 +265,7 @@ The map role to permissions is **code**, `ROLE_PERMISSIONS` in `app/auth/permiss
 | Rate limits that become a lock-out of everyone | decisions from the submitted value only; a wrong `FORWARDED_ALLOW_IPS` is the one way (R5) |
 | A new route that forgot its access rule | the route-walk test (below) |
 
-Not done here, on purpose: a **retention job** (see [Known limits](#known-limits-and-operational-notes)), **2FA** (mandatory for `treasurer`, `school_admin` and `organization_admin` before any production with real money, ADR-016, planned for a later phase), **password recovery by e-mail**, OAuth, a real e-mail sender, auditing of the authentication events (the hook is in the password change), and a breached-password list.
+Not done here, on purpose: a **retention job** (see [Known limits](#known-limits-and-operational-notes)), **2FA** (mandatory for `treasurer` and `school_admin` before any production with real money, ADR-016, planned for a later phase), **password recovery by e-mail**, OAuth, a real e-mail sender, auditing of the authentication events (the hook is in the password change), and a breached-password list.
 
 ## Accepted risks
 

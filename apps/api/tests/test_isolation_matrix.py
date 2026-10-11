@@ -42,10 +42,12 @@ EXPECTED_APP: dict[tuple[str, str], set[str]] = {
     ("organizations", "insert"): NOBODY,
     ("organizations", "update"): ALL_OWN,
     ("organizations", "delete"): NOBODY,
-    # An org-wide context sees every school; a school context only its own. Creating a school needs
-    # an org-wide context. No DELETE privilege.
+    # An organization holds ONE school (ADR-020), so a context that names only the organization sees
+    # the same school as one that names it. No DELETE privilege. Organization A already has its
+    # school, so no context can insert a second one (uq_schools_organization_id); what the policy
+    # lets through for an empty organization is covered by the test of the new account below.
     ("schools", "select"): SCHOOL_SCOPED,
-    ("schools", "insert"): {"own_org"},
+    ("schools", "insert"): NOBODY,
     ("schools", "update"): SCHOOL_SCOPED,
     ("schools", "delete"): NOBODY,
     ("memberships", "select"): SCHOOL_SCOPED,
@@ -364,3 +366,36 @@ def test_tenant_hop_is_refused(
             ).scalar_one()
             == 1
         )
+
+
+# --- a school can only be created in the organization that is the context ------------------------
+
+
+def test_a_school_is_created_in_its_own_new_account_and_never_a_second_one(
+    admin_engine: Engine, tenants: Tenants
+) -> None:
+    """The matrix cannot show what the policy of `schools` lets through, because organization A
+    already has its one school. A NEW account shows it: with only that organization as the context
+    the school is accepted, with a school in the context it is refused by the policy, and a second
+    one is refused by the unique index (ADR-020)."""
+    new_org = uuid.uuid4()
+    insert_org = "INSERT INTO organizations (id, name, slug) VALUES (:org, 'Fresh', :slug)"
+    insert_school = "INSERT INTO schools (organization_id, name, slug) VALUES (:org, 'S', :slug)"
+
+    with transaction(admin_engine, owner=True, context=TenantContext(new_org)) as connection:
+        connection.execute(text(insert_org), {"org": new_org, "slug": f"t3-acct-{_fresh()}"})
+        first = connection.execute(
+            text(insert_school), {"org": new_org, "slug": f"t3-s-{_fresh()}"}
+        )
+        assert first.rowcount == 1
+        connection.execute(text("SAVEPOINT second"))
+        with pytest.raises(DBAPIError, match="uq_schools_organization_id"):
+            connection.execute(text(insert_school), {"org": new_org, "slug": f"t3-t-{_fresh()}"})
+        connection.execute(text("ROLLBACK TO SAVEPOINT second"))
+
+    with transaction(
+        admin_engine, owner=True, context=TenantContext(new_org, tenants.school_a1)
+    ) as connection:
+        connection.execute(text("SAVEPOINT s1"))
+        with pytest.raises(DBAPIError, match="row-level security"):
+            connection.execute(text(insert_school), {"org": new_org, "slug": f"t3-u-{_fresh()}"})

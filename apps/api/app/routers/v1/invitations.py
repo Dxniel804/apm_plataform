@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
 INVITATION_LIFETIME_HOURS = 72
-_ZERO_UUID = "00000000-0000-0000-0000-000000000000"
 
 
 def _ip(request: Request) -> str:
@@ -63,9 +62,9 @@ def create_invitation(
     db: Db,
     settings: Settings,
 ) -> InvitationOut:
-    """The tenant is the one of the ACTIVE membership; nothing about it comes from the body. An
-    organization admin may invite any role; a school admin only for schools, and never an
-    organization admin. The token travels by e-mail and is never in the response."""
+    """The tenant is the one of the ACTIVE membership; nothing about it comes from the body. A
+    school admin invites into its own school, and only into it (ADR-020). The token travels by
+    e-mail and is never in the response."""
     active = principal.active
     if active is None:  # require() already guarantees it; never rely on an assert for this
         raise ProblemError(
@@ -74,29 +73,22 @@ def create_invitation(
     if body.role not in INVITABLE_ROLES.get(active.role, frozenset()):
         raise ProblemError(403, "permission_denied", "You may not invite that role")
 
-    school_id: UUID | None = body.school_id
-    if body.role == "organization_admin":
-        if school_id is not None:
-            raise _field_error("school_id", "must_be_empty_for_organization_admin")
-    else:
-        if active.school_id is not None:  # a school-scoped inviter can only invite into its school
-            if school_id not in (None, active.school_id):
-                raise ProblemError(403, "permission_denied", "You may only invite into your school")
-            school_id = active.school_id
-        if active.role == "school_admin" and school_id is None:
-            raise _field_error("school_id", "required")
+    # Every membership is of ONE school, so an invitation always goes into the inviter's school. A
+    # school_id in the body is only accepted when it is that same school.
+    if body.school_id not in (None, active.school_id):
+        raise ProblemError(403, "permission_denied", "You may only invite into your school")
+    school_id: UUID = active.school_id
 
-    if school_id is not None:
-        # Visible only if it belongs to the active organization (and school): row level security.
-        found = db.execute(text("SELECT 1 FROM schools WHERE id = :id"), {"id": school_id}).first()
-        if found is None:
-            raise _field_error("school_id", "not_found")
+    # Visible only if it belongs to the active organization and school: row level security.
+    found = db.execute(text("SELECT 1 FROM schools WHERE id = :id"), {"id": school_id}).first()
+    if found is None:
+        raise _field_error("school_id", "not_found")
 
     # An existing member of the SAME scope is visible to this tenant (never one of another tenant).
     already = db.execute(
         text(
             "SELECT 1 FROM memberships m JOIN users u ON u.id = m.user_id "
-            "WHERE lower(u.email) = :email AND m.school_id IS NOT DISTINCT FROM :school "
+            "WHERE lower(u.email) = :email AND m.school_id = :school "
             "AND m.status IN ('active', 'invited', 'suspended')"
         ),
         {"email": body.email, "school": school_id},
@@ -108,11 +100,10 @@ def create_invitation(
     db.execute(
         text(
             "UPDATE invitations SET revoked_at = now(), updated_at = now() "
-            "WHERE email = :email AND COALESCE(school_id, CAST(:zero AS uuid)) = "
-            "COALESCE(CAST(:school AS uuid), CAST(:zero AS uuid)) "
+            "WHERE email = :email AND school_id = :school "
             "AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at <= now()"
         ),
-        {"email": body.email, "school": school_id, "zero": _ZERO_UUID},
+        {"email": body.email, "school": school_id},
     )
 
     token = new_token()

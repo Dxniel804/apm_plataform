@@ -53,7 +53,7 @@ def test_a_nul_byte_or_a_lone_surrogate_in_an_unauthenticated_body_is_a_422(
 def test_the_same_text_is_refused_in_the_bodies_of_a_logged_in_user(
     api: Api, users: UserFactory, caplog: pytest.LogCaptureFixture, bad: str
 ) -> None:
-    assert api.login(users.make("organization_admin", school=None)).status_code == 200
+    assert api.login(users.make("school_admin")).status_code == 200
     cases = [
         (CHANGE, {"current_password": f"x{bad}y", "new_password": "a long enough password"}),
         (CHANGE, {"current_password": PASSWORD, "new_password": f"a long {bad} password"}),

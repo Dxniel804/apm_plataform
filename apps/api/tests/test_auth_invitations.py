@@ -36,13 +36,12 @@ def logged_in(apis: ApiFactory, user: TestUser) -> Api:
 
 
 def invite_for_token(
-    apis: ApiFactory, users: UserFactory, tmp_path: Path, *, role: str = "staff", school: str = "1"
+    apis: ApiFactory, users: UserFactory, tmp_path: Path, *, role: str = "staff"
 ) -> tuple[str, str]:
-    """An organization admin invites a new e-mail; returns (email, token read from the outbox)."""
-    admin = logged_in(apis, users.make("organization_admin", school=None, label="admin"))
+    """A school admin invites a new e-mail; returns (email, token read from the outbox)."""
+    admin = logged_in(apis, users.make("school_admin", label="admin"))
     email = new_email(users.world)
-    school_id = users.world.school_a1 if school == "1" else users.world.school_a2
-    response = admin.invite(email, role, school_id)
+    response = admin.invite(email, role, users.world.school_a1)
     assert response.status_code == 201, response.text
     message = read_outbox(tmp_path)[-1]
     assert message.kind == "invitation" and message.to == email
@@ -99,16 +98,12 @@ def test_an_invitation_is_created_for_the_active_tenant_and_the_token_goes_by_e_
 @pytest.mark.parametrize(
     ("inviter", "role", "school", "status"),
     [
-        ("organization_admin", "organization_admin", None, 201),
-        ("organization_admin", "school_admin", "1", 201),
-        ("organization_admin", "treasurer", "2", 201),
-        ("organization_admin", "viewer", "1", 201),
         ("school_admin", "school_admin", "1", 201),
         ("school_admin", "treasurer", "1", 201),
         ("school_admin", "staff", "1", 201),
         ("school_admin", "viewer", None, 201),  # defaults to its own school
-        ("school_admin", "organization_admin", "1", 403),  # never above its own level
-        ("school_admin", "staff", "2", 403),  # never into another school
+        ("school_admin", "organization_admin", "1", 422),  # the role of a network no longer exists
+        ("school_admin", "staff", "2", 403),  # never into another school (ADR-020)
         ("treasurer", "staff", "1", 403),
         ("staff", "staff", "1", 403),
         ("viewer", "viewer", "1", 403),
@@ -122,8 +117,7 @@ def test_who_may_invite_whom(
     school: str | None,
     status: int,
 ) -> None:
-    scope = None if inviter == "organization_admin" else "1"
-    admin = logged_in(apis, users.make(inviter, school=scope))
+    admin = logged_in(apis, users.make(inviter))
     world = users.world
     school_id = None if school is None else (world.school_a1 if school == "1" else world.school_a2)
 
@@ -134,33 +128,21 @@ def test_who_may_invite_whom(
         assert response.json()["code"] == "permission_denied"
 
 
-def test_an_organization_admin_invitation_cannot_name_a_school(
+def test_nobody_can_invite_into_a_school_that_is_not_their_own(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
-
-    response = admin.invite(new_email(users.world), "organization_admin", users.world.school_a1)
-
-    assert response.status_code == 422
-    assert response.json()["errors"] == [
-        {"field": "school_id", "code": "must_be_empty_for_organization_admin"}
-    ]
-
-
-def test_a_school_of_another_organization_does_not_exist_for_the_inviter(
-    apis: ApiFactory, users: UserFactory
-) -> None:
-    admin_a = logged_in(apis, users.make("organization_admin", org="a", school=None))
-    admin_b = logged_in(apis, users.make("organization_admin", org="b", school=None))
+    admin_a = logged_in(apis, users.make("school_admin", org="a"))
+    admin_b = logged_in(apis, users.make("school_admin", org="b"))
     world = users.world
 
     into_b = admin_a.invite(new_email(world), "staff", world.school_b1)
     into_a = admin_b.invite(new_email(world), "staff", world.school_a1)
     unknown = admin_a.invite(new_email(world), "staff", uuid.uuid4())
 
+    # Another school, another account and a school that never existed all get the same answer.
     for response in (into_b, into_a, unknown):
-        assert response.status_code == 422
-        assert response.json()["errors"] == [{"field": "school_id", "code": "not_found"}]
+        assert response.status_code == 403
+        assert response.json()["code"] == "permission_denied"
 
 
 @pytest.mark.parametrize(
@@ -176,7 +158,7 @@ def test_a_school_of_another_organization_does_not_exist_for_the_inviter(
 def test_nothing_but_the_email_the_role_and_the_school_is_taken_from_the_body(
     apis: ApiFactory, users: UserFactory, extra: dict[str, str]
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
+    admin = logged_in(apis, users.make("school_admin"))
     body = {
         "email": new_email(users.world),
         "role": "staff",
@@ -203,7 +185,7 @@ def test_nothing_but_the_email_the_role_and_the_school_is_taken_from_the_body(
 def test_a_malformed_invitation_is_a_422(
     apis: ApiFactory, users: UserFactory, body: dict[str, Any]
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
+    admin = logged_in(apis, users.make("school_admin"))
 
     assert admin.post(INVITE, body).status_code == 422
 
@@ -218,28 +200,24 @@ def test_inviting_needs_a_session(api: Api) -> None:
 def test_a_second_pending_invitation_for_the_same_scope_is_a_conflict(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
+    admin = logged_in(apis, users.make("school_admin"))
     email = new_email(users.world)
     assert admin.invite(email, "staff", users.world.school_a1).status_code == 201
 
     again = admin.invite(email, "viewer", users.world.school_a1)
-    other_school = admin.invite(email, "staff", users.world.school_a2)
 
     assert again.status_code == 409 and again.json()["code"] == "invitation_pending"
-    assert other_school.status_code == 201  # another scope is another invitation
 
 
 def test_somebody_who_already_has_access_there_is_a_conflict(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
+    admin = logged_in(apis, users.make("school_admin"))
     member = users.make("staff", school="1")
 
     response = admin.invite(member.email, "viewer", users.world.school_a1)
-    elsewhere = admin.invite(member.email, "viewer", users.world.school_a2)
 
     assert response.status_code == 409 and response.json()["code"] == "already_member"
-    assert elsewhere.status_code == 201
 
 
 def test_an_account_of_another_organization_is_not_revealed_by_an_invitation(
@@ -247,7 +225,7 @@ def test_an_account_of_another_organization_is_not_revealed_by_an_invitation(
 ) -> None:
     """The conflict check only sees the inviter's own tenant, so inviting an e-mail that belongs
     to somebody in another organization answers exactly like inviting a brand new one."""
-    admin_a = logged_in(apis, users.make("organization_admin", org="a", school=None))
+    admin_a = logged_in(apis, users.make("school_admin", org="a"))
     in_b = users.make("staff", org="b", school="1")
 
     response = admin_a.invite(in_b.email, "staff", users.world.school_a1)
@@ -258,7 +236,7 @@ def test_an_account_of_another_organization_is_not_revealed_by_an_invitation(
 def test_an_expired_invitation_does_not_block_a_new_one(
     apis: ApiFactory, users: UserFactory, admin_engine: Engine, tmp_path: Path
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None))
+    admin = logged_in(apis, users.make("school_admin"))
     email = new_email(users.world)
     admin.invite(email, "staff", users.world.school_a1)
     first = read_outbox(tmp_path)[-1].token
@@ -283,7 +261,7 @@ def test_an_expired_invitation_does_not_block_a_new_one(
 def test_a_new_person_accepts_gets_an_account_and_can_log_in(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
-    email, token = invite_for_token(apis, users, tmp_path, role="treasurer", school="2")
+    email, token = invite_for_token(apis, users, tmp_path, role="treasurer")
     newcomer = apis.make()
 
     response = newcomer.post(
@@ -293,7 +271,7 @@ def test_a_new_person_accepts_gets_an_account_and_can_log_in(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["membership"]["role"] == "treasurer"
-    assert body["membership"]["school"]["id"] == str(users.world.school_a2)
+    assert body["membership"]["school"]["id"] == str(users.world.school_a1)
     assert "set-cookie" not in response.headers  # accepting does not log in
     with admin_engine.connect() as connection:
         user = connection.execute(
@@ -446,9 +424,9 @@ def test_somebody_with_an_account_must_log_in_before_accepting(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
     """The token alone never lets anybody act as an existing account."""
-    admin = logged_in(apis, users.make("organization_admin", school=None, label="admin"))
-    existing = users.make("staff", school="1", label="existing")
-    assert admin.invite(existing.email, "viewer", users.world.school_a2).status_code == 201
+    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    existing = users.make("staff", org="b", label="existing")  # works in ANOTHER school
+    assert admin.invite(existing.email, "viewer", users.world.school_a1).status_code == 201
     token = read_outbox(tmp_path)[-1].token
 
     anonymous = apis.make().post(ACCEPT, {"token": token})
@@ -472,9 +450,9 @@ def test_somebody_with_an_account_must_log_in_before_accepting(
 def test_an_existing_account_cannot_have_its_password_replaced_through_an_invitation(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None, label="admin"))
-    existing = users.make("staff", school="1", label="existing")
-    admin.invite(existing.email, "viewer", users.world.school_a2)
+    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    existing = users.make("staff", org="b", label="existing")
+    admin.invite(existing.email, "viewer", users.world.school_a1)
     token = read_outbox(tmp_path)[-1].token
     with admin_engine.connect() as connection:
         before: Any = connection.execute(
@@ -498,9 +476,9 @@ def test_an_existing_account_cannot_have_its_password_replaced_through_an_invita
 def test_an_inactive_account_cannot_accept(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    admin = logged_in(apis, users.make("organization_admin", school=None, label="admin"))
-    dormant = users.make("staff", school="1", active=False, label="dormant")
-    admin.invite(dormant.email, "viewer", users.world.school_a2)
+    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    dormant = users.make("staff", org="b", active=False, label="dormant")
+    admin.invite(dormant.email, "viewer", users.world.school_a1)
     token = read_outbox(tmp_path)[-1].token
 
     response = apis.make().post(ACCEPT, {"token": token})

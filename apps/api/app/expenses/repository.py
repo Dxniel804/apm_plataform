@@ -1,9 +1,8 @@
 """The SQL of the expenses module: constant statements, values always bound.
 
 Every statement names the school (`school_id`) even though row level security already limits what
-the session sees: an organization-wide membership sees every school of its organization, and the
-school in the path is the one the caller means. Nothing here decides who may do what (the service
-does) or what the ledger allows (the database does).
+the session sees: the school in the path is the one the caller means. Nothing here decides who may
+do what (the service does) or what the ledger allows (the database does).
 """
 
 import datetime as dt

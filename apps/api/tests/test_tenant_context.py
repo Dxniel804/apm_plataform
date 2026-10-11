@@ -20,7 +20,7 @@ from app.routers.deps import get_tenant_db
 from tests.dbsupport import Tenants
 from tests.helpers import UNREACHABLE_DATABASE_URL, make_settings
 
-SCHOOLS_IN_A = 2
+SCHOOLS_IN_A = 1  # one school per organization (ADR-020)
 
 
 def _school_count(session: Session, tenants: Tenants) -> int:
@@ -188,7 +188,7 @@ def test_session_get_does_not_find_users_of_other_tenants(
         assert no_context.get(User, tenants.user_a1) is None
 
 
-def test_orm_insert_in_own_organization_works_and_in_another_is_refused(
+def test_orm_insert_of_a_second_school_or_in_another_organization_is_refused(
     app_engine: Engine, tenants: Tenants
 ) -> None:
     factory = sessionmaker(app_engine)
@@ -197,7 +197,8 @@ def test_orm_insert_in_own_organization_works_and_in_another_is_refused(
         session.add(
             School(organization_id=tenants.org_a, name="ORM", slug=f"t3-orm-{uuid.uuid4().hex[:8]}")
         )
-        session.flush()  # allowed
+        with pytest.raises(DBAPIError):
+            session.flush()  # uq_schools_organization_id: one school per account (ADR-020)
         session.rollback()
 
         session.add(
@@ -212,15 +213,20 @@ def test_orm_membership_listing_is_scoped(app_engine: Engine, tenants: Tenants) 
     with tenant_session(sessionmaker(app_engine), TenantContext(tenants.org_a)) as session:
         ids = set(session.scalars(select(Membership.id)))
     with tenant_session(
-        sessionmaker(app_engine), TenantContext(tenants.org_a, tenants.school_a2)
+        sessionmaker(app_engine), TenantContext(tenants.org_a, tenants.school_a1)
     ) as session:
         school_ids = set(session.scalars(select(Membership.id)))
+    with tenant_session(
+        sessionmaker(app_engine), TenantContext(tenants.org_a, tenants.school_a2)
+    ) as session:
+        wrong_school_ids = set(session.scalars(select(Membership.id)))
 
-    assert {tenants.membership_a1, tenants.membership_a2, tenants.membership_admin_a} <= ids
-    assert tenants.membership_b1 not in ids
-    assert tenants.membership_a2 in school_ids
-    assert tenants.membership_a1 not in school_ids
-    assert tenants.membership_admin_a not in school_ids  # org-wide rows need an org-wide context
+    assert {tenants.membership_a1, tenants.membership_admin_a} <= ids
+    assert tenants.membership_a2 not in ids and tenants.membership_b1 not in ids
+    # An organization holds one school (ADR-020): naming only the organization is the same scope.
+    assert ids == school_ids
+    # A school that is not the organization's is not a scope that sees anything.
+    assert wrong_school_ids == set()
 
 
 # --- the example FastAPI dependency -------------------------------------------------------------

@@ -25,16 +25,19 @@ from app.seed_financial import seed_financial
 PRODUCTION_REFUSAL = "refusing to seed: ENV=production. The seed is for development only."
 FAKE_EMAIL_DOMAIN = "example.test"
 
+# Each school is a separate customer (ADR-020): its organization is only the account of that one
+# school, so there are as many organizations as schools and no person sees two schools by default.
 # (slug, name)
 ORGANIZATIONS = [
-    ("demo-rede", "Rede Escolar Demo"),
-    ("demo-instituto", "Instituto Exemplo"),
+    ("demo-aurora-conta", "Escola Aurora (demo)"),
+    ("demo-horizonte-conta", "Escola Horizonte (demo)"),
+    ("demo-central-conta", "Escola Central (demo)"),
 ]
 # (slug, name, organization slug)
 SCHOOLS = [
-    ("demo-aurora", "Escola Aurora (demo)", "demo-rede"),
-    ("demo-horizonte", "Escola Horizonte (demo)", "demo-rede"),
-    ("demo-central", "Escola Central (demo)", "demo-instituto"),
+    ("demo-aurora", "Escola Aurora (demo)", "demo-aurora-conta"),
+    ("demo-horizonte", "Escola Horizonte (demo)", "demo-horizonte-conta"),
+    ("demo-central", "Escola Central (demo)", "demo-central-conta"),
 ]
 # (email, full name)
 USERS = [
@@ -45,28 +48,28 @@ USERS = [
     ("elisa.leitora@example.test", "Elisa Leitora (demo)"),
     ("fabio.admin@example.test", "Fabio Administrador (demo)"),
     ("gina.tesoureira@example.test", "Gina Tesoureira (demo)"),
-    # Three memberships (two schools of one network and a school of another), to try the switch of
-    # context in the site.
+    # Three memberships, one in each school, to try the switch of context in the site: each school
+    # invited this person on its own and none of them gives access to another.
     ("helena.multipla@example.test", "Helena Multipla (demo)"),
     # One more teacher in Aurora and one more treasurer in Horizonte, so that every school has a
     # person who submits an expense and a different person who approves it.
     ("paula.professora@example.test", "Paula Professora (demo)"),
     ("marcos.tesoureiro@example.test", "Marcos Tesoureiro (demo)"),
 ]
-# (email, organization slug, school slug or None for the whole organization, role)
+# (email, organization slug, school slug, role)
 MEMBERSHIPS = [
-    ("ana.admin@example.test", "demo-rede", None, "organization_admin"),
-    ("bruno.diretor@example.test", "demo-rede", "demo-aurora", "school_admin"),
-    ("carla.tesoureira@example.test", "demo-rede", "demo-aurora", "treasurer"),
-    ("diego.professor@example.test", "demo-rede", "demo-horizonte", "staff"),
-    ("elisa.leitora@example.test", "demo-rede", "demo-horizonte", "viewer"),
-    ("fabio.admin@example.test", "demo-instituto", None, "organization_admin"),
-    ("gina.tesoureira@example.test", "demo-instituto", "demo-central", "treasurer"),
-    ("helena.multipla@example.test", "demo-rede", "demo-aurora", "treasurer"),
-    ("helena.multipla@example.test", "demo-rede", "demo-horizonte", "staff"),
-    ("helena.multipla@example.test", "demo-instituto", "demo-central", "viewer"),
-    ("paula.professora@example.test", "demo-rede", "demo-aurora", "staff"),
-    ("marcos.tesoureiro@example.test", "demo-rede", "demo-horizonte", "treasurer"),
+    ("ana.admin@example.test", "demo-horizonte-conta", "demo-horizonte", "school_admin"),
+    ("bruno.diretor@example.test", "demo-aurora-conta", "demo-aurora", "school_admin"),
+    ("carla.tesoureira@example.test", "demo-aurora-conta", "demo-aurora", "treasurer"),
+    ("diego.professor@example.test", "demo-horizonte-conta", "demo-horizonte", "staff"),
+    ("elisa.leitora@example.test", "demo-horizonte-conta", "demo-horizonte", "viewer"),
+    ("fabio.admin@example.test", "demo-central-conta", "demo-central", "school_admin"),
+    ("gina.tesoureira@example.test", "demo-central-conta", "demo-central", "treasurer"),
+    ("helena.multipla@example.test", "demo-aurora-conta", "demo-aurora", "treasurer"),
+    ("helena.multipla@example.test", "demo-horizonte-conta", "demo-horizonte", "staff"),
+    ("helena.multipla@example.test", "demo-central-conta", "demo-central", "viewer"),
+    ("paula.professora@example.test", "demo-aurora-conta", "demo-aurora", "staff"),
+    ("marcos.tesoureiro@example.test", "demo-horizonte-conta", "demo-horizonte", "treasurer"),
 ]
 
 
@@ -126,7 +129,7 @@ def seed(connection: Connection, password: str | None = None) -> SeedSummary:
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
                 "SELECT u.id, o.id, s.id, :role, 'active' "
                 "FROM users u JOIN organizations o ON o.slug = :org_slug "
-                "LEFT JOIN schools s ON s.slug = :school_slug AND s.organization_id = o.id "
+                "JOIN schools s ON s.slug = :school_slug AND s.organization_id = o.id "
                 "WHERE lower(u.email) = lower(:email) "
                 "ON CONFLICT DO NOTHING"
             ),

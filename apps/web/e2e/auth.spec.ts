@@ -33,11 +33,8 @@ test.describe("com a senha de demonstracao", () => {
 
     // nome e vinculo REAIS (vindos de GET /auth/me)
     await expect(page.getByText(ANA.name).locator("visible=true").first()).toBeVisible();
-    await expect(page.getByText(ANA.organization).locator("visible=true").first()).toBeVisible();
+    await expect(page.getByText(ANA.school).locator("visible=true").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-
-    // vinculo da organizacao inteira: o painel e de uma escola, entao explica em vez de mostrar numeros
-    await expect(page.getByRole("note").filter({ hasText: "Esta conta é da organização inteira" })).toBeVisible();
 
     // a pagina nunca leu o cookie de sessao (HttpOnly): so o CSRF e legivel
     const names = (await page.context().cookies()).map((c) => c.name);
@@ -48,8 +45,8 @@ test.describe("com a senha de demonstracao", () => {
 
     // o seletor mostra os vinculos reais (no celular ele fica dentro da gaveta do menu)
     await openMenuIfNeeded(page);
-    await page.getByRole("button", { name: new RegExp(ANA.organization) }).first().click();
-    await expect(page.getByRole("group", { name: ANA.organization })).toBeVisible();
+    await page.getByRole("button", { name: ANA.school }).first().click();
+    await expect(page.getByRole("list", { name: "Escolas da sua conta" })).toBeVisible();
     await page.keyboard.press("Escape"); // desktop: fecha a lista; celular: fecha a gaveta toda
     await openMenuIfNeeded(page);
 

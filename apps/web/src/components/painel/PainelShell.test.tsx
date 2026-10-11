@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import { parseSession } from "@/lib/api/auth";
 import type { ApiError, ApiResult, Session } from "@/lib/api/types";
-import { SCHOOL_MEMBERSHIP, sessionBody } from "@/test-utils/auth-fixtures";
+import { ADMIN_MEMBERSHIP, SCHOOL_MEMBERSHIP, sessionBody } from "@/test-utils/auth-fixtures";
 
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -35,14 +35,14 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("PainelShell com sessao real", () => {
-  it("mostra o nome, o papel e o vinculo reais; vinculo da organizacao inteira nao tem painel de escola", () => {
+  it("mostra o nome, o papel e a escola reais; todo vinculo e de UMA escola e o painel e dela", () => {
     renderShell();
     expect(screen.getAllByText("Pessoa de Teste").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Administrador da organização").length).toBeGreaterThan(0);
-    const switcher = screen.getAllByRole("button", { name: /Rede Teste/ })[0]!;
-    expect(switcher).toHaveTextContent("Toda a organização");
-    expect(screen.queryByTestId("data")).not.toBeInTheDocument();
-    expect(screen.getByRole("note")).toHaveTextContent("Esta conta é da organização inteira");
+    expect(screen.getAllByText("Administrador da escola").length).toBeGreaterThan(0);
+    const switcher = screen.getAllByRole("button", { name: /Escola Outra/ })[0]!;
+    expect(switcher).toHaveTextContent("Administrador da escola");
+    expect(screen.getByTestId("data")).toHaveTextContent(ADMIN_MEMBERSHIP.school.id);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
     expect(screen.queryByText(/Protótipo/)).not.toBeInTheDocument();
   });
 
@@ -86,14 +86,14 @@ describe("PainelShell com sessao real", () => {
     expect(screen.getByRole("link", { name: "Contribuições" })).toHaveAttribute("href", "/painel?tipo=contribuicoes&mes=2026-09");
   });
 
-  it("o seletor lista os vinculos reais agrupados e troca de contexto pelo id do vinculo", async () => {
+  it("o seletor lista os vinculos reais (uma escola cada) e troca de contexto pelo id do vinculo", async () => {
     const switchContext = vi.spyOn(api.auth, "switchContext").mockResolvedValue({ ok: true, data: session() });
     renderShell();
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole("button", { name: /Rede Teste/ })[0]!);
-    const group = screen.getByRole("group", { name: "Rede Teste" });
-    expect(within(group).getByRole("button", { name: /Toda a organização/ })).toHaveAttribute("aria-current", "true");
-    await user.click(within(group).getByRole("button", { name: /Escola Teste/ }));
+    await user.click(screen.getAllByRole("button", { name: /Escola Outra/ })[0]!);
+    const list = screen.getByRole("list", { name: "Escolas da sua conta" });
+    expect(within(list).getByRole("button", { name: /Escola Outra/ })).toHaveAttribute("aria-current", "true");
+    await user.click(within(list).getByRole("button", { name: /Escola Teste/ }));
 
     expect(switchContext).toHaveBeenCalledTimes(1);
     expect(switchContext).toHaveBeenCalledWith(SCHOOL_MEMBERSHIP.membership_id);
@@ -104,8 +104,8 @@ describe("PainelShell com sessao real", () => {
     const switchContext = vi.spyOn(api.auth, "switchContext");
     renderShell();
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole("button", { name: /Rede Teste/ })[0]!);
-    await user.click(within(screen.getByRole("group", { name: "Rede Teste" })).getByRole("button", { name: /Toda a organização/ }));
+    await user.click(screen.getAllByRole("button", { name: /Escola Outra/ })[0]!);
+    await user.click(within(screen.getByRole("list", { name: "Escolas da sua conta" })).getByRole("button", { name: /Escola Outra/ }));
     expect(switchContext).not.toHaveBeenCalled();
   });
 
@@ -113,7 +113,7 @@ describe("PainelShell com sessao real", () => {
     vi.spyOn(api.auth, "switchContext").mockResolvedValue(problem("context_not_allowed", 403));
     renderShell();
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole("button", { name: /Rede Teste/ })[0]!);
+    await user.click(screen.getAllByRole("button", { name: /Escola Outra/ })[0]!);
     await user.click(screen.getByRole("button", { name: /Escola Teste/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Você não tem acesso a esse vínculo");
     expect(router.refresh).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe("PainelShell com sessao real", () => {
     vi.spyOn(api.auth, "switchContext").mockResolvedValue(problem("session_revoked", 401));
     renderShell();
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole("button", { name: /Rede Teste/ })[0]!);
+    await user.click(screen.getAllByRole("button", { name: /Escola Outra/ })[0]!);
     await user.click(screen.getByRole("button", { name: /Escola Teste/ }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login"));
   });
@@ -168,7 +168,7 @@ describe("sessao sem vinculo ativo (varios vinculos, nenhum escolhido)", () => {
 
   it("os dois vinculos aparecem com o papel de cada um", () => {
     renderShell(session({ active_membership: null }));
-    expect(screen.getByRole("button", { name: /Toda a organização/ })).toHaveTextContent("Administrador da organização");
+    expect(screen.getByRole("button", { name: /Escola Outra/ })).toHaveTextContent("Administrador da escola");
     expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Tesouraria");
   });
 });

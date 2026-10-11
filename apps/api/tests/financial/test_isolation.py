@@ -215,8 +215,9 @@ def _statement(table: str, operation: str, ledger: Ledger, tenants: Tenants) -> 
     if operation == "delete":
         return f"DELETE FROM {table} WHERE {key} = :id", {"id": subject}, "rowcount"  # noqa: S608
     if operation == "insert":
-        school = ledger.school_a3 if table == "school_settings" else tenants.school_a1
-        return insert_statement(table, ledger, tenants.org_a, school)
+        if table == "school_settings":  # a school of its own account, born without its settings
+            return insert_statement(table, ledger, ledger.org_a3, ledger.school_a3)
+        return insert_statement(table, ledger, tenants.org_a, tenants.school_a1)
     updates = {
         "financial_transactions": "SET status = 'CANCELLED'",
         "contributions": "SET guardian_name = NULL",
@@ -243,15 +244,14 @@ def _statement(table: str, operation: str, ledger: Ledger, tenants: Tenants) -> 
 def _context(
     name: str, ledger: Ledger, tenants: Tenants, table: str, operation: str
 ) -> TenantContext | None:
-    own_school = (
-        ledger.school_a3
-        if (table, operation) == ("school_settings", "insert")
-        else tenants.school_a1
-    )
+    settings_insert = (table, operation) == ("school_settings", "insert")
+    own_org = ledger.org_a3 if settings_insert else tenants.org_a
+    own_school = ledger.school_a3 if settings_insert else tenants.school_a1
     return {
-        "own_org": TenantContext(tenants.org_a),
-        "own_school": TenantContext(tenants.org_a, own_school),
-        "same_org_other_school": TenantContext(tenants.org_a, tenants.school_a2),
+        "own_org": TenantContext(own_org),
+        "own_school": TenantContext(own_org, own_school),
+        # A context that names a school the rows do not belong to (ADR-020: no sibling schools).
+        "same_org_other_school": TenantContext(own_org, tenants.school_a2),
         "other_org": TenantContext(tenants.org_b),
         "no_context": None,
     }[name]

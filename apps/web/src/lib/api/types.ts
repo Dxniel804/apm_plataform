@@ -50,7 +50,7 @@ export type ReadinessResult =
 
 // ---------------------------------------------------------------- REAL: autenticacao (docs/auth.md)
 
-export const ROLES = ["organization_admin", "school_admin", "treasurer", "staff", "viewer"] as const;
+export const ROLES = ["school_admin", "treasurer", "staff", "viewer"] as const;
 export type Role = (typeof ROLES)[number];
 
 export interface AuthUser {
@@ -71,12 +71,11 @@ export interface SchoolRef {
   name: string;
 }
 
-/** Vinculo (membership): uma organizacao (e, se houver, uma escola) com um papel. */
+/** Vinculo (membership): UMA escola, com um papel. Cada escola e um cliente: nao existe vinculo de rede (ADR-020). */
 export interface Membership {
   membershipId: string;
   organization: OrganizationRef;
-  /** null = vinculo da organizacao inteira (rede). */
-  school: SchoolRef | null;
+  school: SchoolRef;
   role: Role;
 }
 

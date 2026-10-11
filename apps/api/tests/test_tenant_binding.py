@@ -32,7 +32,7 @@ def test_binding_a_different_context_raises(app_engine: Engine, tenants: Tenants
             bind_tenant(session, TenantContext(tenants.org_b))
 
         assert _db_org(session) == str(tenants.org_a)
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
 
 
 def test_a_different_school_of_the_same_organization_is_also_a_different_context(
@@ -55,7 +55,7 @@ def test_binding_the_same_context_again_is_a_no_op(app_engine: Engine, tenants: 
         bind_tenant(session, context)
 
         assert _db_org(session) == str(tenants.org_a)
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
 
 
 def test_rebinding_inside_a_savepoint_is_refused_and_the_rollback_changes_nothing(
@@ -71,7 +71,7 @@ def test_rebinding_inside_a_savepoint_is_refused_and_the_rollback_changes_nothin
         # The database and the session still agree on A.
         assert _db_org(session) == str(tenants.org_a)
         assert session.info["tenant_context"] == TenantContext(tenants.org_a)
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
 
 
 def test_the_same_context_is_idempotent_inside_a_savepoint(
@@ -101,7 +101,7 @@ def test_a_first_bind_in_a_session_already_in_a_transaction_still_works(
     with sessionmaker(app_engine)() as session:
         assert _school_ids(session, tenants) == set()
         bind_tenant(session, TenantContext(tenants.org_a))
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
 
 
 def test_the_identity_map_never_holds_objects_of_two_tenants(
@@ -129,13 +129,13 @@ def test_a_closed_session_keeps_its_tenant_and_cannot_be_reused_for_another(
     session = sessionmaker(app_engine)()
     try:
         bind_tenant(session, TenantContext(tenants.org_a))
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
         session.close()
 
         with pytest.raises(TenantContextConflict):
             bind_tenant(session, TenantContext(tenants.org_b))
         # It is still usable for the tenant it was bound to (the listener re-applies A).
-        assert _school_ids(session, tenants) == {tenants.school_a1, tenants.school_a2}
+        assert _school_ids(session, tenants) == {tenants.school_a1}
     finally:
         session.close()
 
@@ -147,5 +147,5 @@ def test_every_tenant_session_gets_its_own_binding(app_engine: Engine, tenants: 
     with tenant_session(factory, TenantContext(tenants.org_b)) as second:
         second_ids = _school_ids(second, tenants)
 
-    assert first_ids == {tenants.school_a1, tenants.school_a2}
+    assert first_ids == {tenants.school_a1}
     assert second_ids == {tenants.school_b1}

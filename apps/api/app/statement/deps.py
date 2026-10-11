@@ -90,9 +90,9 @@ def school_in_context(school_id: UUID, db: TenantDb) -> SchoolScope:
     """The school named by the path, IF the active membership covers it.
 
     The tenant never comes from the path: the session is already bound to the tenant of the active
-    membership, so row level security only shows the schools that membership covers (its own school,
-    or every school of its organization for an organization-wide membership). The path id is looked
-    up under that policy, and anything it does not show is answered exactly like a missing school.
+    membership, so row level security only shows the school that membership covers (its own, the
+    only one of its organization, ADR-020). The path id is looked up under that policy, and anything
+    it does not show is answered exactly like a missing school.
     """
     row = db.execute(
         text(

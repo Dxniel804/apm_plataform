@@ -49,12 +49,8 @@ export function parseMembership(value: unknown): Membership | null {
   const membershipId = str(value.membership_id);
   const organization = parseOrganization(value.organization);
   const role = parseRole(value.role);
-  if (!membershipId || !organization || !role) return null;
-  let school: SchoolRef | null = null;
-  if (value.school !== null && value.school !== undefined) {
-    school = parseSchool(value.school);
-    if (!school) return null;
-  }
+  const school = parseSchool(value.school);
+  if (!membershipId || !organization || !school || !role) return null;
   return { membershipId, organization, school, role };
 }
 

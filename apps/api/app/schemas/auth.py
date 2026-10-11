@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+$")
-Role = Literal["organization_admin", "school_admin", "treasurer", "staff", "viewer"]
+Role = Literal["school_admin", "treasurer", "staff", "viewer"]
 
 
 class Strict(BaseModel):
@@ -98,7 +98,7 @@ class SchoolRef(BaseModel):
 class MembershipOut(BaseModel):
     membership_id: uuid.UUID
     organization: OrganizationRef
-    school: SchoolRef | None = None
+    school: SchoolRef
     role: Role
 
 
@@ -125,7 +125,7 @@ class InvitationOut(BaseModel):
     id: uuid.UUID
     email: str
     role: Role
-    school_id: uuid.UUID | None
+    school_id: uuid.UUID
     expires_at: datetime
 
 

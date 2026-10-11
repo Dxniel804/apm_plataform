@@ -42,12 +42,9 @@ class Scene:
     entries: dict[str, uuid.UUID]  # the ledger rows of March, by what they are
     other: Fresh  # a school of ANOTHER organization, with a ledger of its own
     other_users: dict[str, TestUser]
-    sibling_school: uuid.UUID  # a second school of the SAME organization as `fresh`
 
 
-def _add_member(
-    conn: Connection, fresh: Fresh, suffix: str, label: str, role: str, *, org_wide: bool
-) -> TestUser:
+def _add_member(conn: Connection, fresh: Fresh, suffix: str, label: str, role: str) -> TestUser:
     user, membership = uuid.uuid4(), uuid.uuid4()
     email = f"t5-{label}-{suffix}@example.test"
     conn.execute(
@@ -66,7 +63,7 @@ def _add_member(
             "id": membership,
             "user": user,
             "org": fresh.org,
-            "school": None if org_wide else fresh.school,
+            "school": fresh.school,
             "role": role,
         },
     )
@@ -77,7 +74,7 @@ def _school_people(conn: Connection, fresh: Fresh, suffix: str) -> dict[str, Tes
     """The three users the builder made get a password; a school admin and a viewer are added."""
     users: dict[str, TestUser] = {}
     for label, user_id, role in (
-        ("admin", fresh.admin, "organization_admin"),
+        ("admin", fresh.admin, "school_admin"),
         ("treasurer", fresh.treasurer, "treasurer"),
         ("staff", fresh.staff, "staff"),
     ):
@@ -93,10 +90,8 @@ def _school_people(conn: Connection, fresh: Fresh, suffix: str) -> dict[str, Tes
             {"u": user_id, "r": role},
         ).scalar_one()
         users[label] = TestUser(user_id, email, (membership,))
-    users["school_admin"] = _add_member(
-        conn, fresh, suffix, "school_admin", "school_admin", org_wide=False
-    )
-    users["viewer"] = _add_member(conn, fresh, suffix, "viewer", "viewer", org_wide=False)
+    users["school_admin"] = _add_member(conn, fresh, suffix, "school_admin", "school_admin")
+    users["viewer"] = _add_member(conn, fresh, suffix, "viewer", "viewer")
     return users
 
 
@@ -170,16 +165,9 @@ def scene(admin_engine: Engine) -> Iterator[Scene]:
         other_suffix = _suffix_of(conn, other)
         other_users = _school_people(conn, other, other_suffix)
         add_cash_contribution(conn, other, 99900, utc(2025, 3, 8, 12), guardian="Pessoa Alheia")
-        sibling = uuid.uuid4()
-        conn.execute(
-            text(
-                "INSERT INTO schools (id, organization_id, name, slug) VALUES (:id, :org, 'Sibling', :slug)"
-            ),
-            {"id": sibling, "org": fresh.org, "slug": f"t5-sib-{suffix}"},
-        )
         conn.exec_driver_sql("SET CONSTRAINTS ALL IMMEDIATE")
     try:
-        yield Scene(fresh, suffix, users, entries, other, other_users, sibling)
+        yield Scene(fresh, suffix, users, entries, other, other_users)
     finally:
         drop_scene(admin_engine, [(fresh, suffix), (other, other_suffix)])
 
@@ -297,15 +285,8 @@ def contrib_scene(admin_engine: Engine) -> Iterator[Scene]:
         other_suffix = _suffix_of(conn, other)
         other_users = _school_people(conn, other, other_suffix)
         add_cash_contribution(conn, other, 99900, utc(2025, 3, 8, 12), guardian="Pessoa Alheia")
-        sibling = uuid.uuid4()
-        conn.execute(
-            text(
-                "INSERT INTO schools (id, organization_id, name, slug) VALUES (:id, :org, 'Sibling', :slug)"
-            ),
-            {"id": sibling, "org": fresh.org, "slug": f"t5-sib-{suffix}"},
-        )
         conn.exec_driver_sql("SET CONSTRAINTS ALL IMMEDIATE")
     try:
-        yield Scene(fresh, suffix, users, entries, other, other_users, sibling)
+        yield Scene(fresh, suffix, users, entries, other, other_users)
     finally:
         drop_scene(admin_engine, [(fresh, suffix), (other, other_suffix)])

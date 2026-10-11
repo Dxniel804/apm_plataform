@@ -133,7 +133,7 @@ class Scene:
         self,
         role: str = "staff",
         *,
-        school: str | None = "1",
+        school: str = "1",
         org: str = "a",
         label: str | None = None,
         **extra: Any,

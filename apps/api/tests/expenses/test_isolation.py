@@ -84,7 +84,7 @@ def test_another_organization_cannot_see_the_school_nor_its_expenses(scene: Scen
     teacher = scene.person("staff", school="1", label="t1")
     expense = scene.draft(teacher)
     treasurer_b = scene.person("treasurer", org="b", school="1", label="tb")
-    admin_b = scene.person("organization_admin", org="b", school=None, label="ab")
+    admin_b = scene.person("school_admin", org="b", label="ab")
 
     for outsider in (treasurer_b, admin_b):
         answers = [
@@ -103,28 +103,23 @@ def test_another_organization_cannot_see_the_school_nor_its_expenses(scene: Scen
     assert scene.row(expense["id"]).status == "DRAFT"
 
 
-def test_an_organization_wide_admin_reaches_every_school_of_the_organization_and_no_other(
-    scene: Scene,
-) -> None:
+def test_a_school_admin_reaches_its_own_school_and_no_other(scene: Scene) -> None:
+    """ADR-020: there is no administrator of several schools. Every school is its own account, so
+    the administrator of A1 gets the same 404 for A2 and B1 as for a school that never existed."""
     teacher_1 = scene.person("staff", school="1", label="t1")
     teacher_2 = scene.person("staff", school="2", label="t2")
-    admin = scene.person("organization_admin", school=None, label="admin")
+    admin = scene.person("school_admin", label="admin")
     one, two = scene.draft(teacher_1), scene.draft(teacher_2)
 
     assert admin.get(f"/expenses/{one['id']}", school=teacher_1.school).status_code == 200
-    assert admin.get(f"/expenses/{two['id']}", school=teacher_2.school).status_code == 200
-    # the school in the path is the school of the expense: A1's expense is not under A2
     assert_the_same_404(
         [
-            admin.get(f"/expenses/{one['id']}", school=teacher_2.school),
+            admin.get(f"/expenses/{two['id']}", school=teacher_2.school),
+            admin.get("/expenses", school=teacher_2.school),
+            admin.get("/expenses", school=scene.world.school_b1),
             admin.get(f"/expenses/{NOTHING}", school=teacher_2.school),
         ]
     )
-    listed = {
-        item["id"] for item in admin.get("/expenses", school=teacher_2.school).json()["items"]
-    }
-    assert two["id"] in listed and one["id"] not in listed
-    assert admin.get("/expenses", school=scene.world.school_b1).status_code == 404
 
 
 def test_a_colleague_cannot_see_an_expense_that_is_not_theirs(scene: Scene) -> None:

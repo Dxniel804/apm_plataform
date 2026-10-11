@@ -24,9 +24,9 @@ class MembershipRow:
     organization_id: UUID
     organization_name: str
     organization_slug: str
-    school_id: UUID | None
-    school_name: str | None
-    school_slug: str | None
+    school_id: UUID
+    school_name: str
+    school_slug: str
     role: str
 
 

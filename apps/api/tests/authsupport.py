@@ -83,10 +83,15 @@ def read_outbox(directory: Path) -> list[OutboxMessage]:
 
 @dataclass(frozen=True)
 class World:
-    """Two organizations; A has two schools, B one. Users are made per test (see `UserFactory`)."""
+    """Three accounts, one school each (ADR-020). Users are made per test (see `UserFactory`).
+
+    The helpers keep the old vocabulary: organization "a" school "1" is `school_a1`, "a" school "2"
+    is `school_a2` (which lives in its own organization, `org_a2`) and "b" is `school_b1`.
+    """
 
     org_a: uuid.UUID
     org_b: uuid.UUID
+    org_a2: uuid.UUID
     school_a1: uuid.UUID
     school_a2: uuid.UUID
     school_b1: uuid.UUID
@@ -109,21 +114,33 @@ class TestUser:
 
 def create_world(connection: Any) -> World:
     suffix = uuid.uuid4().hex[:8]
-    ids = {name: uuid.uuid4() for name in ("org_a", "org_b", "school_a1", "school_a2", "school_b1")}
+    ids = {
+        name: uuid.uuid4()
+        for name in ("org_a", "org_b", "org_a2", "school_a1", "school_a2", "school_b1")
+    }
     connection.execute(
         text(
             "INSERT INTO organizations (id, name, slug) "
-            "VALUES (:a, 'Org A', :sa), (:b, 'Org B', :sb)"
+            "VALUES (:a, 'Org A', :sa), (:b, 'Org B', :sb), (:a2, 'Org A2', :sa2)"
         ),
-        {"a": ids["org_a"], "b": ids["org_b"], "sa": f"t4-a-{suffix}", "sb": f"t4-b-{suffix}"},
+        {
+            "a": ids["org_a"],
+            "b": ids["org_b"],
+            "a2": ids["org_a2"],
+            "sa": f"t4-a-{suffix}",
+            "sb": f"t4-b-{suffix}",
+            "sa2": f"t4-a2-{suffix}",
+        },
     )
     connection.execute(
         text(
             "INSERT INTO schools (id, organization_id, name, slug) VALUES "
-            "(:a1, :a, 'School A1', :s1), (:a2, :a, 'School A2', :s2), (:b1, :b, 'School B1', :s3)"
+            "(:a1, :a, 'School A1', :s1), (:a2, :a2o, 'School A2', :s2), "
+            "(:b1, :b, 'School B1', :s3)"
         ),
         {
             "a": ids["org_a"],
+            "a2o": ids["org_a2"],
             "b": ids["org_b"],
             "a1": ids["school_a1"],
             "a2": ids["school_a2"],
@@ -136,6 +153,7 @@ def create_world(connection: Any) -> World:
     return World(
         org_a=ids["org_a"],
         org_b=ids["org_b"],
+        org_a2=ids["org_a2"],
         school_a1=ids["school_a1"],
         school_a2=ids["school_a2"],
         school_b1=ids["school_b1"],
@@ -145,7 +163,7 @@ def create_world(connection: Any) -> World:
 
 def delete_world(connection: Any, world: World, secret: SecretStr) -> None:
     pattern = f"t4-{world.suffix}-%"
-    orgs = [world.org_a, world.org_b]
+    orgs = [world.org_a, world.org_b, world.org_a2]
     purge_financial(connection, orgs)  # every school is born with its settings row (0007)
     connection.execute(
         text("DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE :p)"),
@@ -174,14 +192,15 @@ class UserFactory:
         role: str | None = "staff",
         *,
         org: str = "a",
-        school: str | None = "1",
-        extra: tuple[tuple[str, str, str | None], ...] = (),
+        school: str = "1",
+        extra: tuple[tuple[str, str, str], ...] = (),
         password: str | None = PASSWORD,
         active: bool = True,
         label: str | None = None,
     ) -> TestUser:
-        """`school` is "1"/"2" (of the organization) or None (the whole organization); `extra` adds
-        more memberships as (role, org, school). `role=None` makes a user with no membership."""
+        """`school` is "1" or "2" (school "2" of organization "a" is another account, `org_a2`);
+        `extra` adds more memberships as (role, org, school). `role=None` makes a user with no
+        membership."""
         world = self.world
         email = world.email(label or role or "nobody")
         user_id = uuid.uuid4()
@@ -212,14 +231,17 @@ class UserFactory:
                     {
                         "id": membership_id,
                         "user": user_id,
-                        "org": world.org_a if member_org == "a" else world.org_b,
-                        "school": None
-                        if member_school is None
-                        else self._school_id(member_org, member_school),
+                        "org": self._org_id(member_org, member_school),
+                        "school": self._school_id(member_org, member_school),
                         "role": member_role,
                     },
                 )
         return TestUser(user_id, email, tuple(membership_ids), password)
+
+    def _org_id(self, org: str, school: str) -> uuid.UUID:
+        if org == "b":
+            return self.world.org_b
+        return self.world.org_a if school == "1" else self.world.org_a2
 
     def _school_id(self, org: str, school: str) -> uuid.UUID:
         if org == "b":

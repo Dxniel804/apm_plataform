@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { CARLA, ELISA, apiAcceptsThisOrigin, apiSession, demoPassword, loginAs } from "./auth-helpers";
+import { BRUNO, CARLA, ELISA, apiAcceptsThisOrigin, apiSession, demoPassword, loginAs } from "./auth-helpers";
 
 /**
  * TASK-011 (fatia 3): fechamento mensal contra a API REAL. A tesoureira fecha um mes, ve os dois saldos,
- * verifica e baixa o PDF (%PDF); o administrador da organizacao (months:reopen) desfaz pela API; o fechamento
+ * verifica e baixa o PDF (%PDF); o administrador da escola (months:reopen) desfaz pela API; o fechamento
  * reaberto nao tem PDF. Mes usado: JANEIRO DE 2026 (o demo so tem dados a partir de setembro, entao o
  * fechamento e vazio e nenhum outro teste precisa dele). Se ja existir um fechamento ativo na escola, o teste
  * NAO fecha nada e so confere o PDF desse; so desfaz o que ele mesmo fechou. Cada execucao que fecha deixa um
@@ -58,21 +58,21 @@ test("tesoureira: fecha o mes, ve os dois saldos, verifica, baixa o PDF e a orde
   await expect(page.getByRole("alert").filter({ hasText: /Os meses são fechados em ordem\. O próximo mês a fechar é .+ de \d{4}\./ })).toBeVisible();
 });
 
-test("administrador da organizacao reabre pela API: o fechamento reaberto aparece sem PDF e sem verificar", async ({ page, playwright, baseURL }) => {
-  const ana = await apiSession(playwright, baseURL!, "ana.admin@example.test");
+test("administrador da escola reabre pela API: o fechamento reaberto aparece sem PDF e sem verificar", async ({ page, playwright, baseURL }) => {
+  const bruno = await apiSession(playwright, baseURL!, BRUNO.email);
   const carla = await apiSession(playwright, baseURL!, CARLA.email);
   const listed = await carla.context.get(`/api/v1/schools/${carla.schoolId}/closings?include_reopened=true`);
   const items = ((await listed.json()) as { items: Array<{ id: string; period: string; reopened_at: string | null }> }).items;
   const target = items.find((c) => c.period === "2026-01" && c.reopened_at === null);
   // so desfaz o que e de janeiro de 2026 (o mes deste teste); um fechamento de outro mes nao e tocado
   if (target) {
-    const reopen = await ana.context.post(`/api/v1/schools/${carla.schoolId}/closings/${target.id}/reopen`, {
-      headers: { "X-CSRF-Token": ana.csrf },
+    const reopen = await bruno.context.post(`/api/v1/schools/${carla.schoolId}/closings/${target.id}/reopen`, {
+      headers: { "X-CSRF-Token": bruno.csrf },
       data: { reason: "Fechamento de teste desfeito pelo e2e do site" },
     });
     expect(reopen.status()).toBe(200);
   }
-  await ana.context.dispose();
+  await bruno.context.dispose();
   await carla.context.dispose();
 
   await loginAs(page, CARLA.email);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ORG_MEMBERSHIP, SCHOOL_MEMBERSHIP, json, problem, sessionBody } from "@/test-utils/auth-fixtures";
+import { ADMIN_MEMBERSHIP, SCHOOL_MEMBERSHIP, json, problem, sessionBody } from "@/test-utils/auth-fixtures";
 import { acceptInvitation, changePassword, getMe, login, logout, parseSession, switchContext } from "./auth";
 
 const TOKEN = "t".repeat(32);
@@ -14,14 +14,19 @@ describe("parseSession (snake_case da API -> camelCase do site)", () => {
     expect(session).toEqual({
       user: { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", email: "pessoa@example.test", fullName: "Pessoa de Teste" },
       activeMembership: {
-        membershipId: ORG_MEMBERSHIP.membership_id,
-        organization: ORG_MEMBERSHIP.organization,
-        school: null,
-        role: "organization_admin",
+        membershipId: ADMIN_MEMBERSHIP.membership_id,
+        organization: ADMIN_MEMBERSHIP.organization,
+        school: ADMIN_MEMBERSHIP.school,
+        role: "school_admin",
         permissions: ["reports:read"],
       },
       memberships: [
-        { membershipId: ORG_MEMBERSHIP.membership_id, organization: ORG_MEMBERSHIP.organization, school: null, role: "organization_admin" },
+        {
+          membershipId: ADMIN_MEMBERSHIP.membership_id,
+          organization: ADMIN_MEMBERSHIP.organization,
+          school: ADMIN_MEMBERSHIP.school,
+          role: "school_admin",
+        },
         {
           membershipId: SCHOOL_MEMBERSHIP.membership_id,
           organization: SCHOOL_MEMBERSHIP.organization,
@@ -46,9 +51,13 @@ describe("parseSession (snake_case da API -> camelCase do site)", () => {
     expect(parseSession(null)).toBeNull();
     expect(parseSession({})).toBeNull();
     expect(parseSession(sessionBody({ user: { id: "x" } }))).toBeNull();
-    expect(parseSession(sessionBody({ memberships: [{ ...ORG_MEMBERSHIP, role: "root" }] }))).toBeNull();
-    expect(parseSession(sessionBody({ memberships: [{ ...ORG_MEMBERSHIP, school: { id: "x" } }] }))).toBeNull();
-    expect(parseSession(sessionBody({ active_membership: { ...ORG_MEMBERSHIP } }))).toBeNull(); // sem permissions
+    expect(parseSession(sessionBody({ memberships: [{ ...ADMIN_MEMBERSHIP, role: "root" }] }))).toBeNull();
+    // o papel de rede nao existe mais (ADR-020)
+    expect(parseSession(sessionBody({ memberships: [{ ...ADMIN_MEMBERSHIP, role: "organization_admin" }] }))).toBeNull();
+    expect(parseSession(sessionBody({ memberships: [{ ...ADMIN_MEMBERSHIP, school: { id: "x" } }] }))).toBeNull();
+    // todo vinculo tem escola: "vinculo da organizacao inteira" (school: null) nao e aceito
+    expect(parseSession(sessionBody({ memberships: [{ ...ADMIN_MEMBERSHIP, school: null }] }))).toBeNull();
+    expect(parseSession(sessionBody({ active_membership: { ...ADMIN_MEMBERSHIP } }))).toBeNull(); // sem permissions
     expect(parseSession(sessionBody({ session: { expires_at: "x" } }))).toBeNull();
   });
 });

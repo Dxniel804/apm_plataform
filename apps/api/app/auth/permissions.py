@@ -36,11 +36,11 @@ class Permission(StrEnum):
 
 ALL_PERMISSIONS = frozenset(Permission)
 
+# Every role belongs to ONE school (ADR-020): there is no role that spans schools.
 ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
-    # Everything in the organization.
-    "organization_admin": ALL_PERMISSIONS,
-    # Everything in the school, except reopening a closed month (organization_admin, ADR-015).
-    "school_admin": ALL_PERMISSIONS - {Permission.MONTHS_REOPEN},
+    # Everything in the school, including reopening a closed month (ADR-015, ADR-020): the
+    # treasurer who closes it cannot reopen it.
+    "school_admin": ALL_PERMISSIONS,
     "treasurer": frozenset(
         {
             Permission.CONTRIBUTIONS_RECORD_CASH,
@@ -59,11 +59,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "viewer": frozenset({Permission.REPORTS_READ_AGGREGATE}),
 }
 
-# Roles an inviter may grant, by the inviter's own role.
+# Roles an inviter may grant, by the inviter's own role (always into the inviter's own school).
 INVITABLE_ROLES: dict[str, frozenset[str]] = {
-    "organization_admin": frozenset(
-        {"organization_admin", "school_admin", "treasurer", "staff", "viewer"}
-    ),
     "school_admin": frozenset({"school_admin", "treasurer", "staff", "viewer"}),
 }
 

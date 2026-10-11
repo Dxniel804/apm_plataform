@@ -50,7 +50,7 @@ class Fresh:
 
     org: uuid.UUID
     school: uuid.UUID
-    admin: uuid.UUID  # organization_admin: a membership of the whole organization
+    admin: uuid.UUID  # school_admin of the school
     treasurer: uuid.UUID  # a membership of the school
     staff: uuid.UUID  # a membership of the school
     outsider: uuid.UUID  # a user with no membership at all
@@ -109,7 +109,7 @@ def make_school(conn: Connection, *, timezone: str | None = None) -> Fresh:
             {"id": user, "email": f"t5-{name}-{suffix}@example.test", "name": f"T5 {name}"},
         )
     for name, role, school_id in (
-        ("admin", "organization_admin", None),
+        ("admin", "school_admin", school),
         ("treasurer", "treasurer", school),
         ("staff", "staff", school),
     ):

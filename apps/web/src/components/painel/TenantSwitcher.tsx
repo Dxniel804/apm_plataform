@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { SchoolMonogram } from "@/components/portal/SchoolMonogram";
 import { ChevronDownIcon } from "@/components/ui/icons";
 import type { ActiveMembership, Membership } from "@/lib/api/types";
-import { membershipScope, membershipTitle } from "@/lib/roles";
+import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { MembershipList } from "./MembershipList";
 
 interface TenantSwitcherProps {
@@ -19,7 +19,7 @@ interface TenantSwitcherProps {
 }
 
 /**
- * Seletor REAL de organizacao e escola (multi-tenant, ADR-004): lista os vinculos da sessao
+ * Seletor REAL de escola (multi-tenant, ADR-004, ADR-020): lista os vinculos da sessao
  * (GET /auth/me) e troca o ativo por POST /auth/context. O cliente nunca define o tenant: so pede
  * um vinculo que ja e dele, e o servidor confere de novo.
  */
@@ -62,7 +62,7 @@ export function TenantSwitcher({ memberships, active, onSelect, busy = false, ic
         <SchoolMonogram name={membershipTitle(active)} size={36} />
         <span className={iconOnly ? "sr-only" : "min-w-0 flex-1"}>
           <span className="block truncate text-sub font-semibold leading-tight text-ink">{membershipTitle(active)}</span>
-          <span className="block truncate text-foot text-ink-3">{membershipScope(active)}</span>
+          <span className="block truncate text-foot text-ink-3">{ROLE_LABELS[active.role]}</span>
         </span>
         {!iconOnly && (
           <ChevronDownIcon size={18} className={`shrink-0 text-ink-2 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -89,7 +89,7 @@ export function TenantSwitcher({ memberships, active, onSelect, busy = false, ic
             }}
           />
           <p className="mt-1 border-t border-line px-3 pb-2 pt-3 text-foot text-ink-2">
-            As organizações e escolas vêm da sua conta, no servidor.
+            As escolas vêm da sua conta, no servidor.
           </p>
         </div>
       )}

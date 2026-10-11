@@ -11,7 +11,6 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth.deps import CurrentPrincipal, Principal, require
@@ -67,6 +66,7 @@ def school_scope(*permissions: Permission) -> Callable[..., SchoolScope]:
     def dependency(
         school_id: UUID,
         principal: Annotated[Principal, Depends(requirement)],
+        # Not read here: asking for it is what binds the tenant to the database session.
         db: Annotated[Session, Depends(get_tenant_db)],
     ) -> SchoolScope:
         tenant = principal.tenant
@@ -74,17 +74,9 @@ def school_scope(*permissions: Permission) -> Callable[..., SchoolScope]:
             raise ProblemError(
                 409, "context_required", "Choose which school or organization to act for first"
             )
-        if tenant.school_id is not None:
-            if tenant.school_id != school_id:
-                raise not_found()
-        else:
-            # An organization-wide membership covers every school of ITS organization: row level
-            # security shows only those, so another organization's school is simply not there.
-            found = db.execute(
-                text("SELECT 1 FROM schools WHERE id = :id"), {"id": school_id}
-            ).first()
-            if found is None:
-                raise not_found()
+        # A membership is of ONE school (ADR-020): any other school in the path is simply not there.
+        if tenant.school_id != school_id:
+            raise not_found()
         return SchoolScope(
             organization_id=tenant.organization_id,
             school_id=school_id,

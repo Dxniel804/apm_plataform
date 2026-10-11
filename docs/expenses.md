@@ -6,7 +6,7 @@ A person writes an expense (a DRAFT), attaches the receipt, sends it; someone el
 
 ## Routes
 
-All under `/api/v1/schools/{school_id}`. `school_id` is **checked against the session**: a school outside the session's context answers the same `404 not_found` as one that does not exist (an organization-wide membership covers the schools of its organization and no other). The tenant never comes from the body, a header or the query. Every route declares one permission (`x-permission` in the OpenAPI document; `x-permission-any` lists the alternatives of the routes open to more than one). State changes also need the Origin and the CSRF token ([auth.md](auth.md)).
+All under `/api/v1/schools/{school_id}`. `school_id` is **checked against the session**: a school outside the session's context answers the same `404 not_found` as one that does not exist (a membership is of ONE school, ADR-020). The tenant never comes from the body, a header or the query. Every route declares one permission (`x-permission` in the OpenAPI document; `x-permission-any` lists the alternatives of the routes open to more than one). State changes also need the Origin and the CSRF token ([auth.md](auth.md)).
 
 | Method and path | Permission | What it does |
 | --- | --- | --- |

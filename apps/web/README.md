@@ -52,8 +52,8 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   - `/painel` exige sessão: o **servidor do Next** repassa o cookie a `GET /api/v1/auth/me`
     (`src/lib/api/server.ts`); sem sessão, redireciona para `/login`. API fora do ar não é logout: mostra
     "Não foi possível abrir o painel".
-  - O seletor do painel lista os **vínculos reais** da pessoa e troca por `POST /auth/context`; o cliente
-    nunca define organização nem escola. Sessão sem vínculo ativo mostra a escolha antes do painel.
+  - O seletor do painel lista os **vínculos reais** da pessoa (cada um é de UMA escola: não existe vínculo
+    de rede, ADR-020) e troca por `POST /auth/context`; o cliente nunca define organização nem escola. Sessão sem vínculo ativo mostra a escolha antes do painel.
   - Os textos de erro vêm do `code` do `problem+json` (`src/lib/auth-messages.ts`); o `title`/`detail` do
     servidor nunca aparece. `/login?next=` só aceita `/painel` e o link do convite (lista fechada).
   - `POST /auth/password` tem cliente e testes, mas **ainda não tem tela**.
@@ -68,8 +68,8 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   (`active_membership.school.id`), resumo do mês com os dois saldos (em caixa, e após reembolsos pendentes),
   lançamentos por tipo com "carregar mais" (cursor), pendências fora do saldo, mês na URL (`?mes=YYYY-MM`),
   "Registrar contribuição em dinheiro" (`contributions:record_cash`) e link do PDF das contribuições do mês.
-  Rota que responder 403 (o `viewer` só lê o resumo) vira aviso. Vínculo da organização inteira não tem painel
-  de escola. Quem tem 2 ou mais vínculos escolhe o contexto como antes.
+  Rota que responder 403 (o `viewer` só lê o resumo) vira aviso. Todo vínculo é de uma escola, então o painel
+  sempre mostra os números dela. Quem tem 2 ou mais vínculos escolhe o contexto como antes.
 - **Despesas (REAL)**, `/painel/despesas`, `docs/expenses.md` (`src/lib/api/expenses.ts`): a professora vê só
   "Minhas despesas" (lista com status em português, formulário com anexo multipart, enviar, cancelar, motivo da
   correção pedida); a gestão vê a fila de análise (filtro por situação na API) e age conforme a permissão da
@@ -83,7 +83,7 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   estado (fechado ou reaberto), números congelados com os dois saldos, diferença para o banco e código de
   verificação, "Fechar mês" (mês e saldo do banco em centavos; a API exige ordem e mostra o próximo mês),
   "Verificar", "Baixar PDF do extrato mensal" (só de fechamento ativo; reaberto não tem PDF) e "Reabrir mês" só
-  para quem tem `months:reopen` (hoje o administrador da organização), com motivo de 10 a 500 caracteres. O
+  para quem tem `months:reopen` (o administrador da escola), com motivo de 10 a 500 caracteres. O
   viewer só lê. O "PDF das contribuições do mês" segue no Resumo.
 - **Alterar senha (REAL)**, `/painel/conta`, `POST /auth/password`: 12 a 128 caracteres e diferente da atual; a
   API encerra as outras sessões e abre uma nova neste navegador.

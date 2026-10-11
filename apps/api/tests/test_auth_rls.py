@@ -353,7 +353,7 @@ def make_invitation(
             {
                 "id": invitation_id,
                 "o": world.org_a if org == "a" else world.org_b,
-                "s": school,
+                "s": school or (world.school_a1 if org == "a" else world.school_b1),
                 "e": world.email("inv"),
                 "h": secrets.token_bytes(32),
                 "by": inviter.id,
@@ -365,27 +365,29 @@ def make_invitation(
 def test_invitations_are_scoped_to_the_tenant(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter_a = users.make("organization_admin", school=None)
-    inviter_b = users.make("organization_admin", org="b", school=None)
+    inviter_a = users.make("school_admin")
+    inviter_b = users.make("school_admin", org="b")
     in_a1 = make_invitation(admin_engine, world, inviter_a, school=world.school_a1)
-    in_a2 = make_invitation(admin_engine, world, inviter_a, school=world.school_a2)
+    in_a1_again = make_invitation(admin_engine, world, inviter_a, school=world.school_a1)
     in_b = make_invitation(admin_engine, world, inviter_b, org="b", school=world.school_b1)
 
     def seen(context: TenantContext | None) -> set[uuid.UUID]:
         with app_tx(app_engine, context) as connection:
             return {r[0] for r in connection.execute(text("SELECT id FROM invitations"))}
 
-    mine = {in_a1, in_a2, in_b}
+    mine = {in_a1, in_a1_again, in_b}
     assert seen(None) & mine == set()
-    assert seen(TenantContext(world.org_a)) & mine == {in_a1, in_a2}
-    assert seen(TenantContext(world.org_a, world.school_a1)) & mine == {in_a1}
+    # An organization holds one school (ADR-020): naming only it or naming its school is the same.
+    assert seen(TenantContext(world.org_a)) & mine == {in_a1, in_a1_again}
+    assert seen(TenantContext(world.org_a, world.school_a1)) & mine == {in_a1, in_a1_again}
+    assert seen(TenantContext(world.org_a, world.school_a2)) & mine == set()  # not its school
     assert seen(TenantContext(world.org_b)) & mine == {in_b}
 
 
 def test_the_token_hash_of_an_invitation_cannot_be_read_by_the_application(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    make_invitation(admin_engine, world, users.make("organization_admin", school=None))
+    make_invitation(admin_engine, world, users.make("school_admin"))
     context = TenantContext(world.org_a)
 
     for projection in ("token_hash", "*", "i.token_hash", "length(token_hash)"):
@@ -401,15 +403,16 @@ def test_the_token_hash_of_an_invitation_cannot_be_read_by_the_application(
 def test_an_invitation_is_inserted_for_the_active_tenant_by_the_user_in_the_context(
     app_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("organization_admin", school=None)
-    other = users.make("organization_admin", org="b", school=None)
+    inviter = users.make("school_admin")
+    other = users.make("school_admin", org="b")
     insert = (
         "INSERT INTO invitations (organization_id, school_id, email, role, token_hash, "
-        "invited_by_user_id, expires_at{extra}) VALUES (:org, NULL, :e, 'staff', :h, :by, "
+        "invited_by_user_id, expires_at{extra}) VALUES (:org, :school, :e, 'staff', :h, :by, "
         "now() + interval '1 day'{value})"
     )
     params = {
         "org": world.org_a,
+        "school": world.school_a1,
         "e": world.email("x"),
         "h": secrets.token_bytes(32),
         "by": inviter.id,
@@ -440,8 +443,8 @@ def test_an_invitation_is_inserted_for_the_active_tenant_by_the_user_in_the_cont
 def test_only_revoking_an_invitation_can_be_done_and_only_in_the_own_tenant(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter_a = users.make("organization_admin", school=None)
-    inviter_b = users.make("organization_admin", org="b", school=None)
+    inviter_a = users.make("school_admin")
+    inviter_b = users.make("school_admin", org="b")
     mine = make_invitation(admin_engine, world, inviter_a)
     theirs = make_invitation(admin_engine, world, inviter_b, org="b")
     revoke = "UPDATE invitations SET revoked_at = now(), updated_at = now() WHERE id = :id"

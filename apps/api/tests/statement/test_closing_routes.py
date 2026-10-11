@@ -354,7 +354,7 @@ def reopen(api: Api, scene: Scene, closing_id: str, reason: Any = REASON) -> Any
     return api.post(closings(scene.fresh.school, f"/{closing_id}/reopen"), {"reason": reason})
 
 
-def test_an_organization_admin_reopens_the_latest_closing_and_the_month_can_be_closed_again(
+def test_a_school_admin_reopens_the_latest_closing_and_the_month_can_be_closed_again(
     scene: Scene, login: Login
 ) -> None:
     treasurer, admin = login(scene.users["treasurer"]), login(scene.users["admin"])
@@ -379,14 +379,24 @@ def test_an_organization_admin_reopens_the_latest_closing_and_the_month_can_be_c
     assert [row["id"] for row in active["items"]] == [again.json()["id"]]
 
 
-@pytest.mark.parametrize("role", ["school_admin", "treasurer", "viewer", "staff"])
-def test_only_an_organization_admin_may_reopen(scene: Scene, login: Login, role: str) -> None:
+@pytest.mark.parametrize("role", ["treasurer", "viewer", "staff"])
+def test_only_a_school_admin_may_reopen(scene: Scene, login: Login, role: str) -> None:
     created = close(login(scene.users["treasurer"]), scene).json()
 
     response = reopen(login(scene.users[role]), scene, created["id"])
 
     assert response.status_code == 403, response.text
     assert response.json()["code"] == "permission_denied"
+
+
+def test_every_school_admin_may_reopen(scene: Scene, login: Login) -> None:
+    """The treasurer who closes the month cannot reopen it; the administrator of the school can
+    (ADR-020 moved this from the administrator of the network, which no longer exists)."""
+    created = close(login(scene.users["treasurer"]), scene).json()
+
+    response = reopen(login(scene.users["school_admin"]), scene, created["id"])
+
+    assert response.status_code == 200, response.text
 
 
 @pytest.mark.parametrize(
@@ -485,24 +495,6 @@ def close_other(login: Login, scene: Scene) -> uuid.UUID:
 
 def reopen_theirs(api: Api, scene: Scene, closing: uuid.UUID) -> Any:
     return api.post(closings(scene.other.school, f"/{closing}/reopen"), {"reason": REASON})
-
-
-def test_a_closing_of_the_sibling_school_is_not_reachable_from_a_school_membership(
-    scene: Scene, login: Login
-) -> None:
-    admin = login(scene.users["admin"])  # organization-wide
-    on_sibling = admin.post(closings(scene.sibling_school), {"period": MARCH})
-    assert on_sibling.status_code == 201, on_sibling.text
-    assert on_sibling.json()["school_id"] == str(scene.sibling_school)
-    assert on_sibling.json()["closing_balance_cents"] == 0
-
-    treasurer = login(scene.users["treasurer"])  # the school of the scene only
-
-    assert treasurer.get(closings(scene.sibling_school)).status_code == 404
-    assert (
-        treasurer.get(closings(scene.fresh.school, f"/{on_sibling.json()['id']}")).status_code
-        == 404
-    )
 
 
 def test_closing_and_reopening_are_audited_with_the_person_who_did_it(

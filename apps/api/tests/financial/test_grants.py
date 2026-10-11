@@ -233,7 +233,6 @@ DEFINER_FUNCTIONS = {
 CALLABLE_FUNCTIONS = {
     "statement_entries",
     "statement_summary",
-    "org_statement_summary",
     "statement_pending",
     "closing_entries_hash",
     "closing_breakdown",

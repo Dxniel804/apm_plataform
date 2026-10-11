@@ -35,7 +35,9 @@ _SET_CONTEXT = text(
 class TenantContext:
     """The organization, and optionally one of its schools, a transaction acts for.
 
-    school_id None is an organization-wide context (every school of the organization).
+    school_id None is a context that names only the organization. Since an organization holds ONE
+    school (ADR-020, `uq_schools_organization_id`) it sees exactly what the school context sees. The
+    API always builds the context from a membership, which always names a school.
     """
 
     organization_id: uuid.UUID

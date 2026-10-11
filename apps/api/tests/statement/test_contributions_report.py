@@ -230,14 +230,12 @@ def test_another_school_is_a_404_and_its_people_never_show(
     api = login(scene.users["treasurer"])
 
     foreign = api.get(contributions_path(scene.other.school))
-    sibling = api.get(contributions_path(scene.sibling_school))
     unknown = api.get(contributions_path("00000000-0000-0000-0000-000000000000"))
 
-    for response in (foreign, sibling, unknown):
+    for response in (foreign, unknown):
         assert response.status_code == 404
         assert response.json()["code"] == "not_found"
-    admin = login(scene.users["admin"])  # the whole organization: the sibling is reachable, empty
-    assert admin.get(contributions_path(scene.sibling_school)).status_code == 200
+    admin = login(scene.users["admin"])  # a school admin reaches only its own school (ADR-020)
     assert admin.get(contributions_path(scene.other.school)).status_code == 404
     assert "Pessoa Alheia" not in march_text(scene, login)
     assert "Pessoa Alheia" not in march_text(scene, login, role="admin")

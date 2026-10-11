@@ -111,8 +111,9 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
   const areas = areasFor(active.permissions);
   const navItems = navFor(areas, period, { statement: active.permissions.includes("statement:read") });
   const { title, icon } = titleFor(area, section, areas.manageExpenses);
-  // O painel e da ESCOLA do vinculo ativo. O id vem da sessao; a API ainda confere contra o contexto.
-  const schoolId = active.school?.id ?? null;
+  // O painel e da ESCOLA do vinculo ativo (todo vinculo tem uma, ADR-020). O id vem da sessao; a API ainda
+  // confere contra o contexto.
+  const schoolId = active.school.id;
 
   const sidebar = (variant: "bar" | "drawer") => (
     <Sidebar
@@ -188,11 +189,11 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
           {area === "conta" ? (
             <PasswordForm />
-          ) : schoolId && area === "despesas" ? (
+          ) : area === "despesas" ? (
             <ExpensesArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
-          ) : schoolId && area === "fechamento" ? (
+          ) : area === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
-          ) : schoolId ? (
+          ) : (
             <PainelData
               // Trocar de vinculo troca de escola: o estado dos numeros recomeca do zero.
               key={schoolId}
@@ -202,14 +203,6 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
               permissions={active.permissions}
               onPeriodChange={(next) => router.replace(sectionHref(section, next))}
             />
-          ) : (
-            <div role="note" className="rounded-[var(--r-lg)] border border-line px-6 py-10">
-              <h2 className="text-heading">Esta conta é da organização inteira</h2>
-              <p className="mt-2 max-w-[56ch] text-body text-ink-2">
-                O painel mostra os números de uma escola, e este vínculo não é de uma escola específica. Use uma conta de
-                escola, ou peça um convite para a escola que você quer acompanhar.
-              </p>
-            </div>
           )}
         </main>
       </div>

@@ -180,7 +180,7 @@ EXPECTED_FUNCTIONS = {
     "assert_immutable_columns", "assert_set_once_columns", "audit_logs_fill_actor",
     "audit_row_change", "closing_breakdown", "closing_entries_hash", "contributions_check_review",
     "expense_attachments_check_state", "expenses_edit_only_when_editable", "ft_check_change",
-    "ft_check_initial", "org_statement_summary",
+    "ft_check_initial",
     "expenses_set_decision_time", "forbid_delete", "forbid_truncate", "forbid_update",
     "freeze_when_final", "ft_assign_reference_code", "ft_check_consistency",
     "ft_check_relations", "ft_settle", "monthly_closings_reopen", "monthly_closings_snapshot",
@@ -269,7 +269,7 @@ def test_every_function_is_security_invoker_with_a_fixed_search_path(admin_engin
         assert security_definer is (name in DEFINER_FUNCTIONS), name
         assert config == ["search_path=pg_catalog"], name
         assert owner == ("apm_definer" if name in DEFINER_FUNCTIONS else "apm_owner"), name
-        if name.startswith(("statement_", "org_statement_")) or name in (
+        if name.startswith("statement_") or name in (
             "closing_entries_hash",
             "closing_breakdown",
             "verify_closing",
@@ -343,16 +343,20 @@ def test_the_origin_user_is_guarded_like_the_author(world: tuple[Connection, Fre
         )  # fmt: skip
 
 
-def test_a_member_of_another_school_of_the_same_organization_cannot_be_named(
+def test_a_member_of_another_school_cannot_be_named(
     world: tuple[Connection, Fresh],
 ) -> None:
     conn, f = world
-    other_school, user = uuid.uuid4(), uuid.uuid4()
+    other_org, other_school, user = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    conn.execute(
+        text("INSERT INTO organizations (id, name, slug) VALUES (:o, 'Other', :slug)"),
+        {"o": other_org, "slug": f"t5-other-org-{uuid.uuid4().hex[:10]}"},
+    )
     conn.execute(
         text(
             "INSERT INTO schools (id, organization_id, name, slug) VALUES (:s, :o, 'Other', :slug)"
         ),
-        {"s": other_school, "o": f.org, "slug": f"t5-other-{uuid.uuid4().hex[:10]}"},
+        {"s": other_school, "o": other_org, "slug": f"t5-other-{uuid.uuid4().hex[:10]}"},
     )
     conn.execute(
         text("INSERT INTO users (id, email, full_name) VALUES (:u, :e, 'Other staff')"),
@@ -363,7 +367,7 @@ def test_a_member_of_another_school_of_the_same_organization_cannot_be_named(
             "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
             "VALUES (:u, :o, :s, 'staff', 'active')"
         ),
-        {"u": user, "o": f.org, "s": other_school},
+        {"u": user, "o": other_org, "s": other_school},
     )
     with refused(conn, "invalid user reference"):
         add_transaction(

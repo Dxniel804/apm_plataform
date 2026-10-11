@@ -150,19 +150,19 @@ def test_seeded_tenants_are_isolated_for_the_application_role(
     try:
         with admin.begin() as connection:
             seed(connection)
-            rede: Any = connection.execute(
-                text("SELECT id FROM organizations WHERE slug = 'demo-rede'")
+            aurora: Any = connection.execute(
+                text("SELECT id FROM organizations WHERE slug = 'demo-aurora-conta'")
             ).scalar_one()
         factory = sessionmaker(app)
-        with tenant_session(factory, TenantContext(rede)) as session:
+        with tenant_session(factory, TenantContext(aurora)) as session:
             organizations = {o.slug for o in session.scalars(select(Organization))}
             schools = {s.slug for s in session.scalars(select(School))}
     finally:
         admin.dispose()
         app.dispose()
 
-    assert organizations == {"demo-rede"}
-    assert schools == {"demo-aurora", "demo-horizonte"}
+    assert organizations == {"demo-aurora-conta"}
+    assert schools == {"demo-aurora"}  # one school per account (ADR-020)
 
 
 def test_seed_refuses_an_admin_that_cannot_bypass_row_level_security(
