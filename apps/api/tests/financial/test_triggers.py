@@ -76,6 +76,20 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
         B, {INS}, "expense_attachments_check_state"
     ),
     ("expense_attachments", "expense_attachments_25_member"): _t(B, {INS}, "assert_active_member"),
+    ("staff_requests", "staff_requests_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("staff_requests", "staff_requests_06_freeze"): _t(B, {UPD}, "freeze_when_final"),
+    ("staff_requests", "staff_requests_07_change"): _t(B, {UPD}, "staff_requests_check_change"),
+    ("staff_requests", "staff_requests_10_set_once"): _t(B, {UPD}, "assert_set_once_columns"),
+    ("staff_requests", "staff_requests_25_member"): _t(B, {INS, UPD}, "assert_active_member"),
+    ("staff_request_attachments", "staff_request_attachments_05_no_update"): _t(
+        B, {UPD}, "forbid_update"
+    ),
+    ("staff_request_attachments", "staff_request_attachments_20_state"): _t(
+        B, {INS}, "staff_request_attachments_check_state"
+    ),
+    ("staff_request_attachments", "staff_request_attachments_25_member"): _t(
+        B, {INS}, "assert_active_member"
+    ),
     ("categories", "categories_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
     ("payment_accounts", "payment_accounts_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
     ("school_settings", "school_settings_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
@@ -116,10 +130,13 @@ AUDITED = [
     "categories",
     "school_settings",
     "monthly_closings",
+    # the staff requests (0012) are audited like the rest
+    "staff_requests",
+    "staff_request_attachments",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
-for _table in TABLES:
+for _table in [*TABLES, "staff_requests", "staff_request_attachments"]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
         B, {TRU}, "forbid_truncate", "STATEMENT"
@@ -190,6 +207,8 @@ EXPECTED_FUNCTIONS = {
     # tenancy and authentication (0003 to 0006): the context functions and the closed list of ADR-016
     "app_session_id", "app_user_id", "accept_invitation", "find_login_identity",
     "list_memberships_for_user",
+    # the staff requests (0012)
+    "staff_requests_check_change", "staff_request_attachments_check_state",
     # the public flow (0008, ADR-018) and the expiry job (0009, ADR-019)
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",

@@ -71,7 +71,12 @@ def test_login_returns_the_session_and_sets_the_cookies(
     assert set(body) == {"user", "active_membership", "memberships", "csrf_token", "session"}
     assert body["user"] == {"id": str(user.id), "email": user.email, "full_name": "Test staff"}
     assert body["active_membership"]["role"] == "staff"
-    assert body["active_membership"]["permissions"] == ["expenses:read_own", "expenses:submit"]
+    assert body["active_membership"]["permissions"] == [
+        "expenses:read_own",
+        "expenses:submit",
+        "requests:read_own",
+        "requests:submit",
+    ]
     assert [m["membership_id"] for m in body["memberships"]] == [str(user.membership_ids[0])]
     assert body["csrf_token"] == api.csrf
     assert response.headers["cache-control"] == "no-store"

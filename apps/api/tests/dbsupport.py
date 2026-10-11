@@ -123,6 +123,8 @@ def create_tenants(connection: Connection) -> Tenants:
 # Children first. The financial tables refuse DELETE for every role (triggers), so test cleanup
 # switches the triggers off for its own transaction (the admin of the dev database is a superuser).
 FINANCIAL_TABLES = (
+    "staff_request_attachments",
+    "staff_requests",
     "audit_logs",
     "webhook_events",
     "pix_charges",

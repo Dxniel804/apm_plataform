@@ -16,6 +16,8 @@ from app.db.base import Base
 from tests.dbsupport import Tenants, transaction
 from tests.financial.test_isolation import TABLES as FINANCIAL_TABLES
 
+REQUEST_TABLES = ("staff_requests", "staff_request_attachments")  # 0012, outside the ledger
+
 
 def _constraint(error: IntegrityError) -> str:
     diag = getattr(error.orig, "diag", None)
@@ -96,6 +98,8 @@ def test_every_organization_id_column_is_not_null(admin_engine: Engine) -> None:
         ("memberships", True),
         ("schools", True),
         *((t, True) for t in FINANCIAL_TABLES),
+        ("staff_request_attachments", True),
+        ("staff_requests", True),
     ]
     assert [tuple(r) for r in rows] == sorted(expected)
 
@@ -236,7 +240,7 @@ def _financial_foreign_keys() -> dict[str, tuple[str, ...]]:
     names match the catalog; here the whole shape is compared: tables and ordered columns)."""
     expected: dict[str, tuple[str, ...]] = {}
     for table in Base.metadata.sorted_tables:
-        if table.name not in FINANCIAL_TABLES:
+        if table.name not in (*FINANCIAL_TABLES, *REQUEST_TABLES):
             continue
         for constraint in table.foreign_key_constraints:
             expected[str(constraint.name)] = (

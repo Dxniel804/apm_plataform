@@ -14,8 +14,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.expenses import repository
-from app.expenses.service import MAX_ATTACHMENTS_PER_EXPENSE, clean_file_name
+from app.expenses.service import MAX_ATTACHMENTS_PER_EXPENSE
 from app.storage import LocalDiskStore
+from app.storage.uploads import clean_file_name
 from tests.authsupport import no_unhandled_error
 from tests.expenses.support import (
     Client,

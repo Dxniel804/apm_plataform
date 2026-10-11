@@ -248,6 +248,8 @@ FINANCIAL_TRIGGER_FUNCTIONS = (
     "ft_check_initial", "ft_check_relations", "ft_settle", "monthly_closings_reopen",
     "monthly_closings_snapshot", "pix_charges_check_consistency", "pix_charges_check_contribution",
     "pix_charges_check_end_to_end_id", "school_settings_lock_timezone", "schools_create_settings",
+    # the staff requests (0012): two more trigger functions of the same kind
+    "staff_requests_check_change", "staff_request_attachments_check_state",
 )  # fmt: skip
 FUNCTIONS.update(
     {
@@ -426,8 +428,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
         ).all()
 
     # 30 of TASK-003 and 0006 + 37 of the financial schema (0007) + 4 of the public flow (0008)
-    # + 2 of the expiry job (0009)
-    assert len(policies) == 30 + 37 + 4 + 2
+    # + 2 of the expiry job (0009) + 5 of the staff requests (0012)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5  # + the 5 of the staff requests (0012)
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
@@ -550,8 +552,9 @@ def test_application_role_table_privileges_are_exactly_these(admin_engine: Engin
                 "AND table_name <> ALL(:financial) ORDER BY 1, 2"
             ),
             # Every other table of the schema is still closed: the 13 financial tables (0007) have
-            # their grants asserted column by column in tests/financial/test_grants.py.
-            {"financial": list(FINANCIAL_TABLES)},
+            # their grants asserted column by column in tests/financial/test_grants.py, and the two
+            # of the staff requests (0012) in tests/staff_requests/test_grants.py.
+            {"financial": [*FINANCIAL_TABLES, "staff_requests", "staff_request_attachments"]},
         ).all()
 
     assert {tuple(row) for row in rows} == {

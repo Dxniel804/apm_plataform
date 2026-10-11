@@ -25,6 +25,11 @@ _BY_CONSTRAINT: dict[str, tuple[int, str, str]] = {
         "attachment_duplicate",
         "This file is already attached to the expense",
     ),
+    "uq_staff_request_attachments_school_id_request_id_sha256": (
+        409,
+        "attachment_duplicate",
+        "This file is already attached",
+    ),
     "ck_expenses_decider_is_not_submitter": (
         403,
         "self_approval_forbidden",
@@ -35,8 +40,8 @@ _BY_CONSTRAINT: dict[str, tuple[int, str, str]] = {
 # By SQLSTATE: the class of the refusal.
 _BY_SQLSTATE: dict[str, tuple[int, str, str]] = {
     "23505": (409, "conflict", "The request conflicts with data that already exists"),
-    "23514": (422, "rule_violation", "The change breaks a rule of the ledger"),
-    "23001": (409, "state_conflict", "The expense is not in a state that allows this"),
+    "23514": (422, "rule_violation", "The change breaks a rule of the data"),
+    "23001": (409, "state_conflict", "The record is not in a state that allows this"),
     "23503": (422, "reference_invalid", "A reference in the request is not valid here"),
     "22003": (422, "value_out_of_range", "A value is out of range"),
     "40001": (409, "retry", "The request collided with another one, try again"),

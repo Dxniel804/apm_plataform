@@ -16,10 +16,8 @@ import datetime as dt
 import hashlib
 import logging
 import re
-import unicodedata
 import uuid
-from collections.abc import Iterator
-from typing import Any, BinaryIO, Protocol
+from typing import Any, BinaryIO
 
 from sqlalchemy.orm import Session
 
@@ -43,6 +41,12 @@ from app.expenses.schemas import (
 )
 from app.storage import AttachmentStore
 from app.storage.base import CHUNK_SIZE
+from app.storage.uploads import (
+    TooLarge,
+    clean_file_name,
+    discard,
+    limited_chunks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +67,6 @@ MAX_ATTACHMENTS_PER_EXPENSE = 10
 MAX_DAYS_AHEAD = 1  # an expense is not dated in the future (a day of slack for the time zones)
 _PERIOD = re.compile(r"(\d{4})-(0[1-9]|1[0-2])")
 _CURSOR = re.compile(r"r[1-9][0-9]{0,17}")
-_FILE_NAME_LENGTH = 200
 
 SUMMARY_FIELDS = (
     "id",
@@ -357,49 +360,6 @@ def update_expense(
 # --- attachments ----------------------------------------------------------------------------------
 
 
-class _TooLarge(Exception):
-    pass
-
-
-def clean_file_name(raw: str | None, extension: str) -> str:
-    """A display name from what the client called the file: no path, no control characters, a
-    bounded length. It is only a label (the file lives under a key made by the server)."""
-    name = (raw or "").replace("\\", "/").rsplit("/", 1)[-1]
-    name = name.encode("utf-8", "ignore").decode("utf-8")  # drops a lone surrogate
-    name = "".join(ch for ch in name if unicodedata.category(ch)[0] != "C").strip()
-    name = name[:_FILE_NAME_LENGTH].strip(" .")
-    return name or f"anexo{extension}"
-
-
-class _Hasher(Protocol):
-    def update(self, data: bytes, /) -> None: ...
-
-
-def _limited_chunks(first: bytes, stream: BinaryIO, hasher: _Hasher, limit: int) -> Iterator[bytes]:
-    total = 0
-    chunk = first
-    while chunk:
-        total += len(chunk)
-        if total > limit:
-            raise _TooLarge
-        hasher.update(chunk)
-        yield chunk
-        chunk = stream.read(CHUNK_SIZE)
-
-
-def _discard(store: AttachmentStore, key: str) -> None:
-    """Remove a file that no row will point to. It runs while another error is being raised, so it
-    must never raise itself (it would replace the error the caller needs to see): a failure is
-    logged, with the class of the error and never the key or a path, and the file is left behind."""
-    try:
-        store.delete(key)
-    except Exception as error:
-        logger.error(
-            "could not remove an attachment file after a failed write",
-            extra={"error_class": type(error).__name__},
-        )
-
-
 def add_attachment(
     db: Session,
     scope: SchoolScope,
@@ -446,8 +406,8 @@ def add_attachment(
         key = f"{scope.organization_id}/{scope.school_id}/{expense_id}/{uuid.uuid4().hex}"
         hasher = hashlib.sha256()
         try:
-            size = store.put(key, _limited_chunks(head, stream, hasher, max_bytes))
-        except _TooLarge:
+            size = store.put(key, limited_chunks(head, stream, hasher, max_bytes))
+        except TooLarge:
             raise ProblemError(
                 413, "payload_too_large", "The file is larger than the limit"
             ) from None
@@ -475,7 +435,7 @@ def add_attachment(
                 size_bytes=size,
             )
         except BaseException:
-            _discard(store, key)
+            discard(store, key)
             raise
         db.commit()  # a failure HERE keeps the file (see the docstring)
     return AttachmentOut.model_validate(dict(created))

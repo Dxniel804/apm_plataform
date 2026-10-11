@@ -43,6 +43,7 @@ from app.storage import (
     get_attachment_store,
     get_storage_settings,
 )
+from app.storage.uploads import check_declared_length
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["expenses"])
 
@@ -64,9 +65,6 @@ CanCancel = Annotated[SchoolScope, Depends(school_scope(*_CANCEL))]
 Store = Annotated[AttachmentStore, Depends(get_attachment_store)]
 Limits = Annotated[StorageSettings, Depends(get_storage_settings)]
 
-# Room for the multipart envelope (boundaries, headers, the `kind` field) around the file.
-MULTIPART_OVERHEAD_BYTES = 64 * 1024
-MAX_DECLARED_DIGITS = 15
 ATTACHMENT_KINDS: tuple[AttachmentKind, ...] = ("INVOICE", "PAYMENT_PROOF", "OTHER")
 
 
@@ -237,16 +235,7 @@ async def upload_attachment(
     """The size is bounded BEFORE the body is read (the declared length), and again while the file
     is streamed to the store. The form is parsed here, after the permission and the school were
     checked, so a caller who may not upload costs nothing."""
-    declared = request.headers.get("content-length", "")
-    # ASCII digits only: str.isdigit() is also true for "²" or Arabic-Indic digits, which int()
-    # refuses. A number of more than 15 digits is far over any limit (and int() of thousands of
-    # digits is refused too).
-    if not (declared.isascii() and declared.isdigit()):
-        raise ProblemError(411, "length_required", "The request must declare its size")
-    if len(declared) > MAX_DECLARED_DIGITS or int(declared) > (
-        limits.attachment_max_bytes + MULTIPART_OVERHEAD_BYTES
-    ):
-        raise ProblemError(413, "payload_too_large", "The file is larger than the limit")
+    check_declared_length(request, limits.attachment_max_bytes)
     form = await request.form(max_files=1, max_fields=4)
     try:
         upload = form.get("file")

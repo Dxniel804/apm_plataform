@@ -310,8 +310,15 @@ def test_what_each_role_may_do() -> None:
         Permission.MONTHS_CLOSE,
         Permission.STATEMENT_READ,
         Permission.REPORTS_READ,
+        Permission.REQUESTS_READ_ALL,
+        Permission.REQUESTS_MANAGE,
     }
-    assert permissions_for("staff") == {Permission.EXPENSES_SUBMIT, Permission.EXPENSES_READ_OWN}
+    assert permissions_for("staff") == {
+        Permission.EXPENSES_SUBMIT,
+        Permission.EXPENSES_READ_OWN,
+        Permission.REQUESTS_SUBMIT,
+        Permission.REQUESTS_READ_OWN,
+    }
     assert permissions_for("viewer") == {Permission.REPORTS_READ_AGGREGATE}
     for unknown in (None, "", "root", "ORGANIZATION_ADMIN", "parent"):
         assert permissions_for(unknown) == frozenset()  # a role that does not exist can do nothing

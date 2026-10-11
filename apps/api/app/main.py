@@ -15,6 +15,7 @@ from app.db.session import build_engine, build_session_factory
 from app.expenses.router import router as expenses_router
 from app.reports.routes import router as reports_router
 from app.routers.api import api_router
+from app.staff_requests.router import router as staff_requests_router
 from app.statement.routes import router as statement_router
 
 
@@ -59,6 +60,7 @@ def create_app(
     app.add_middleware(RequestIdMiddleware)
     app.include_router(api_router)
     app.include_router(expenses_router, prefix="/api/v1")  # TASK-007: expenses
+    app.include_router(staff_requests_router, prefix="/api/v1")  # staff requests (0012)
     app.include_router(statement_router)
     app.include_router(closing_router)
     app.include_router(reports_router)

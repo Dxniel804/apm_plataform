@@ -32,6 +32,11 @@ class Permission(StrEnum):
     STATEMENT_READ = "statement:read"
     REPORTS_READ = "reports:read"
     REPORTS_READ_AGGREGATE = "reports:read_aggregate"
+    # Requests of the staff to the management (migration 0012): not money.
+    REQUESTS_SUBMIT = "requests:submit"
+    REQUESTS_READ_OWN = "requests:read_own"
+    REQUESTS_READ_ALL = "requests:read_all"
+    REQUESTS_MANAGE = "requests:manage"
 
 
 ALL_PERMISSIONS = frozenset(Permission)
@@ -51,10 +56,20 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.MONTHS_CLOSE,
             Permission.STATEMENT_READ,
             Permission.REPORTS_READ,
+            # The management answers the requests of the staff.
+            Permission.REQUESTS_READ_ALL,
+            Permission.REQUESTS_MANAGE,
         }
     ),
-    # Teachers and staff: submit and see their OWN expenses and reimbursements.
-    "staff": frozenset({Permission.EXPENSES_SUBMIT, Permission.EXPENSES_READ_OWN}),
+    # Staff (funcionario): submit and see their OWN expenses, and ask the management for things.
+    "staff": frozenset(
+        {
+            Permission.EXPENSES_SUBMIT,
+            Permission.EXPENSES_READ_OWN,
+            Permission.REQUESTS_SUBMIT,
+            Permission.REQUESTS_READ_OWN,
+        }
+    ),
     # Aggregate reading only, no personal data of guardians.
     "viewer": frozenset({Permission.REPORTS_READ_AGGREGATE}),
 }

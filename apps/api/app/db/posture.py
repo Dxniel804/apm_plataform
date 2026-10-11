@@ -32,9 +32,18 @@ FINANCIAL_TABLES = (
     "audit_logs",
     "monthly_closings",
 )
-# Every table with row level security: the tenant tables, the authentication tables and the
-# financial ones.
-RLS_TABLES = (*TENANT_TABLES, "sessions", "login_attempts", "invitations", *FINANCIAL_TABLES)
+# The staff requests (0012): a school table like the others, outside the ledger.
+REQUEST_TABLES = ("staff_requests", "staff_request_attachments")
+# Every table with row level security: the tenant tables, the authentication tables, the financial
+# ones and the requests.
+RLS_TABLES = (
+    *TENANT_TABLES,
+    "sessions",
+    "login_attempts",
+    "invitations",
+    *FINANCIAL_TABLES,
+    *REQUEST_TABLES,
+)
 DEFINER_ROLE = "apm_definer"
 
 # Who owns the tenant tables.
@@ -103,6 +112,13 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
                 else ("SELECT", "INSERT", "UPDATE")
             )
         ),
+        # 0012: a SELECT and an INSERT policy on both request tables, and an UPDATE one on the
+        # requests (their photos only grow).
+        ("staff_requests", "staff_requests_select", "SELECT", "public"),
+        ("staff_requests", "staff_requests_insert", "INSERT", "public"),
+        ("staff_requests", "staff_requests_update", "UPDATE", "public"),
+        ("staff_request_attachments", "staff_request_attachments_select", "SELECT", "public"),
+        ("staff_request_attachments", "staff_request_attachments_insert", "INSERT", "public"),
     }
 )
 

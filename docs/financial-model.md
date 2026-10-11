@@ -307,6 +307,16 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `expense_attachments_20_state` | BEFORE INSERT | `expense_attachments_check_state`: none on a final expense |
 | | `expense_attachments_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `expense_attachments_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
+| `staff_requests` (0012, outside the ledger; see [staff-requests.md](staff-requests.md)) | `staff_requests_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: scope, author, category, title and description never change |
+| | `staff_requests_06_freeze` | BEFORE UPDATE | `freeze_when_final`: a RESOLVED or CANCELLED request changes in no column |
+| | `staff_requests_07_change` | BEFORE UPDATE | `staff_requests_check_change`: OPEN to IN_PROGRESS, RESOLVED or CANCELLED; IN_PROGRESS to RESOLVED or CANCELLED |
+| | `staff_requests_10_set_once` | BEFORE UPDATE | `assert_set_once_columns`: who started it, who resolved it, when, and the note |
+| | `staff_requests_25_member` | BEFORE INSERT OR UPDATE OF the user columns | `assert_active_member` |
+| | `staff_requests_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the title, the description or the note) |
+| `staff_request_attachments` | `staff_request_attachments_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
+| | `staff_request_attachments_20_state` | BEFORE INSERT | `staff_request_attachments_check_state`: only on an OPEN or IN_PROGRESS request |
+| | `staff_request_attachments_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `staff_request_attachments_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the file name or the key) |
 | `categories` | `categories_05_immutable`, `categories_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns` (key, direction, report group and `requires_approval` never change), `audit_row_change` |
 | `school_settings` | `school_settings_05_immutable`, `school_settings_10_timezone`, `school_settings_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns`, `school_settings_lock_timezone`, `audit_row_change` |
 | `payment_accounts` | `payment_accounts_05_immutable`, `payment_accounts_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns` (id, scope, provider), `audit_row_change` (never the account, the reference or the hash) |
