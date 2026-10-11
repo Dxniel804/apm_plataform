@@ -15,14 +15,14 @@ describe("N3b: matcher do proxy (CSP com nonce)", () => {
   });
 
   it("so /api, /api/* e os estaticos ficam de fora", () => {
-    for (const path of ["/api", "/api/", "/api/health", "/api/health/ready", "/_next/static/chunks/a.js", "/_next/image", "/favicon.ico", "/icon.svg"]) {
+    for (const path of ["/api", "/api/", "/api/health", "/api/health/ready", "/_next/static/chunks/a.js", "/_next/image", "/favicon.ico", "/icon.png"]) {
       expect(matcher.test(path), path).toBe(false);
     }
   });
 
-  it("favicon.ico e icon.svg sao literais (o ponto nao e curinga)", () => {
+  it("favicon.ico e icon.png sao literais (o ponto nao e curinga)", () => {
     expect(matcher.test("/faviconXico")).toBe(true);
-    expect(matcher.test("/iconXsvg")).toBe(true);
+    expect(matcher.test("/iconXpng")).toBe(true);
   });
 });
 

@@ -12,7 +12,7 @@ describe("N2: error.tsx", () => {
   it("fala portugues e tem a identidade do produto, sem selo de prototipo (nada e simulado)", () => {
     render(<ErrorPage error={secret} reset={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1, name: "Algo deu errado por aqui" })).toBeInTheDocument();
-    expect(screen.getByText("APM Digital")).toBeInTheDocument();
+    expect(screen.getByAltText("fknelo")).toBeInTheDocument(); // o logo da marca
     expect(screen.queryByText(/Protótipo/)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ir para o início" })).toHaveAttribute("href", "/");
   });

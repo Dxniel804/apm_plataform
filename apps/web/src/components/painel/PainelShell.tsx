@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ApiStatusChip } from "@/components/status/ApiStatusChip";
-import { Button } from "@/components/ui/Button";
-import { Wordmark } from "@/components/ui/Logo";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { ExpensesArea } from "@/components/despesas/ExpensesArea";
+import { PasswordForm } from "@/components/conta/PasswordForm";
+import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
+import { BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, KeyIcon } from "@/components/ui/icons";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
 import { describeAuthError, isSessionLost } from "@/lib/auth-messages";
@@ -13,12 +14,10 @@ import { sectionHref, type PainelSection } from "@/lib/painel-section";
 import { areaHref, areasFor, type PainelArea } from "@/lib/permissions";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { ContextChooser } from "./ContextChooser";
-import { ExpensesArea } from "@/components/despesas/ExpensesArea";
-import { PasswordForm } from "@/components/conta/PasswordForm";
-import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
 import { KIND_META } from "./kinds";
 import { navFor } from "./nav";
 import { PainelData } from "./PainelData";
+import { Sidebar } from "./Sidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
 
 interface PainelShellProps {
@@ -34,11 +33,36 @@ interface PainelShellProps {
   period?: string;
 }
 
+/* Preferencia "barra lateral recolhida": conveniencia so deste navegador (localStorage), nunca estado de negocio. */
+const COLLAPSED_KEY = "apm.sidebar.collapsed";
+const collapsedListeners = new Set<() => void>();
+const subscribeCollapsed = (listener: () => void) => {
+  collapsedListeners.add(listener);
+  return () => void collapsedListeners.delete(listener);
+};
+const readCollapsed = () => {
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const writeCollapsed = (value: boolean) => {
+  try {
+    window.localStorage.setItem(COLLAPSED_KEY, value ? "1" : "0");
+  } catch {
+    /* sem armazenamento (janela privada): a barra so nao lembra */
+  }
+  collapsedListeners.forEach((listener) => listener());
+};
+
 export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period }: PainelShellProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   async function selectMembership(membershipId: string) {
     if (busy) return;
@@ -46,6 +70,7 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
     setProblem(null);
     const result = await api.auth.switchContext(membershipId);
     if (result.ok) {
+      setMenuOpen(false);
       router.refresh(); // o servidor le /auth/me de novo, ja com o novo vinculo
     } else if (isSessionLost(result.error)) {
       router.replace("/login");
@@ -83,104 +108,77 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
     );
   }
 
-  const contextName = membershipTitle(active);
   const areas = areasFor(active.permissions);
-  const navItems = navFor(areas, period);
-  const title =
-    area === "conta"
-      ? "Alterar senha"
-      : area === "despesas"
-      ? areas.manageExpenses
-        ? "Despesas"
-        : "Minhas despesas"
-      : area === "fechamento"
-        ? "Fechamento"
-        : section === "resumo"
-          ? "Resumo"
-          : KIND_META[section].plural;
+  const navItems = navFor(areas, period, { statement: active.permissions.includes("statement:read") });
+  const { title, icon } = titleFor(area, section, areas.manageExpenses);
   // O painel e da ESCOLA do vinculo ativo. O id vem da sessao; a API ainda confere contra o contexto.
   const schoolId = active.school?.id ?? null;
 
-  const switcher = (compact: boolean) => (
-    <TenantSwitcher
-      memberships={session.memberships}
-      active={active}
-      onSelect={selectMembership}
-      busy={busy}
-      compact={compact}
+  const sidebar = (variant: "bar" | "drawer") => (
+    <Sidebar
+      items={navItems}
+      area={area}
+      section={section}
+      collapsed={variant === "bar" && collapsed}
+      onToggleCollapsed={() => writeCollapsed(!collapsed)}
+      onClose={variant === "drawer" ? () => setMenuOpen(false) : undefined}
+      switcher={
+        <TenantSwitcher
+          memberships={session.memberships}
+          active={active}
+          onSelect={selectMembership}
+          busy={busy}
+          iconOnly={variant === "bar" && collapsed}
+          inline={variant === "drawer"}
+        />
+      }
+      userName={session.user.fullName}
+      roleLabel={ROLE_LABELS[active.role]}
+      accountHref={areaHref("conta")}
+      onSignOut={signOut}
+      signingOut={signingOut}
     />
   );
 
-  const signOutButton = (
-    <Button variant="secondary" size="md" onClick={signOut} disabled={signingOut}>
-      {signingOut ? "Saindo…" : "Sair"}
-    </Button>
-  );
-
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+    <div
+      className={`min-h-dvh bg-bg lg:grid ${
+        collapsed ? "lg:grid-cols-[5.5rem_minmax(0,1fr)]" : "lg:grid-cols-[clamp(16rem,21vw,19rem)_minmax(0,1fr)]"
+      }`}
+    >
       {/* barra lateral (desktop) */}
-      <aside className="bar-material sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line px-4 py-5 lg:flex">
-        <div className="px-1.5">
-          <Wordmark />
-        </div>
-        {switcher(false)}
-        <nav aria-label="Seções do painel">
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const current = item.area === area;
-              return (
-                <li key={item.area}>
-                  <Link
-                    href={item.href}
-                    aria-current={current ? "page" : undefined}
-                    className={`flex min-h-11 items-center gap-3 rounded-[12px] px-3 text-body font-medium transition-colors ${current ? "bg-ink text-bg" : "text-ink hover:bg-neutral-soft"}`}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        <div className="mt-auto space-y-3 px-1.5">
-          <div className="min-w-0">
-            <p className="truncate text-sub font-semibold text-ink">{session.user.fullName}</p>
-            <p className="truncate text-foot text-ink-2">{ROLE_LABELS[active.role]}</p>
-          </div>
-          <Link href={areaHref("conta")} aria-current={area === "conta" ? "page" : undefined} className="inline-flex min-h-11 items-center text-sub font-semibold text-ink underline underline-offset-2">
-            Alterar senha
-          </Link>
-          {signOutButton}
-          <ApiStatusChip />
-        </div>
-      </aside>
+      <aside className="sticky top-0 hidden h-dvh bg-white lg:block">{sidebar("bar")}</aside>
 
-      <div className="min-w-0">
-        {/* barra superior (celular) */}
-        <header className="bar-material sticky top-0 z-30 border-b border-line px-4 py-2 lg:hidden">
-          <div className="mx-auto flex max-w-3xl items-center gap-2">
-            <div className="min-w-0 flex-1">{switcher(true)}</div>
-            {signOutButton}
-          </div>
+      <div className="flex min-w-0 flex-col">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 bg-bg px-5 pb-3 pt-4 sm:px-8 lg:static lg:px-10 lg:pb-5 lg:pt-8">
+          <h1 className="flex min-w-0 items-center gap-3 text-[1.25rem] font-normal leading-tight tracking-normal text-ink-2 lg:text-[1.5rem]">
+            <span aria-hidden="true" className="shrink-0 text-ink-2">
+              {icon}
+            </span>
+            <span className="truncate">{title}</span>
+          </h1>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir o menu"
+            aria-haspopup="dialog"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-white/70 lg:hidden"
+          >
+            <BoxArrowInRightIcon size={26} />
+          </button>
         </header>
 
-        <main id="conteudo" tabIndex={-1} className="outline-none mx-auto w-full max-w-[68rem] px-5 pb-32 pt-6 lg:px-10 lg:pb-16 lg:pt-10">
-          <div className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 lg:mb-8">
-            <div>
-              <h1 className="text-title text-ink sm:text-[2.25rem]">{title}</h1>
-              <p className="mt-1 text-body text-ink-2">
-                {contextName} · {ROLE_LABELS[active.role]}
-              </p>
-              <p className="mt-0.5 text-foot text-ink-2 lg:hidden">
-                Conectado como {session.user.fullName} ·{" "}
-                <Link href={areaHref("conta")} className="font-semibold text-ink underline underline-offset-2">
-                  Alterar senha
-                </Link>
-              </p>
-            </div>
-          </div>
+        <main
+          id="conteudo"
+          tabIndex={-1}
+          className="mx-3 mb-6 flex-1 rounded-[var(--r-lg)] bg-white p-5 outline-none sm:mx-5 sm:p-8 lg:mx-8 lg:mb-8 lg:p-10"
+        >
+          {/* No celular o menu fica numa gaveta: o contexto (escola, papel, quem esta conectado) precisa estar sempre a vista.
+              No desktop isso ja esta na barra lateral. */}
+          <p className="mb-5 text-foot leading-snug text-ink-3 lg:hidden">
+            {membershipTitle(active)} · {ROLE_LABELS[active.role]}
+            <span className="block">Conectado como {session.user.fullName}</span>
+          </p>
 
           {problem && (
             <p role="alert" className="mb-5 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
@@ -205,8 +203,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
               onPeriodChange={(next) => router.replace(sectionHref(section, next))}
             />
           ) : (
-            <div role="note" className="rounded-[var(--r-lg)] bg-surface px-6 py-10 shadow-[0_0_0_1px_var(--line)]">
-              <h2 className="text-heading text-ink">Esta conta é da organização inteira</h2>
+            <div role="note" className="rounded-[var(--r-lg)] border border-line px-6 py-10">
+              <h2 className="text-heading">Esta conta é da organização inteira</h2>
               <p className="mt-2 max-w-[56ch] text-body text-ink-2">
                 O painel mostra os números de uma escola, e este vínculo não é de uma escola específica. Use uma conta de
                 escola, ou peça um convite para a escola que você quer acompanhar.
@@ -216,33 +214,19 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
         </main>
       </div>
 
-      {/* barra de abas (celular) */}
-      <nav
-        aria-label="Seções do painel"
-        className="bar-material fixed inset-x-0 bottom-0 z-30 border-t border-line pb-[env(safe-area-inset-bottom)] lg:hidden"
-      >
-        {/* flex-auto: cada aba ocupa a largura do proprio rotulo mais uma fatia da sobra, entao nenhum
-            rotulo (nem o mais longo) e truncado de 320px para cima. */}
-        <ul className="mx-auto flex max-w-xl">
-          {navItems.map((item) => {
-            const current = item.area === area;
-            return (
-              <li key={item.area} className="flex-auto">
-                <Link
-                  href={item.href}
-                  aria-current={current ? "page" : undefined}
-                  className={`flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-0.5 text-tab font-medium max-[339px]:text-[0.625rem] ${current ? "text-ink" : "text-ink-2"}`}
-                >
-                  <span className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${current ? "bg-neutral-soft" : ""}`}>
-                    {item.icon}
-                  </span>
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* gaveta do menu (celular) */}
+      <Modal open={menuOpen} onClose={() => setMenuOpen(false)} label="Menu do painel" placement="drawer">
+        {sidebar("drawer")}
+      </Modal>
     </div>
   );
+}
+
+/** Titulo e icone do cabecalho, por area e por tipo de lancamento. */
+function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean): { title: string; icon: ReactNode } {
+  if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={26} /> };
+  if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={26} /> };
+  if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={26} /> };
+  if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={26} /> };
+  return { title: KIND_META[section].plural, icon: KIND_META[section].icon };
 }

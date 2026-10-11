@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ANA, apiAcceptsThisOrigin, demoPassword, loginAs } from "./auth-helpers";
+import { ANA, apiAcceptsThisOrigin, demoPassword, loginAs, openMenuIfNeeded } from "./auth-helpers";
 
 /**
  * TASK-011 (fatia 1): login, sessao no painel e logout contra a API REAL.
@@ -8,7 +8,7 @@ import { ANA, apiAcceptsThisOrigin, demoPassword, loginAs } from "./auth-helpers
 test("sem sessao, /painel volta para /login", async ({ page }) => {
   await page.goto("/painel");
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "Entrar na tesouraria" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acessar sua conta" })).toBeVisible();
 });
 
 test("senha errada: texto em portugues, igual para e-mail que nao existe, e a senha some do campo", async ({ page }) => {
@@ -34,7 +34,7 @@ test.describe("com a senha de demonstracao", () => {
     // nome e vinculo REAIS (vindos de GET /auth/me)
     await expect(page.getByText(ANA.name).locator("visible=true").first()).toBeVisible();
     await expect(page.getByText(ANA.organization).locator("visible=true").first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Resumo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 
     // vinculo da organizacao inteira: o painel e de uma escola, entao explica em vez de mostrar numeros
     await expect(page.getByRole("note").filter({ hasText: "Esta conta é da organização inteira" })).toBeVisible();
@@ -46,10 +46,12 @@ test.describe("com a senha de demonstracao", () => {
     expect(readable).toContain("apm_csrf");
     expect(readable).not.toContain("apm_session");
 
-    // o seletor mostra os vinculos reais
+    // o seletor mostra os vinculos reais (no celular ele fica dentro da gaveta do menu)
+    await openMenuIfNeeded(page);
     await page.getByRole("button", { name: new RegExp(ANA.organization) }).first().click();
     await expect(page.getByRole("group", { name: ANA.organization })).toBeVisible();
-    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape"); // desktop: fecha a lista; celular: fecha a gaveta toda
+    await openMenuIfNeeded(page);
 
     await page.getByRole("button", { name: "Sair" }).first().click();
     await expect(page).toHaveURL(/\/login$/);

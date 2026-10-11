@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ANA, apiAcceptsThisOrigin, demoPassword, loginAs } from "./auth-helpers";
+import { ANA, apiAcceptsThisOrigin, demoPassword, loginAs, openMenuIfNeeded } from "./auth-helpers";
 import {
   applyScenario,
   cspViolations,
@@ -123,6 +123,7 @@ for (const scenario of scenarios) {
         await expectVisible(page, `painel ${path}`, scenario);
       }
       await page.goto("/painel");
+      await openMenuIfNeeded(page);
       await page.getByRole("button", { name: new RegExp(ANA.organization) }).first().click();
       await expect(page.getByRole("group", { name: ANA.organization })).toBeVisible();
       await expectVisible(page, "seletor de vinculos aberto", scenario);

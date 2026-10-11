@@ -80,9 +80,9 @@ export function ReceiptView({
   if (view.kind === "checking") {
     return (
       <div role="status" aria-live="polite" aria-busy="true" className="max-w-xl">
-        <h1 className="text-title text-ink">Conferindo seu comprovante</h1>
+        <h1 className="text-title">Conferindo seu comprovante</h1>
         <p className="mt-3 text-body text-ink-2">Estamos conferindo este link. Isso leva só um instante.</p>
-        <div aria-hidden="true" className="mt-8 w-full max-w-[26rem] rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)]">
+        <div aria-hidden="true" className="mt-8 w-full max-w-[26rem] rounded-[var(--r-lg)] border border-line bg-white p-6">
           <div className="skeleton h-4 w-40" />
           <div className="skeleton mt-6 h-10 w-48" />
           <div className="skeleton mt-8 h-4 w-full" />
@@ -96,9 +96,9 @@ export function ReceiptView({
   if (view.kind === "error") {
     return (
       <div className="max-w-xl">
-        <h1 className="text-title text-ink">Não conseguimos conferir agora</h1>
+        <h1 className="text-title">Não conseguimos conferir agora</h1>
         <p role="alert" className="mt-3 text-body text-ink-2">{view.message}</p>
-        <Button className="mt-7 w-full sm:w-auto" onClick={() => { setView({ kind: "checking" }); setAttempt((n) => n + 1); }}>
+        <Button variant="solid" className="mt-7 w-full sm:w-auto" onClick={() => { setView({ kind: "checking" }); setAttempt((n) => n + 1); }}>
           Tentar de novo
         </Button>
       </div>
@@ -108,13 +108,13 @@ export function ReceiptView({
   if (view.kind === "unconfirmed") {
     return (
       <div className="max-w-xl">
-        <h1 className="text-title text-ink">Este pagamento ainda não foi confirmado</h1>
+        <h1 className="text-title">Este pagamento ainda não foi confirmado</h1>
         <p className="mt-3 text-body text-ink-2">
           O comprovante só existe depois que o banco confirma o Pix. Se você acabou de pagar, aguarde um instante e
           atualize esta página. Se o pagamento estiver em análise pela escola, ele aparece aqui quando for confirmado.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <Button onClick={() => { setView({ kind: "checking" }); setAttempt((n) => n + 1); }}>Atualizar</Button>
+          <Button variant="solid" onClick={() => { setView({ kind: "checking" }); setAttempt((n) => n + 1); }}>Atualizar</Button>
           <ButtonLink href={`/escola/${slug}`} variant="secondary">
             Voltar para a escola
           </ButtonLink>
@@ -130,7 +130,7 @@ export function ReceiptView({
         <ReceiptCard receipt={view.receipt} />
       </div>
       <div className="max-w-xl">
-        <h1 className="text-title text-ink sm:text-[2.25rem]">
+        <h1 className="text-title sm:text-[2.25rem]">
           {confirmed ? "Contribuição confirmada" : "Comprovante da contribuição"}
         </h1>
         <p className="mt-3 text-body text-ink-2">

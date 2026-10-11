@@ -35,7 +35,7 @@ test("professora: so 'Minhas despesas'; cria, anexa e envia; baixa o anexo; ve o
   await expect(page).toHaveURL(/\/painel\/despesas$/);
   await expect(page.getByRole("heading", { level: 1, name: "Minhas despesas" })).toBeVisible();
   // menu: so a propria area (o nome do usuario vem do login: nenhum campo de nome)
-  await expect(page.getByRole("link", { name: "Resumo" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Fechamento" })).toHaveCount(0);
 
   await createExpense(page, tag, { paidBy: "COLLABORATOR", cents: "200", send: true });
@@ -164,7 +164,7 @@ test("o autor nao decide a propria despesa: o diretor ve o aviso e nenhum botao 
 
 test("viewer: sem despesas, sem botoes de escrita", async ({ page }) => {
   await loginAs(page, ELISA.email);
-  await expect(page.getByText(/Saldo em caixa em/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "Despesas" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Minhas despesas" })).toHaveCount(0);
   await page.goto("/painel/despesas");

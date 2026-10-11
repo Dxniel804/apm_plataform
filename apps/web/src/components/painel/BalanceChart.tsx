@@ -1,0 +1,96 @@
+import type { CSSProperties } from "react";
+import type { StatementSummary } from "@/lib/api/types";
+import { formatBRLNumber } from "@/lib/money";
+
+interface Bar {
+  key: string;
+  label: string;
+  /** Texto do valor, como no Figma: "397,10", "+2.201,48", "-240,00". */
+  text: string;
+  /** Extremos do trecho desenhado (so a posicao da barra; o texto vem da API). */
+  from: number;
+  to: number;
+  color: string;
+}
+
+/**
+ * "Composicao do saldo" (Figma): do saldo inicial ate o saldo apos os reembolsos pendentes. Cada barra e um trecho
+ * flutuante; os numeros escritos sao as colunas de statement_summary, sem conta nenhuma (a soma abaixo so decide
+ * ONDE a barra fica no desenho). Em telas largas sao colunas; no celular viram linhas com barras horizontais.
+ */
+export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
+  const bars: Bar[] = [
+    { key: "open", label: "Saldo inicial", text: formatBRLNumber(s.openingBalanceCents), from: 0, to: s.openingBalanceCents, color: "var(--series-base)" },
+    {
+      key: "in",
+      label: "Entradas",
+      text: `+${formatBRLNumber(s.totalInCents)}`,
+      from: s.openingBalanceCents,
+      to: s.openingBalanceCents + s.totalInCents,
+      color: "var(--series-in)",
+    },
+    {
+      key: "out",
+      label: "Saídas pagas",
+      text: `-${formatBRLNumber(s.totalOutCents)}`,
+      from: s.closingBalanceCents,
+      to: s.closingBalanceCents + s.totalOutCents,
+      color: "var(--series-out)",
+    },
+    { key: "close", label: "Saldo em caixa", text: formatBRLNumber(s.closingBalanceCents), from: 0, to: s.closingBalanceCents, color: "var(--series-base)" },
+    {
+      key: "pending",
+      label: "Reembolsos pend.",
+      text: `-${formatBRLNumber(s.pendingReimbursementsCents)}`,
+      from: s.balanceAfterPendingCents,
+      to: s.closingBalanceCents,
+      color: "var(--series-out)",
+    },
+    { key: "after", label: "Após pend.", text: formatBRLNumber(s.balanceAfterPendingCents), from: 0, to: s.balanceAfterPendingCents, color: "var(--series-after)" },
+  ];
+
+  const ends = bars.flatMap((b) => [b.from, b.to]);
+  const min = Math.min(0, ...ends);
+  const max = Math.max(1, ...ends);
+  const place = (v: number) => ((v - min) / (max - min)) * 100;
+
+  return (
+    <section aria-labelledby="balance-chart-title" className="@container rounded-[var(--r-lg)] border border-line p-5 sm:p-7">
+      <h3 id="balance-chart-title" className="text-[1.125rem] font-normal tracking-normal text-ink-2 sm:text-[1.375rem]">
+        Composição do saldo
+      </h3>
+      <p className="mt-0.5 text-foot text-ink-2">Do saldo inicial até o caixa final, em reais</p>
+
+      <ul className="mt-6 grid gap-3 @[26rem]:grid-cols-6 @[26rem]:gap-0">
+        {bars.map((bar) => {
+          const lo = Math.min(bar.from, bar.to);
+          const hi = Math.max(bar.from, bar.to);
+          const style = { "--lo": place(lo), "--hi": place(hi), background: bar.color } as CSSProperties;
+          return (
+            <li
+              key={bar.key}
+              className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_auto] items-center gap-x-3 @[26rem]:flex @[26rem]:flex-col @[26rem]:items-stretch @[26rem]:gap-0"
+            >
+              {/* trilho (celular) / area da coluna (tela larga) */}
+              <span
+                aria-hidden="true"
+                className="relative col-start-2 row-start-1 h-3.5 rounded-full bg-neutral-soft @[26rem]:order-1 @[26rem]:h-44 @[26rem]:rounded-none @[26rem]:border-b @[26rem]:border-line-strong @[26rem]:bg-transparent sm:@[26rem]:h-52"
+              >
+                <span
+                  style={style}
+                  className="absolute inset-y-0 left-[calc(var(--lo)*1%)] w-[calc((var(--hi)-var(--lo))*1%)] min-w-1 rounded-full @[26rem]:inset-y-auto @[26rem]:bottom-[calc(var(--lo)*1%)] @[26rem]:left-[24%] @[26rem]:h-[calc((var(--hi)-var(--lo))*1%)] @[26rem]:min-h-[3px] @[26rem]:w-auto @[26rem]:min-w-0 @[26rem]:right-[24%] @[26rem]:rounded-b-none @[26rem]:rounded-t-[6px]"
+                />
+              </span>
+              <span className="col-start-1 row-start-1 text-sub leading-tight text-ink-3 @[26rem]:order-2 @[26rem]:mt-3 @[26rem]:px-1 @[26rem]:text-center @[26rem]:text-[0.8125rem]">
+                {bar.label}
+              </span>
+              <span className="col-start-3 row-start-1 text-right text-sub font-bold tabular-nums text-ink @[26rem]:order-3 @[26rem]:mt-1.5 @[26rem]:text-center @[26rem]:text-[0.9375rem]">
+                {bar.text}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

@@ -12,8 +12,9 @@ const css = readFileSync(join(__dirname, "globals.css"), "utf8");
 describe("barra translucida (.bar-material)", () => {
   const alphas = [...css.matchAll(/--bar:\s*rgb\([^)]*\/\s*([\d.]+)\)/g)].map((m) => Number(m[1]));
 
-  it("define --bar nos temas claro e escuro, ambos com alpha >= 0,9", () => {
-    expect(alphas).toHaveLength(2);
+  // O Figma so tem tema claro: o site e claro de proposito (color-scheme: light), entao ha uma unica definicao.
+  it("define --bar (tema claro) com alpha >= 0,9", () => {
+    expect(alphas).toHaveLength(1);
     for (const alpha of alphas) expect(alpha).toBeGreaterThanOrEqual(0.9);
   });
 

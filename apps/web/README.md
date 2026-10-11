@@ -45,8 +45,10 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   origem; não há CORS nem requisição a terceiros.
   - A sessão é um cookie **HttpOnly** (`apm_session`; `__Host-apm_session` em produção) que o site nunca
     lê. O token CSRF vem do cookie legível `apm_csrf` e vai em `X-CSRF-Token` em todo pedido que muda
-    dados. A API só aceita esses pedidos das origens locais `127.0.0.1:3101`/`localhost:3101` (dev) e
-    `:3100` (prévia).
+    dados. A API só aceita esses pedidos das origens listadas em `PUBLIC_ORIGINS` (`.env` da raiz, lido pelo
+    `docker-compose`): por padrão `127.0.0.1:3101`/`localhost:3101` (dev) e `:3100` (prévia). Para abrir o site
+    em outra porta (ex.: `npm run dev -- -p 3102`), acrescente `http://127.0.0.1:3102,http://localhost:3102` a
+    `PUBLIC_ORIGINS` e recrie a API (`docker compose up -d --no-deps --force-recreate api`).
   - `/painel` exige sessão: o **servidor do Next** repassa o cookie a `GET /api/v1/auth/me`
     (`src/lib/api/server.ts`); sem sessão, redireciona para `/login`. API fora do ar não é logout: mostra
     "Não foi possível abrir o painel".
@@ -97,6 +99,27 @@ usam mocks; o e2e com login real lê a senha só em tempo de execução (`E2E_DE
 
 Rotas: `/` · `/escola/[slug]` · `/escola/[slug]/pedido/[token]` · `/login` · `/accept-invitation?token=…` · `/painel` (exige sessão) · `/painel/despesas` · `/painel/fechamento` · `/painel/conta`.
 Escolas de demonstração (banco local): `demo-aurora`, `demo-horizonte`, `demo-central`.
+
+## Design (Figma "APM Digital")
+
+O visual segue o arquivo do Figma (login, painel da gestão, janela de contribuição em dinheiro e fluxo das famílias).
+As telas que o Figma não tem (Fechamento, Alterar senha, Pix, comprovante, erro, 404, convite) usam o mesmo padrão.
+
+- **Fonte:** 42dot Sans (SIL OFL, `src/app/fonts/OFL.txt`), arquivo variável servido pelo próprio site via
+  `next/font/local` (a CSP só aceita `font-src 'self'`; nada vem de terceiros). Pesos 300 a 800.
+- **Tokens:** `src/app/globals.css`. Paleta da marca (`brand-900` … `brand-200`, a paleta "fknelo" do Figma), degradês
+  (`bg-grad-brand`, `bg-grad-chip`), raios (`--r-ctl` 18, `--r-lg` 26, `--r-xl` 34), escala tipográfica fluida
+  (`text-display`, `text-title`, `text-kpi`…) e as cores do gráfico (`--series-*`, medidas no Figma).
+- **Tema:** o Figma só tem tema claro, então o site é claro de propósito (`color-scheme: light`), sem tema escuro.
+  A cor da escola (`accentColor` da API) não pinta mais o portal: a escola aparece pelo nome.
+- **Assets:** `public/brand/` (logo claro e escuro, halftone com transparência, arte do login, ilustrações 3D),
+  todos exportados do Figma, aparados e comprimidos. O halftone é a classe `.halftone` (enfeite atrás do conteúdo).
+  Ícones: Bootstrap Icons (a família usada no Figma, MIT) em `components/ui/icons.tsx`.
+- **Responsivo:** o Figma tem um tamanho por tela (1712 px na gestão, 1607 px no login, 580 px na família). As outras
+  larguras foram derivadas: menu lateral recolhível no desktop e gaveta no celular, gráfico em colunas (largo) ou em
+  barras horizontais (estreito), janelas viram folha inferior no celular. Verificado de 320 a 1440 px.
+- **Dados do dashboard:** "Composição do saldo", "Saídas pagas" e os quatro números vêm de `GET .../statement/summary`;
+  as pendências, de `GET .../statement/pending`. Nada é digitado nem simulado.
 
 ## Estrutura
 

@@ -62,15 +62,10 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
   }
 
   return (
-    <form
-      method="post"
-      noValidate
-      onSubmit={onSubmit}
-      aria-busy={pending}
-      className="mt-6 space-y-5 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6"
-    >
+    <form method="post" noValidate onSubmit={onSubmit} aria-busy={pending} className="mt-8 space-y-6">
       <TextField
-        label="E-mail"
+        variant="filled"
+        label="Seu e-mail"
         name="email"
         type="email"
         inputMode="email"
@@ -84,22 +79,27 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
       />
       <div>
         <TextField
-          label="Senha"
+          variant="filled"
+          label="Sua senha"
           name="password"
           type={showPassword ? "text" : "password"}
           autoComplete="current-password"
-          placeholder="Sua senha"
+          placeholder="Digite a sua senha"
           inputRef={passwordRef}
           error={fieldErrors.password}
         />
-        <button
-          type="button"
-          onClick={() => setShowPassword((v) => !v)}
-          aria-pressed={showPassword}
-          className="mt-1 inline-flex min-h-11 items-center rounded-full px-1 text-sub font-semibold text-ink underline underline-offset-2"
-        >
-          {showPassword ? "Ocultar a senha" : "Mostrar a senha"}
-        </button>
+        {/* No Figma, "Esqueceu sua senha?" fica neste lugar. Ainda nao existe recuperacao de senha na API
+            (docs/auth.md), entao o espaco serve ao botao de mostrar/ocultar. */}
+        <div className="mt-1 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-pressed={showPassword}
+            className="inline-flex min-h-11 items-center rounded-full px-1 text-sub font-semibold text-brand-800 hover:underline"
+          >
+            {showPassword ? "Ocultar a senha" : "Mostrar a senha"}
+          </button>
+        </div>
       </div>
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">

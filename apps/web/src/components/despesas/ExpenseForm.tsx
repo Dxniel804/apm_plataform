@@ -2,14 +2,13 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/TextField";
+import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import type { ExpenseCategory, ExpenseDetail, PaidBy, PaymentMethod } from "@/lib/api/types";
 import { describeExpenseError } from "@/lib/expense-labels";
 import { PAYMENT_METHOD_LABELS } from "@/lib/expense-labels";
 import { centsFromDigits, formatBRLNumber } from "@/lib/money";
 
-const selectClass = "block w-full min-h-[52px] rounded-[14px] border border-field-border bg-field px-4 text-body text-ink";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const SCHOOL_TZ = "America/Sao_Paulo";
 
@@ -133,9 +132,9 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
       onSubmit={submitting}
       aria-labelledby="expense-form-title"
       aria-busy={pending !== null}
-      className="mb-8 space-y-4 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6"
+      className="mb-8 space-y-5 rounded-[var(--r-lg)] border border-line p-5 sm:p-7"
     >
-      <h2 id="expense-form-title" className="text-heading text-ink">
+      <h2 id="expense-form-title" className="text-heading">
         {editing ? `Editar despesa nº ${expense!.referenceCode}` : "Nova despesa"}
       </h2>
       <p className="max-w-[60ch] text-sub text-ink-2">
@@ -172,19 +171,19 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
         />
       </div>
 
-      <div>
-        <label htmlFor="expense-category" className="mb-1.5 block text-sub font-semibold text-ink">
-          Categoria
-        </label>
-        <select id="expense-category" value={categoryId} onChange={(e) => setChosenCategory(e.target.value)} className={selectClass} aria-invalid={errors.category_id ? true : undefined}>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {errors.category_id && <p className="mt-1.5 text-sub font-medium text-bad">{errors.category_id}</p>}
-      </div>
+      <SelectField
+        id="expense-category"
+        label="Categoria"
+        value={categoryId}
+        onChange={(e) => setChosenCategory(e.target.value)}
+        error={errors.category_id || undefined}
+      >
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </SelectField>
 
       <TextField
         label="Descrição"
@@ -214,29 +213,29 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="expense-method" className="mb-1.5 block text-sub font-semibold text-ink">
-            Forma de pagamento
-          </label>
-          <select id="expense-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | "")} className={selectClass}>
-            <option value="">Escolha…</option>
-            {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
-              <option key={m} value={m}>
-                {PAYMENT_METHOD_LABELS[m]}
-              </option>
-            ))}
-          </select>
-          {errors.payment_method && <p className="mt-1.5 text-sub font-medium text-bad">{errors.payment_method}</p>}
-        </div>
+        <SelectField
+          id="expense-method"
+          label="Forma de pagamento"
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | "")}
+          error={errors.payment_method || undefined}
+        >
+          <option value="">Escolha…</option>
+          {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+            <option key={m} value={m}>
+              {PAYMENT_METHOD_LABELS[m]}
+            </option>
+          ))}
+        </SelectField>
         {!editing && (
           <fieldset>
-            <legend className="mb-1.5 block text-sub font-semibold text-ink">Quem pagou</legend>
+            <legend className="mb-2 block text-sub font-bold text-brand-800">Quem pagou</legend>
             <label className="flex min-h-11 items-center gap-2 text-body text-ink">
-              <input type="radio" name="expense-paid-by" checked={paidBy === "COLLABORATOR"} onChange={() => setPaidBy("COLLABORATOR")} />
+              <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "COLLABORATOR"} onChange={() => setPaidBy("COLLABORATOR")} />
               Eu paguei do meu bolso (reembolso)
             </label>
             <label className="flex min-h-11 items-center gap-2 text-body text-ink">
-              <input type="radio" name="expense-paid-by" checked={paidBy === "APM"} onChange={() => setPaidBy("APM")} />
+              <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "APM"} onChange={() => setPaidBy("APM")} />
               Foi paga pela APM
             </label>
           </fieldset>
@@ -244,7 +243,7 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
       </div>
 
       <div>
-        <label htmlFor="expense-file" className="mb-1.5 block text-sub font-semibold text-ink">
+        <label htmlFor="expense-file" className="mb-2 block text-sub font-bold text-brand-800">
           Nota ou recibo (PNG, JPEG, WebP ou PDF, até 10 MB)
         </label>
         <input
@@ -253,7 +252,7 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
           type="file"
           accept="image/png,image/jpeg,image/webp,application/pdf"
           onChange={() => setErrors((p) => ({ ...p, file: "" }))}
-          className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-[12px] file:border-0 file:bg-neutral-soft file:px-4 file:font-semibold file:text-ink"
+          className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-full file:border-0 file:bg-info-soft file:px-5 file:font-semibold file:text-brand-800"
         />
         {errors.file && <p role="alert" className="mt-1.5 text-sub font-medium text-bad">{errors.file}</p>}
       </div>
@@ -267,13 +266,13 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" variant="secondary" disabled={pending !== null} aria-busy={pending === "draft"}>
+        <Button type="submit" variant="secondary" disabled={pending !== null} aria-busy={pending === "draft"} className="rounded-full!">
           {pending === "draft" ? "Salvando…" : "Salvar rascunho"}
         </Button>
-        <Button onClick={() => void save(true)} disabled={pending !== null} aria-busy={pending === "send"}>
+        <Button onClick={() => void save(true)} disabled={pending !== null} aria-busy={pending === "send"} className="rounded-full!">
           {pending === "send" ? "Enviando…" : "Salvar e enviar para análise"}
         </Button>
-        <Button variant="plain" onClick={onCancel} disabled={pending !== null}>
+        <Button variant="plain" onClick={onCancel} disabled={pending !== null} className="rounded-full!">
           Fechar
         </Button>
       </div>

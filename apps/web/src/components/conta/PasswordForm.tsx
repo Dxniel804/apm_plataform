@@ -79,9 +79,9 @@ export function PasswordForm() {
       onSubmit={submit}
       aria-labelledby="password-title"
       aria-busy={pending}
-      className="max-w-lg space-y-4 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6"
+      className="max-w-lg space-y-5"
     >
-      <h2 id="password-title" className="text-heading text-ink">
+      <h2 id="password-title" className="text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] font-semibold leading-tight">
         Alterar senha
       </h2>
       <p className="text-sub text-ink-2">
@@ -104,7 +104,7 @@ export function PasswordForm() {
         {done && <p role="status" className="rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">Senha alterada. As outras sessões foram encerradas.</p>}
       </div>
 
-      <Button type="submit" disabled={pending} aria-busy={pending}>
+      <Button type="submit" disabled={pending} aria-busy={pending} className="w-full sm:w-auto sm:min-w-56">
         {pending ? "Alterando…" : "Alterar senha"}
       </Button>
     </form>

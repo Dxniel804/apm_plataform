@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
+import { CashCoinIcon, ImageIcon } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -43,14 +45,14 @@ function ReasonForm({ label, submit, busy, error, onSubmit, onCancel }: { label:
         setLocal(null);
         onSubmit(text);
       }}
-      className="mt-4 space-y-3 rounded-[var(--r-md)] bg-neutral-soft/60 p-4"
+      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
     >
       <TextField label={label} name="reason" autoComplete="off" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} error={local ?? error ?? undefined} />
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy}>
+        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
           {busy ? "Enviando…" : submit}
         </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy}>
+        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
           Voltar
         </Button>
       </div>
@@ -77,7 +79,7 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
         setLocal(problems);
         if (Object.keys(problems).length === 0) onSubmit({ approvedAmountCents: cents, reason: reason.trim() });
       }}
-      className="mt-4 space-y-3 rounded-[var(--r-md)] bg-neutral-soft/60 p-4"
+      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
     >
       <fieldset>
         <legend className="mb-1 text-sub font-semibold text-ink">Valor a aprovar</legend>
@@ -110,10 +112,10 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
       )}
       {error && <p role="alert" className="text-sub font-medium text-bad">{error}</p>}
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy}>
+        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
           {busy ? "Aprovando…" : partial ? "Aprovar valor menor" : "Aprovar"}
         </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy}>
+        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
           Voltar
         </Button>
       </div>
@@ -134,17 +136,17 @@ function ReimburseForm({ expense, busy, error, onSubmit, onCancel }: { expense: 
         setLocal(null);
         onSubmit(ref.trim());
       }}
-      className="mt-4 space-y-3 rounded-[var(--r-md)] bg-neutral-soft/60 p-4"
+      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
     >
       <p className="text-sub text-ink-2">
         Registre o reembolso de <strong className="tabular-nums text-ink">{formatBRL(expense.approvedAmountCents ?? expense.amountCents)}</strong> que a APM já pagou no banco. O site não move dinheiro.
       </p>
       <TextField label="Referência do pagamento" name="payment-reference" autoComplete="off" maxLength={200} value={ref} onChange={(e) => setRef(e.target.value)} error={local ?? error ?? undefined} />
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy}>
+        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
           {busy ? "Registrando…" : "Registrar reembolso"}
         </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy}>
+        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
           Voltar
         </Button>
       </div>
@@ -244,15 +246,19 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
     else setVersion((n) => n + 1);
   }
 
-  const row = (label: string, value: React.ReactNode) => (
-    <div className="flex flex-wrap gap-x-2">
-      <dt className="text-ink-2">{label}:</dt>
-      <dd className="font-medium text-ink [overflow-wrap:anywhere]">{value}</dd>
+  const fact = (label: string, value: React.ReactNode, big = false) => (
+    <div className="min-w-0">
+      <dt className={big ? "text-[1.0625rem] text-ink-2 sm:text-[1.25rem]" : "text-sub text-ink-2"}>{label}:</dt>
+      <dd
+        className={`mt-0.5 font-bold text-brand-800 [overflow-wrap:anywhere] ${big ? "text-[1.5rem] sm:text-[2rem]" : "text-[1.0625rem] sm:text-[1.25rem]"}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 
   return (
-    <div className="border-t border-line bg-bg/40 px-4 py-4 sm:px-5" data-testid="expense-detail">
+    <div className="border-t border-line px-5 py-6 sm:px-8 sm:py-8" data-testid="expense-detail">
       {mode === "edit" ? (
         <ExpenseForm
           schoolId={schoolId}
@@ -268,20 +274,40 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
         />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <StatusPill tone={status.tone}>{status.label}</StatusPill>
             <span className="text-foot text-ink-2">nº {d.referenceCode}</span>
           </div>
-          <dl className="mt-3 space-y-1 text-sub">
-            {row("Valor", amountSummary(d.amountCents, d.approvedAmountCents))}
-            {row("Data", formatDateShort(d.occurredAt))}
-            {row("Categoria", d.category.name)}
-            {row("Pagamento", PAID_BY_LABELS[d.paidBy])}
-            {d.paymentMethod && row("Forma", PAYMENT_METHOD_LABELS[d.paymentMethod])}
-            {d.vendor && row("Fornecedor", d.vendor)}
-            {d.purchaseReason && row("Motivo da compra", d.purchaseReason)}
-            {own && row("Enviada por", "você")}
+
+          <dl className="mt-5 grid gap-5 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-line [&>div]:sm:px-8 [&>div:first-child]:sm:pl-0">
+            {fact("Valor", amountSummary(d.amountCents, d.approvedAmountCents), true)}
+            {fact("Data", <span className="text-ink">{formatDateShort(d.occurredAt)}</span>, true)}
           </dl>
+          <hr className="my-6 border-line" />
+          <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+            {d.paymentMethod && fact("Forma", PAYMENT_METHOD_LABELS[d.paymentMethod])}
+            {fact("Categoria", d.category.name)}
+            {d.vendor && fact("Fornecedor", d.vendor)}
+            {d.purchaseReason && fact("Motivo da compra", d.purchaseReason)}
+            {own && fact("Enviada por", "você")}
+          </dl>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[1.25rem] border border-field-border bg-white px-5 py-4">
+            <div className="flex items-center gap-4">
+              <span aria-hidden="true" className="text-ink-2">
+                <CashCoinIcon size={30} />
+              </span>
+              <div>
+                <p className="text-sub text-ink-2">Pagamento:</p>
+                <p className="text-[1.0625rem] font-bold text-brand-800 sm:text-[1.25rem]">{PAID_BY_LABELS[d.paidBy]}</p>
+              </div>
+            </div>
+            {d.paidBy === "COLLABORATOR" && (
+              <p className="text-[1.0625rem] font-semibold text-ink-2">
+                Reembolso de <Amount cents={d.approvedAmountCents ?? d.amountCents} className="text-brand-800" symbolClassName="text-brand-800" />
+              </p>
+            )}
+          </div>
 
           {d.status === "CORRECTION_REQUESTED" && d.correctionReason && (
             <p role="note" className="mt-4 rounded-[var(--r-md)] bg-warn-soft px-4 py-3 text-sub text-warn">
@@ -300,19 +326,29 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             </p>
           )}
 
-          <h3 className="mt-4 text-headline text-ink">Anexos</h3>
+          <h3 className="mt-6 text-headline">Anexos</h3>
           {d.attachments.length === 0 ? (
-            <p className="text-sub text-ink-2">Nenhum arquivo anexado ainda.</p>
+            <p className="mt-1 text-sub text-ink-2">Nenhum arquivo anexado ainda.</p>
           ) : (
-            <ul className="mt-1 divide-y divide-line">
+            <ul className="mt-3 flex flex-wrap gap-3">
               {d.attachments.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span className="min-w-0 text-sub text-ink [overflow-wrap:anywhere]">
-                    {a.fileName} <span className="text-ink-2">· {ATTACHMENT_KIND_LABELS[a.kind]} · {formatFileSize(a.sizeBytes)}</span>
-                  </span>
-                  <Button variant="secondary" size="md" onClick={() => void download(a.id, a.fileName)} aria-label={`Baixar ${a.fileName}`}>
-                    Baixar
-                  </Button>
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    onClick={() => void download(a.id, a.fileName)}
+                    aria-label={`Baixar ${a.fileName}`}
+                    className="flex min-h-14 items-center gap-3 rounded-[1rem] border border-line bg-white px-3.5 py-2 text-left hover:bg-info-soft"
+                  >
+                    <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-lg bg-info-soft text-brand-800">
+                      <ImageIcon size={18} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block max-w-56 truncate text-sub font-semibold text-ink">{a.fileName}</span>
+                      <span className="block text-foot text-ink-2">
+                        {ATTACHMENT_KIND_LABELS[a.kind]} · {formatFileSize(a.sizeBytes)} · Ver anexo
+                      </span>
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -320,7 +356,7 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
 
           {canEditOwn && (
             <div className="mt-3">
-              <label htmlFor={`attach-${d.id}`} className="mb-1 block text-sub font-semibold text-ink">
+              <label htmlFor={`attach-${d.id}`} className="mb-1.5 block text-sub font-bold text-brand-800">
                 {d.attachments.length > 0 ? "Anexar outro arquivo (para trocar a nota, anexe a nova)" : "Anexar a nota ou o recibo"}
               </label>
               <input
@@ -332,19 +368,19 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
                   void attach(e.target.files?.[0]);
                   e.target.value = "";
                 }}
-                className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-[12px] file:border-0 file:bg-neutral-soft file:px-4 file:font-semibold file:text-ink"
+                className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-full file:border-0 file:bg-info-soft file:px-5 file:font-semibold file:text-brand-800"
               />
               {fileError && <p role="alert" className="mt-1.5 text-sub font-medium text-bad">{fileError}</p>}
             </div>
           )}
 
           {ownNotice && (
-            <p role="note" className="mt-4 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-info">
+            <p role="note" className="mt-4 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
               Esta despesa é sua: outra pessoa da gestão precisa {d.status === "SUBMITTED" ? "decidir" : "registrar o pagamento ou o reembolso"}.
             </p>
           )}
           {d.status === "SUBMITTED" && own && !has("expenses:approve") && (
-            <p role="note" className="mt-4 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-info">
+            <p role="note" className="mt-4 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
               Enviada: aguardando a decisão da gestão.
             </p>
           )}
@@ -354,37 +390,37 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
           </div>
 
           {mode === null && (
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               {canEditOwn && (
                 <>
-                  <Button size="md" variant="secondary" onClick={() => setMode("edit")}>
+                  <Button size="md" variant="secondary" className="min-h-12 rounded-full! px-7" onClick={() => setMode("edit")}>
                     Editar
                   </Button>
-                  <Button size="md" onClick={() => void run("submit", () => api.expenses.submit(schoolId, d.id), "Despesa enviada para a análise da gestão.")} disabled={busy !== null} aria-busy={busy === "submit"}>
+                  <Button size="md" className="min-h-12 rounded-full! px-7" onClick={() => void run("submit", () => api.expenses.submit(schoolId, d.id), "Despesa enviada para a análise da gestão.")} disabled={busy !== null} aria-busy={busy === "submit"}>
                     {busy === "submit" ? "Enviando…" : "Enviar para análise"}
                   </Button>
-                  <Button size="md" variant="plain" onClick={() => void run("cancel", () => api.expenses.cancel(schoolId, d.id), "Despesa cancelada.")} disabled={busy !== null}>
+                  <Button size="md" variant="plain" className="min-h-12 rounded-full! px-7" onClick={() => void run("cancel", () => api.expenses.cancel(schoolId, d.id), "Despesa cancelada.")} disabled={busy !== null}>
                     Cancelar despesa
                   </Button>
                 </>
               )}
               {canDecide && (
                 <>
-                  <Button size="md" onClick={() => setMode("approve")}>Aprovar</Button>
-                  <Button size="md" variant="secondary" onClick={() => setMode("correct")}>Pedir correção</Button>
-                  <Button size="md" variant="secondary" onClick={() => setMode("reject")}>Recusar</Button>
+                  <Button size="md" className="min-h-12 rounded-full! px-7" onClick={() => setMode("approve")}>Aprovar</Button>
+                  <Button size="md" variant="secondary" className="min-h-12 rounded-full! px-7" onClick={() => setMode("correct")}>Pedir correção</Button>
+                  <Button size="md" variant="secondary" className="min-h-12 rounded-full! px-7" onClick={() => setMode("reject")}>Recusar</Button>
                 </>
               )}
               {canRegister && d.paidBy === "COLLABORATOR" && (
-                <Button size="md" onClick={() => setMode("reimburse")}>Registrar reembolso</Button>
+                <Button size="md" className="min-h-12 rounded-full! px-7" onClick={() => setMode("reimburse")}>Registrar reembolso</Button>
               )}
               {canRegister && d.paidBy === "APM" && (
-                <Button size="md" onClick={() => void run("pay", () => api.expenses.pay(schoolId, d.id), "Pagamento registrado.")} disabled={busy !== null} aria-busy={busy === "pay"}>
+                <Button size="md" className="min-h-12 rounded-full! px-7" onClick={() => void run("pay", () => api.expenses.pay(schoolId, d.id), "Pagamento registrado.")} disabled={busy !== null} aria-busy={busy === "pay"}>
                   {busy === "pay" ? "Registrando…" : "Registrar pagamento"}
                 </Button>
               )}
               {canCancelApproved && (
-                <Button size="md" variant="plain" onClick={() => void run("cancel", () => api.expenses.cancel(schoolId, d.id), "Despesa cancelada.")} disabled={busy !== null}>
+                <Button size="md" variant="plain" className="min-h-12 rounded-full! px-7" onClick={() => void run("cancel", () => api.expenses.cancel(schoolId, d.id), "Despesa cancelada.")} disabled={busy !== null}>
                   Cancelar despesa
                 </Button>
               )}

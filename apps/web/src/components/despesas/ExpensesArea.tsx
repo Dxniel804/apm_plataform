@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { chipClass } from "@/components/ui/Button";
 import { areaHref, areasFor } from "@/lib/permissions";
 import { ExpensesBoard } from "./ExpensesBoard";
 
@@ -29,14 +30,18 @@ export function ExpensesArea({ schoolId, userId, permissions, tab }: Props) {
   const scope = both ? (tab === "minhas" ? "mine" : "queue") : areas.manageExpenses ? "queue" : "mine";
   return (
     <div>
+      {/* O Figma repete o titulo da pagina dentro do painel; para leitor de tela ele ja e o h1 do cabecalho. */}
+      <p aria-hidden="true" className="mb-6 text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] font-semibold leading-tight text-brand-800">
+        {scope === "mine" ? "Minhas despesas" : "Despesas"}
+      </p>
       {both && (
-        <nav aria-label="Despesas" className="mb-5 flex gap-2">
+        <nav aria-label="Despesas" className="mb-6 flex flex-wrap gap-2.5">
           {([["fila", "Fila de análise", areaHref("despesas")], ["minhas", "Minhas despesas", areaHref("despesas", { tab: "minhas" })]] as const).map(([id, label, href]) => (
             <Link
               key={id}
               href={href}
               aria-current={(tab === "minhas" ? "minhas" : "fila") === id ? "page" : undefined}
-              className={`inline-flex min-h-11 items-center rounded-full px-4 text-sub font-semibold ${(tab === "minhas" ? "minhas" : "fila") === id ? "bg-ink text-bg" : "bg-neutral-soft text-ink"}`}
+              className={chipClass((tab === "minhas" ? "minhas" : "fila") === id)}
             >
               {label}
             </Link>

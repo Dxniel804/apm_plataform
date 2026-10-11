@@ -24,7 +24,8 @@ function setup(expense: ExpenseDetail, userId: string, permissions: string[]) {
   return { onChanged, user: userEvent.setup() };
 }
 
-const buttons = () => screen.getAllByRole("button").map((b) => b.textContent);
+// O anexo agora e um "chip" com nome de arquivo e legenda: o que importa aqui e o nome acessivel do botao.
+const buttons = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent);
 
 beforeEach(() => saveBlob.mockReset());
 afterEach(() => vi.restoreAllMocks());
@@ -48,7 +49,7 @@ describe("professora (autora)", () => {
   it("enviada: sem acoes (so aguarda a gestao); aprovada, paga e recusada: so leitura", async () => {
     setup(detail({ status: "SUBMITTED" }), AUTHOR_ID, STAFF);
     expect(await screen.findByText(/aguardando a decisão da gestão/)).toBeInTheDocument();
-    expect(buttons()).toEqual(["Baixar"]);
+    expect(buttons()).toEqual(["Baixar nota.pdf"]);
     expect(screen.queryByLabelText(/Anexar/)).not.toBeInTheDocument();
   });
 
@@ -222,7 +223,7 @@ describe("gestao (tesoureira)", () => {
   it("sem a permissao de registrar pagamento, a aprovada nao oferece nada", async () => {
     setup(detail({ status: "APPROVED" }), MANAGER_ID, ["statement:read", "expenses:read_all"]);
     await screen.findByText("Reembolso pendente");
-    expect(buttons()).toEqual(["Baixar"]);
+    expect(buttons()).toEqual(["Baixar nota.pdf"]);
   });
 });
 

@@ -43,7 +43,7 @@ export function MembershipList({ memberships, activeId, disabled = false, onSele
                     onClick={() => {
                       if (!selected) onSelect(membership.membershipId);
                     }}
-                    className="flex min-h-12 w-full items-center gap-3 rounded-[12px] px-3 py-2 text-left hover:bg-neutral-soft disabled:opacity-60"
+                    className="flex min-h-12 w-full items-center gap-3 rounded-[1rem] px-3 py-2 text-left hover:bg-info-soft disabled:opacity-60"
                   >
                     <SchoolMonogram name={membershipTitle(membership)} size={32} />
                     <span className="min-w-0 flex-1">
@@ -52,7 +52,7 @@ export function MembershipList({ memberships, activeId, disabled = false, onSele
                       </span>
                       <span className="block truncate text-foot text-ink-2">{ROLE_LABELS[membership.role]}</span>
                     </span>
-                    {selected && <CheckIcon size={18} className="shrink-0 text-ink" strokeWidth={2.4} />}
+                    {selected && <CheckIcon size={18} className="shrink-0 text-brand-800" strokeWidth={2.4} />}
                   </button>
                 </li>
               );

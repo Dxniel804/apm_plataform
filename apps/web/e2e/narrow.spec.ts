@@ -44,7 +44,7 @@ async function overflow(page: Page) {
   });
 }
 
-// Precisa da API real (o servidor busca a escola e o POST cria a contribuicao): E2E_BASE_URL=http://127.0.0.1:3101.
+// Precisa da API real (o servidor busca a escola e o POST cria a contribuicao): E2E_BASE_URL=http://127.0.0.1:3102.
 async function reachPix(page: Page) {
   await page.goto("/escola/demo-aurora");
   await page.getByRole("radio", { name: /20,00/ }).check({ force: true });
@@ -78,31 +78,42 @@ for (const width of [320, 360]) {
       }
     });
 
-    test("barra de abas do painel: nenhum rotulo truncado", async ({ page }) => {
+    test("menu do painel (gaveta): abre, nenhum rotulo truncado e Esc fecha", async ({ page }) => {
       test.skip(!demoPassword(), "sem E2E_DEMO_PASSWORD_FILE/E2E_DEMO_PASSWORD");
       await loginAs(page);
-      const labels = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>("nav[aria-label='Seções do painel'] a > span:last-child")].map((el) => ({
-          text: el.textContent,
-          truncated: el.scrollWidth > el.clientWidth + 0.5 || getComputedStyle(el).textOverflow === "ellipsis",
-          fits: el.getBoundingClientRect().right <= document.documentElement.clientWidth,
-        })),
+      await page.getByRole("button", { name: "Abrir o menu" }).click();
+      const drawer = page.getByRole("dialog", { name: "Menu do painel" });
+      await expect(drawer).toBeVisible();
+      const labels = await drawer.evaluate((root) =>
+        [...root.querySelectorAll<HTMLElement>("nav[aria-label='Seções do painel'] a span, nav[aria-label='Seções do painel'] button span")]
+          .filter((el) => el.children.length === 0 && (el.textContent ?? "").trim() !== "")
+          .map((el) => ({
+            text: el.textContent,
+            // "truncate" sempre poe reticencias no CSS; o que importa e o texto realmente cortado
+            truncated: el.scrollWidth > el.clientWidth + 0.5,
+            fits: el.getBoundingClientRect().right <= document.documentElement.clientWidth,
+          })),
       );
-      // tesoureira: Resumo, Despesas (fila) e Fechamento; os lancamentos por tipo ficam dentro do Resumo
-      expect(labels.map((l) => l.text)).toEqual(["Resumo", "Despesas", "Fechamento"]);
+      // tesoureira: Dashboard, Lancamento do mes (com os 4 tipos), Despesas e Fechamento
+      const names = labels.map((l) => l.text);
+      expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamento do mês", "Despesas", "Fechamento"]));
       for (const label of labels) {
         expect(label.truncated, `${label.text} truncado`).toBe(false);
         expect(label.fits, `${label.text} fora da tela`).toBe(true);
       }
+      await page.keyboard.press("Escape");
+      await expect(drawer).toHaveCount(0);
     });
 
     test("cartao 'Saldo em caixa' do painel cabe e o numero nao e cortado", async ({ page }) => {
       test.skip(!demoPassword(), "sem E2E_DEMO_PASSWORD_FILE/E2E_DEMO_PASSWORD");
       await loginAs(page);
-      await expect(page.getByText(/Saldo em caixa em/)).toBeVisible();
+      await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
       const fit = await page.evaluate(() => {
-        const card = document.querySelector("#indicators-title")!.closest("section")!;
-        const number = [...card.querySelectorAll("p")].find((p) => /^R\$\s?[\d.]+,\d{2}$/.test((p.textContent ?? "").trim()))!;
+        const title = document.querySelector("#indicators-title")!;
+        const card = title.closest("section")!;
+        // o <p> logo depois do titulo e o valor (a versao falada fica fora da tela, a visual e o que se mede)
+        const number = title.nextElementSibling!.querySelector<HTMLElement>("[aria-hidden='true']")!;
         return { numberRight: number.getBoundingClientRect().right, cardRight: card.getBoundingClientRect().right, scroll: number.scrollWidth - number.clientWidth, vw: document.documentElement.clientWidth };
       });
       expect(fit.scroll).toBeLessThanOrEqual(0);
@@ -111,7 +122,7 @@ for (const width of [320, 360]) {
     });
 
     test("QR e payload do Pix cabem na tela: sem rolagem horizontal e sem linhas escondidas na caixa do codigo", async ({ page }) => {
-      test.skip(!apiAcceptsThisOrigin(), "precisa da API real (E2E_BASE_URL=http://127.0.0.1:3101)");
+      test.skip(!apiAcceptsThisOrigin(), "precisa da API real (E2E_BASE_URL=http://127.0.0.1:3102)");
       await reachPix(page);
       const result = await page.evaluate(() => {
         const textarea = document.querySelector<HTMLTextAreaElement>("#pix-code")!;
@@ -190,7 +201,10 @@ test.describe("cabecalho da entrada nao pula com a API verificando, no ar, fora 
   }
 });
 
-test.describe("N4: barra superior translucida", () => {
+test.describe("N4: barra de navegacao fixa nunca fica transparente", () => {
+  // O redesenho (Figma) usa barras solidas: o menu lateral e o cabecalho do painel sao opacos. Ainda assim a regra vale
+  // para QUALQUER cabecalho, menu ou lateral fixo (sticky/fixed): alpha de base >= 0,9, para o texto que passa por
+  // baixo nao colidir. O site e claro de proposito: o esquema escuro do sistema nao muda isso.
   for (const scheme of ["light", "dark"] as const) {
     test(`alpha de base >= 0,9 (${scheme}) no portal da escola e no painel`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
@@ -202,14 +216,15 @@ test.describe("N4: barra superior translucida", () => {
       for (const route of routes) {
         await page.goto(route);
         const alphas = await page.evaluate(() =>
-          // barras de navegacao (topo, abas, lateral); a barra de acoes do formulario e transparente no desktop de proposito
-          [...document.querySelectorAll("header.bar-material, nav.bar-material, aside.bar-material")].map((el) => {
-            const m = /rgba?\(([^)]+)\)/.exec(getComputedStyle(el).backgroundColor);
-            const parts = m![1]!.split(/[,\s/]+/).filter(Boolean);
-            return parts.length >= 4 ? parseFloat(parts[3]!) : 1;
-          }),
+          [...document.querySelectorAll("header, nav, aside")]
+            .filter((el) => ["sticky", "fixed"].includes(getComputedStyle(el).position))
+            .map((el) => {
+              const m = /rgba?\(([^)]+)\)/.exec(getComputedStyle(el).backgroundColor);
+              const parts = m![1]!.split(/[,\s/]+/).filter(Boolean);
+              return parts.length >= 4 ? parseFloat(parts[3]!) : 1;
+            }),
         );
-        expect(alphas.length, route).toBeGreaterThan(0);
+        if (route === "/painel") expect(alphas.length, `${route}: o painel tem uma barra fixa (menu lateral ou cabecalho)`).toBeGreaterThan(0);
         for (const alpha of alphas) expect(alpha, `${route} ${scheme}`).toBeGreaterThanOrEqual(0.9);
       }
     });

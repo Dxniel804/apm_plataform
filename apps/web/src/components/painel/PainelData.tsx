@@ -1,8 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { useEffect, useState, type ReactNode } from "react";
+import { Amount } from "@/components/ui/Amount";
+import { Button, buttonClass } from "@/components/ui/Button";
+import { ChevronDownThinIcon, ClockHistoryIcon, DownloadIcon, PencilSquareIcon, XLgIcon } from "@/components/ui/icons";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import { contributionsPdfHref } from "@/lib/api/statement";
 import type { ApiError, ApiResult, Page, PendingEntry, StatementEntry, StatementSummary } from "@/lib/api/types";
@@ -34,7 +38,7 @@ function Skeleton({ label }: { label: string }) {
   return (
     <div role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>
-      <div aria-hidden="true" className="rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)]">
+      <div aria-hidden="true" className="rounded-[var(--r-lg)] border border-line p-6">
         <div className="skeleton h-4 w-40" />
         <div className="skeleton mt-4 h-12 w-64 max-w-full" />
         <div className="skeleton mt-8 h-16 w-full" />
@@ -47,7 +51,7 @@ function Notice({ tone, children }: { tone: "info" | "bad"; children: React.Reac
   return (
     <p
       role={tone === "bad" ? "alert" : "note"}
-      className={`rounded-[var(--r-md)] px-4 py-3 text-sub ${tone === "bad" ? "bg-bad-soft font-medium text-bad" : "bg-info-soft text-info"}`}
+      className={`rounded-[var(--r-md)] px-4 py-3 text-sub ${tone === "bad" ? "bg-bad-soft font-medium text-bad" : "bg-info-soft text-brand-800"}`}
     >
       {children}
     </p>
@@ -56,8 +60,8 @@ function Notice({ tone, children }: { tone: "info" | "bad"; children: React.Reac
 
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[var(--r-lg)] bg-surface px-6 py-12 text-center shadow-[0_0_0_1px_var(--line)]">
-      <h2 className="text-heading text-ink">{title}</h2>
+    <div className="rounded-[var(--r-lg)] border border-line px-6 py-12 text-center">
+      <h2 className="text-heading">{title}</h2>
       <p className="mx-auto mt-2 max-w-[44ch] text-body text-ink-2">{text}</p>
     </div>
   );
@@ -151,41 +155,56 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
   const effectivePeriod = summary.state === "ready" ? summary.data.period : (period ?? null);
   const periods = effectivePeriod ? Array.from(new Set([...recentPeriods(latest, 12), effectivePeriod])).sort().reverse() : [];
 
+  const divider = <span aria-hidden="true" className="hidden h-16 w-px self-center bg-line lg:block" />;
   const toolbar = (
-    <div className="mb-6 flex flex-wrap items-end gap-x-4 gap-y-3">
+    <div className="mb-7 flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-8 sm:gap-y-5">
       {effectivePeriod && (
         <div>
-          <label htmlFor="period-select" className="mb-1 block text-foot font-semibold text-ink-2">
+          <label htmlFor="period-select" className="mb-2 block text-[1.0625rem] font-light text-ink sm:text-[1.25rem]">
             Mês
           </label>
-          <select
-            id="period-select"
-            value={effectivePeriod}
-            onChange={(e) => onPeriodChange(e.target.value)}
-            className="min-h-11 rounded-[12px] border border-field-border bg-field px-3 text-body text-ink"
-          >
-            {periods.map((p) => (
-              <option key={p} value={p}>
-                {periodLabel(p)}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="period-select"
+              value={effectivePeriod}
+              onChange={(e) => onPeriodChange(e.target.value)}
+              className={buttonClass("chip", "md", "min-h-12 w-full cursor-pointer appearance-none justify-start pl-6 pr-12 font-medium sm:w-64")}
+            >
+              {periods.map((p) => (
+                <option key={p} value={p} className="bg-white text-ink">
+                  {periodLabel(p)}
+                </option>
+              ))}
+            </select>
+            <ChevronDownThinIcon size={18} className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-white" />
+          </div>
         </div>
       )}
       {canRecordCash && (
-        <Button variant="secondary" size="md" aria-expanded={cashOpen} onClick={() => setCashOpen((v) => !v)}>
-          Registrar contribuição em dinheiro
-        </Button>
+        <>
+          {divider}
+          <div>
+            <p className="mb-2 text-[1.0625rem] font-light text-ink sm:text-[1.25rem]">Contribuição</p>
+            <Button variant="chip" size="md" aria-haspopup="dialog" onClick={() => setCashOpen(true)} className="min-h-12 w-full px-7 font-medium sm:w-auto">
+              Contribuição em dinheiro
+            </Button>
+          </div>
+        </>
       )}
       {canReadReports && summary.state === "ready" && (
-        // Navegacao comum (o navegador baixa o PDF com o cookie de sessao); sem fetch nem blob.
-        <a
-          href={contributionsPdfHref(schoolId, summary.data.period)}
-          download
-          className="inline-flex min-h-11 items-center rounded-[14px] px-3 text-sub font-semibold text-accent-ink underline underline-offset-2 hover:bg-neutral-soft"
-        >
-          Baixar PDF das contribuições do mês
-        </a>
+        <>
+          {divider}
+          {/* Navegacao comum (o navegador baixa o PDF com o cookie de sessao); sem fetch nem blob. */}
+          <a
+            href={contributionsPdfHref(schoolId, summary.data.period)}
+            download
+            className={buttonClass("chip", "md", "min-h-12 px-7 font-medium sm:ml-auto")}
+          >
+            Baixar PDF{" "}
+            <span className="sr-only">das contribuições do mês</span>
+            <DownloadIcon size={16} />
+          </a>
+        </>
       )}
     </div>
   );
@@ -194,13 +213,13 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
     <div>
       {toolbar}
 
-      {canRecordCash && cashOpen && (
+      <Modal open={canRecordCash && cashOpen} onClose={() => setCashOpen(false)} label="Registrar contribuição em dinheiro">
         <CashContributionForm
           schoolId={schoolId}
           onRecorded={() => setReload((n) => n + 1)}
           onClose={() => setCashOpen(false)}
         />
-      )}
+      </Modal>
 
       {section === "resumo" && (
         <div className="space-y-8">
@@ -215,22 +234,6 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
             </Notice>
           )}
 
-          {canReadStatement && (
-            <nav aria-label="Lançamentos do mês">
-              <h2 className="text-heading text-ink">Lançamentos do mês</h2>
-              <p className="mb-3 mt-1 max-w-[60ch] text-body text-ink-2">O extrato do caixa, um tipo de cada vez.</p>
-              <ul className="flex flex-wrap gap-2">
-                {(["CONTRIBUTION", "EXPENSE", "REIMBURSEMENT", "REFUND"] as const).map((k) => (
-                  <li key={k}>
-                    <Link href={sectionHref(k, period)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-neutral-soft px-4 text-sub font-semibold text-ink hover:brightness-[0.97]">
-                      {KIND_META[k].plural}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          )}
-
           {canReadStatement && <PendingBlock pending={pending} />}
         </div>
       )}
@@ -241,8 +244,8 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
             {KIND_META[kind].plural}
             {effectivePeriod ? ` de ${periodLabel(effectivePeriod)}` : ""}
           </h2>
-          <Link href={sectionHref("resumo", period)} className="mb-3 inline-flex min-h-11 items-center text-sub font-semibold text-accent-ink underline underline-offset-2">
-            Voltar ao resumo
+          <Link href={sectionHref("resumo", period)} className="mb-3 inline-flex min-h-11 items-center text-sub font-semibold text-brand-800 underline underline-offset-2">
+            Voltar ao dashboard
           </Link>
           <p className="mb-4 max-w-[60ch] text-body text-ink-2">{KIND_META[kind].definition}</p>
           {!canReadStatement && <Notice tone="info">O seu perfil não vê os lançamentos desta escola.</Notice>}
@@ -278,42 +281,105 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
   );
 }
 
+/** Ilustracao de cada tipo de pendencia (Figma); sem ilustracao, um icone no mesmo molde. */
+const PENDING_MEDIA: Record<string, ReactNode> = {
+  PAYABLE: <Image src="/brand/3d-cash.webp" alt="" width={256} height={197} className="h-auto w-12" />,
+  AWAITING_APPROVAL: <Image src="/brand/3d-check.webp" alt="" width={256} height={261} className="h-auto w-12" />,
+  AWAITING_CORRECTION: (
+    <span className="grid size-12 place-items-center rounded-full bg-warn-soft text-warn">
+      <PencilSquareIcon size={22} />
+    </span>
+  ),
+  REVIEW: <Image src="/brand/3d-analysis.webp" alt="" width={256} height={256} className="h-auto w-12" />,
+  RECEIVABLE: (
+    <span className="grid size-12 place-items-center rounded-full bg-info-soft text-brand-800">
+      <ClockHistoryIcon size={22} />
+    </span>
+  ),
+};
+
 function PendingBlock({ pending }: { pending: Res<Page<PendingEntry>> }) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
   if (pending.state === "loading") return <Skeleton label="Carregando as pendências…" />;
   if (pending.state === "forbidden") return <Notice tone="info">O seu perfil não vê as pendências desta escola.</Notice>;
   if (pending.state === "error") return <Notice tone="bad">{pending.message}</Notice>;
 
   const items = pending.data.items;
   const known = new Set(PENDING_SECTIONS.map((s) => s.section));
-  const groups = [
-    ...PENDING_SECTIONS.map((s) => ({ ...s, rows: items.filter((e) => e.section === s.section) })),
-    { section: "OTHER", title: pendingSectionTitle("OTHER"), note: "", rows: items.filter((e) => !known.has(e.section)) },
-  ].filter((g) => g.rows.length > 0);
+  // Cartoes do Figma: as 4 primeiras secoes sempre; "A receber" e "Outras" so quando houver. O total de cada cartao e
+  // a soma dos valores (em centavos) das linhas que a API devolveu, so para o resumo; o detalhe abre ao clicar.
+  const cards = [
+    ...PENDING_SECTIONS.map((s, index) => ({ ...s, index, rows: items.filter((e) => e.section === s.section) })),
+    { section: "OTHER", title: pendingSectionTitle("OTHER"), note: "", index: 99, rows: items.filter((e) => !known.has(e.section)) },
+  ].filter((c) => c.index < 4 || c.rows.length > 0);
+  const opened = cards.find((c) => c.section === openSection) ?? null;
 
   return (
-    <section aria-labelledby="pending-title">
-      <h2 id="pending-title" className="text-heading text-ink">
+    <section aria-labelledby="pending-title" className="rounded-[var(--r-lg)] border border-line p-5 sm:p-7">
+      <h2 id="pending-title" className="text-[1.125rem] font-normal tracking-normal text-ink-2 sm:text-[1.375rem]">
         Pendências (fora do saldo)
       </h2>
-      <p className="mb-4 mt-1 max-w-[60ch] text-body text-ink-2">
-        Nada daqui entra no saldo em caixa até ser pago ou confirmado.
-      </p>
-      {groups.length === 0 ? (
-        <EmptyState title="Nenhuma pendência" text="Quando houver algo a pagar, a conferir ou a receber, aparece aqui." />
-      ) : (
-        <div className="space-y-6">
-          {groups.map((group) => (
-            <div key={group.section}>
-              <h3 className="text-headline text-ink">{group.title}</h3>
-              {group.note && <p className="mb-2 text-foot text-ink-2">{group.note}</p>}
-              <PendingRows entries={group.rows} label={group.title} />
-            </div>
-          ))}
-          {pending.data.nextCursor && (
-            <p className="text-foot text-ink-2">Há mais pendências do que as mostradas aqui.</p>
-          )}
-        </div>
+      <p className="mt-0.5 text-foot text-ink-2">Nada daqui entra no saldo em caixa até ser pago ou confirmado.</p>
+
+      <ul className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => {
+          const total = card.rows.reduce((sum, row) => sum + row.amountCents, 0);
+          const count = card.rows.length;
+          return (
+            <li key={card.section}>
+              <button
+                type="button"
+                disabled={count === 0}
+                aria-haspopup="dialog"
+                onClick={() => setOpenSection(card.section)}
+                className="flex w-full items-center gap-3 rounded-[1.25rem] border border-line-strong bg-white p-4 text-left transition-colors enabled:hover:bg-info-soft/50 disabled:cursor-default"
+              >
+                <span aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center">
+                  {PENDING_MEDIA[card.section]}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sub font-light leading-tight text-ink">{card.title}</span>
+                  <span className="mt-0.5 block text-[1.125rem] font-bold leading-tight text-brand-800 sm:text-[1.25rem]">
+                    <Amount cents={total} symbolClassName="text-brand-800" />
+                  </span>
+                  <span className="block text-[0.75rem] text-ink-2">{count === 0 ? "Nenhum item" : count === 1 ? "1 item" : `${count} itens`}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {items.length === 0 && (
+        <p className="mt-5 text-body text-ink-2">
+          <strong className="font-semibold text-ink">Nenhuma pendência</strong>. Quando houver algo a pagar, a conferir ou a receber, aparece aqui.
+        </p>
       )}
+      {pending.data.nextCursor && (
+        <p className="mt-4 text-foot text-ink-2">Há mais pendências do que as mostradas aqui: os totais acima cobrem só as exibidas.</p>
+      )}
+
+      <Modal open={opened !== null} onClose={() => setOpenSection(null)} label={opened?.title ?? "Pendências"}>
+        {opened && (
+          <div className="px-5 pb-8 pt-6 sm:px-10 sm:pb-10 sm:pt-9">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-[clamp(1.5rem,1.1rem+1.2vw,2rem)] font-semibold leading-tight">{opened.title}</h2>
+              <button
+                type="button"
+                onClick={() => setOpenSection(null)}
+                aria-label="Fechar a janela"
+                className="-mr-2 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-info-soft"
+              >
+                <XLgIcon size={22} />
+              </button>
+            </div>
+            {opened.note && <p className="mt-1 max-w-[60ch] text-body text-ink-2">{opened.note}</p>}
+            <div className="mt-6">
+              <PendingRows entries={opened.rows} label={opened.title} />
+            </div>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

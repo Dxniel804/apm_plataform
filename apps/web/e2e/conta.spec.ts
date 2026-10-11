@@ -27,5 +27,5 @@ test("alterar senha: valida no cliente e mostra o erro da API para a senha atual
 
   // a sessao continua valida e a senha continua a mesma: o painel segue abrindo
   await page.goto("/painel");
-  await expect(page.getByText(/Saldo em caixa em/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
 });

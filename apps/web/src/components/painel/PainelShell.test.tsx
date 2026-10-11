@@ -49,7 +49,7 @@ describe("PainelShell com sessao real", () => {
   it("vinculo de escola: o titulo e a escola real e os numeros vem da escola DO VINCULO ATIVO (id da sessao)", () => {
     const s = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "reports:read"] } });
     renderShell(s, { period: "2026-09" });
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Resumo");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Dashboard");
     expect(screen.getAllByText(/Escola Teste/).length).toBeGreaterThan(0);
     expect(screen.getByTestId("data")).toHaveTextContent(`${SCHOOL_MEMBERSHIP.school.id}|resumo|2026-09|statement:read,reports:read`);
   });
@@ -59,28 +59,31 @@ describe("PainelShell com sessao real", () => {
     const staff = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "staff", permissions: ["expenses:read_own", "expenses:submit"] } });
     const { unmount } = renderShell(staff, { area: "despesas" });
     expect(screen.getAllByRole("link", { name: "Minhas despesas" }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("link", { name: "Resumo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Fechamento" })).not.toBeInTheDocument();
     unmount();
 
     const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close"] } });
     const t = renderShell(treasurer);
-    expect(names()).toEqual(expect.arrayContaining(["Resumo", "Despesas", "Fechamento"]));
+    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Fechamento"]));
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
     t.unmount();
 
     const viewer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "viewer", permissions: ["reports:read_aggregate"] } });
     renderShell(viewer);
-    expect(names()).toEqual(expect.arrayContaining(["Resumo", "Fechamento"]));
+    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Fechamento"]));
     expect(screen.queryByRole("link", { name: "Despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Contribuições" })).not.toBeInTheDocument();
   });
 
   it("os links do menu carregam o mes escolhido (resumo e fechamento)", () => {
     renderShell(session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:read_all"] } }), { period: "2026-09" });
-    expect(screen.getAllByRole("link", { name: "Resumo" })[0]).toHaveAttribute("href", "/painel?mes=2026-09");
+    expect(screen.getAllByRole("link", { name: "Dashboard" })[0]).toHaveAttribute("href", "/painel?mes=2026-09");
     expect(screen.getAllByRole("link", { name: "Fechamento" })[0]).toHaveAttribute("href", "/painel/fechamento?mes=2026-09");
-    expect(screen.getAllByRole("link", { name: "Despesas" })[0]).toHaveAttribute("href", "/painel/despesas");
+    // "Despesas" existe duas vezes: o tipo de lancamento (dentro de "Lancamento do mes") e a area de despesas.
+    const expenseHrefs = screen.getAllByRole("link", { name: "Despesas" }).map((l) => l.getAttribute("href"));
+    expect(expenseHrefs).toEqual(["/painel?tipo=despesas&mes=2026-09", "/painel/despesas"]);
+    expect(screen.getByRole("link", { name: "Contribuições" })).toHaveAttribute("href", "/painel?tipo=contribuicoes&mes=2026-09");
   });
 
   it("o seletor lista os vinculos reais agrupados e troca de contexto pelo id do vinculo", async () => {
@@ -167,5 +170,66 @@ describe("sessao sem vinculo ativo (varios vinculos, nenhum escolhido)", () => {
     renderShell(session({ active_membership: null }));
     expect(screen.getByRole("button", { name: /Toda a organização/ })).toHaveTextContent("Administrador da organização");
     expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Tesouraria");
+  });
+});
+
+describe("menu (Figma Gestao)", () => {
+  const treasurer = () =>
+    session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close"] } });
+
+  it("o grupo 'Lançamento do mês' abre e fecha e lista os 4 tipos de lançamento", async () => {
+    renderShell(treasurer());
+    const group = screen.getByRole("button", { name: "Lançamento do mês" });
+    expect(group).toHaveAttribute("aria-expanded", "true"); // o dashboard abre o grupo
+    expect(screen.getByRole("link", { name: "Reembolsos" })).toHaveAttribute("href", "/painel?tipo=reembolsos");
+    expect(screen.getByRole("link", { name: "Devoluções" })).toHaveAttribute("href", "/painel?tipo=devolucoes");
+    await userEvent.setup().click(group);
+    expect(group).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Reembolsos" })).not.toBeInTheDocument();
+  });
+
+  it("a pagina atual e marcada com aria-current (Dashboard no resumo; o tipo dentro de um lancamento)", () => {
+    const { unmount } = render(<PainelShell session={treasurer()} area="resumo" section="resumo" />);
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    unmount();
+    render(<PainelShell session={treasurer()} area="resumo" section="REIMBURSEMENT" />);
+    expect(screen.getByRole("link", { name: "Reembolsos" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Reembolsos");
+  });
+
+  it("no celular o menu abre numa gaveta modal (nome acessivel, Esc fecha, escolher uma pagina fecha)", async () => {
+    renderShell(treasurer());
+    const user = userEvent.setup();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Abrir o menu" }));
+    const drawer = screen.getByRole("dialog", { name: "Menu do painel" });
+    expect(within(drawer).getByRole("link", { name: "Fechamento" })).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Sair" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Abrir o menu" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("link", { name: "Fechamento" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("recolher o menu vira uma coluna de icones, sem perder nome acessivel, e a escolha fica lembrada", async () => {
+    window.localStorage.removeItem("apm.sidebar.collapsed");
+    const { unmount } = renderShell(treasurer());
+    const user = userEvent.setup();
+    const toggle = screen.getByRole("button", { name: "Recolher o menu" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: "Expandir o menu" })).toHaveAttribute("aria-expanded", "false");
+    // recolhido, os links continuam com nome (so o texto fica fora da tela)
+    expect(screen.getByRole("link", { name: "Fechamento" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Contribuições" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lançamento do mês" })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem("apm.sidebar.collapsed")).toBe("1");
+    unmount();
+    renderShell(treasurer());
+    expect(screen.getByRole("button", { name: "Expandir o menu" })).toBeInTheDocument();
+    window.localStorage.removeItem("apm.sidebar.collapsed");
   });
 });

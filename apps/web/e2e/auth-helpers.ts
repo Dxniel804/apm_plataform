@@ -5,8 +5,9 @@ import { expect, type Page } from "@playwright/test";
  * Login REAL contra a API local (docker compose, banco com seed de demonstracao). A senha dos
  * usuarios de demonstracao NAO esta no repositorio: vem do ambiente, so em tempo de execucao.
  *   E2E_DEMO_PASSWORD_FILE=/caminho/do/arquivo   ou   E2E_DEMO_PASSWORD=...
- * A API so aceita pedidos que mudam dados vindos das origens locais :3100 e :3101, entao estes
- * testes rodam contra o `npm run dev` (3101):  E2E_BASE_URL=http://127.0.0.1:3101 npm run test:e2e
+ * A API so aceita pedidos que mudam dados vindos das origens de PUBLIC_ORIGINS (.env da raiz): :3100 e :3101
+ * e a :3102 do servidor de desenvolvimento do redesenho. Rode contra uma delas:
+ *   E2E_BASE_URL=http://127.0.0.1:3102 npm run test:e2e
  * Sem a senha, os testes que dependem de login sao PULADOS.
  */
 export function demoPassword(): string | null {
@@ -38,9 +39,15 @@ export async function loginAs(page: Page, email = CARLA.email): Promise<void> {
   await expect(page).toHaveURL(/\/painel(\/despesas)?$/);
 }
 
-/** A API so aceita pedidos que mudam dados das origens :3100 e :3101 (PUBLIC_ORIGINS de desenvolvimento). */
+/** No celular o menu fica numa gaveta: abre quando o botao existir (no desktop a barra lateral ja esta a vista). */
+export async function openMenuIfNeeded(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Abrir o menu" });
+  if (await button.isVisible()) await button.click();
+}
+
+/** A API so aceita pedidos que mudam dados das origens de PUBLIC_ORIGINS de desenvolvimento (:3100, :3101 e :3102). */
 export function apiAcceptsThisOrigin(): boolean {
-  return /^http:\/\/(127\.0\.0\.1|localhost):310[01]$/.test(process.env.E2E_BASE_URL ?? "");
+  return /^http:\/\/(127\.0\.0\.1|localhost):310[0-2]$/.test(process.env.E2E_BASE_URL ?? "");
 }
 
 export const PAULA = { email: "paula.professora@example.test", name: "Paula Professora (demo)" };

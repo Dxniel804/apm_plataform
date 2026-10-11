@@ -118,12 +118,12 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
 
   if (notFound) {
     return (
-      <div className="step-in rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)]">
-        <h2 ref={headingRef} tabIndex={-1} className="text-heading text-ink outline-none">
+      <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6">
+        <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
           Não encontramos este Pix
         </h2>
         <p className="mt-2 text-body text-ink-2">A cobrança não existe mais. Comece uma nova contribuição.</p>
-        <Button className="mt-5 w-full sm:w-auto" onClick={onRestart}>
+        <Button variant="solid" className="mt-5 w-full sm:w-auto" onClick={onRestart}>
           Começar de novo
         </Button>
       </div>
@@ -132,11 +132,11 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
 
   if (phase === "paid") {
     return (
-      <div className="step-in rounded-[var(--r-lg)] bg-surface p-6 text-center shadow-[0_0_0_1px_var(--line)] sm:p-10">
+      <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6 text-center  sm:p-10">
         <div className="relative mx-auto grid size-32 place-items-center">
           <PaidStamp animate size={128} />
         </div>
-        <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-title text-ink outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-title outline-none">
           Pagamento confirmado
         </h2>
         <p className="mt-2 text-body text-ink-2">
@@ -145,7 +145,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
           apoiar a escola.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <ButtonLink href={`/escola/${slug}/pedido/${token}`}>Ver comprovante</ButtonLink>
+          <ButtonLink href={`/escola/${slug}/pedido/${token}`} variant="solid">Ver comprovante</ButtonLink>
           <Button variant="secondary" onClick={onRestart}>
             Fazer outra contribuição
           </Button>
@@ -159,8 +159,8 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
 
   if (phase === "review") {
     return (
-      <div className="step-in rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)] sm:p-8">
-        <h2 ref={headingRef} tabIndex={-1} className="text-heading text-ink outline-none">
+      <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6 sm:p-8">
+        <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
           Pagamento em análise pela escola
         </h2>
         <p role="status" className="mt-2 max-w-[52ch] text-body text-ink-2">
@@ -185,14 +185,14 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
 
   if (phase === "closed") {
     return (
-      <div className="step-in rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)] sm:p-8">
-        <h2 ref={headingRef} tabIndex={-1} className="text-heading text-ink outline-none">
+      <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6 sm:p-8">
+        <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
           Esta contribuição foi encerrada
         </h2>
         <p role="status" className="mt-2 text-body text-ink-2">
           Ela expirou ou foi cancelada e nenhum valor foi cobrado. Comece uma nova contribuição para continuar.
         </p>
-        <Button className="mt-6" onClick={onRestart}>
+        <Button variant="solid" className="mt-6" onClick={onRestart}>
           Começar de novo
         </Button>
       </div>
@@ -201,8 +201,8 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
 
   if (phase === "expired") {
     return (
-      <div className="step-in rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)] sm:p-8">
-        <h2 ref={headingRef} tabIndex={-1} className="text-heading text-ink outline-none">
+      <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6 sm:p-8">
+        <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
           Este QR expirou
         </h2>
         <p role="status" className="mt-2 text-body text-ink-2">
@@ -216,7 +216,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
           )}
         </div>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Button onClick={renew} disabled={renewing} aria-busy={renewing}>
+          <Button variant="solid" onClick={renew} disabled={renewing} aria-busy={renewing}>
             <RefreshIcon size={20} />
             {renewing ? "Gerando…" : "Gerar novo QR"}
           </Button>
@@ -231,12 +231,12 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
   const timeUp = remaining <= 0;
   return (
     <div>
-      <div className="rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-8">
+      <div className="rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-8">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 ref={headingRef} tabIndex={-1} className="text-heading text-ink outline-none">
+          <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
             Pague com Pix
           </h2>
-          <p className="text-heading tabular-nums text-ink">{formatBRL(state.amountCents)}</p>
+          <p className="text-heading font-bold tabular-nums text-brand-800">{formatBRL(state.amountCents)}</p>
         </div>
 
         <p className="mt-1 text-sub text-ink-2">
@@ -253,7 +253,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
         </div>
 
         <div className="mt-6">
-          <label htmlFor="pix-code" className="mb-1.5 block text-sub font-semibold text-ink">
+          <label htmlFor="pix-code" className="mb-2 block text-sub font-bold text-brand-800">
             Pix copia e cola
           </label>
           <textarea
@@ -263,10 +263,10 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
             rows={3}
             value={payload}
             onFocus={(e) => e.currentTarget.select()}
-            className="block w-full resize-none rounded-[14px] border border-field-border bg-field px-4 py-3 font-mono text-foot leading-relaxed text-ink [overflow-wrap:anywhere]"
+            className="block w-full resize-none rounded-ctl border border-field-border bg-[#f7f7f7] px-4 py-3 font-mono text-foot leading-relaxed text-ink [overflow-wrap:anywhere]"
           />
           <Button
-            variant={copy === "copied" ? "secondary" : "primary"}
+            variant={copy === "copied" ? "secondary" : "solid"}
             className="mt-3 w-full"
             onClick={copyCode}
             aria-describedby="pix-copy-status"
@@ -292,7 +292,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
         )}
       </div>
 
-      <div className="mt-4 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)]">
+      <div className="mt-4 rounded-[var(--r-lg)] border border-line bg-white p-5">
         <div className="flex items-center justify-between gap-4">
           <p className="flex items-center gap-2 text-sub font-semibold text-ink">
             <ClockIcon size={18} className="text-ink-2" />
@@ -301,13 +301,13 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
           <p
             role="timer"
             aria-label={timeUp ? "Prazo encerrado" : `Tempo restante ${formatCountdown(remaining)}`}
-            className="text-heading tabular-nums text-ink"
+            className="text-heading font-bold tabular-nums text-brand-800"
           >
             {formatCountdown(remaining)}
           </p>
         </div>
         <div className="mt-4 flex items-start gap-3 border-t border-line pt-4">
-          <span aria-hidden="true" className="pulse-dot mt-2 size-2.5 shrink-0 rounded-full bg-info" />
+          <span aria-hidden="true" className="pulse-dot mt-2 size-2.5 shrink-0 rounded-full bg-brand-600" />
           <div role="status" aria-live="polite" className="text-sub text-ink">
             <p className="font-semibold">Aguardando pagamento</p>
             <p className="text-ink-2">

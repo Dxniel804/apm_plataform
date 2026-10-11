@@ -15,8 +15,8 @@ const problem = (code: string, status: number, extra: Partial<ApiError> = {}) =>
 
 async function fill(email: string, password: string) {
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText("E-mail"), email);
-  await user.type(screen.getByLabelText("Senha"), password);
+  await user.type(screen.getByLabelText("Seu e-mail"), email);
+  await user.type(screen.getByLabelText("Sua senha"), password);
   await user.click(screen.getByRole("button", { name: "Entrar" }));
 }
 
@@ -50,8 +50,8 @@ describe("LoginForm (login real)", () => {
     render(<LoginForm />);
     await fill("ana@example.test", "senha-errada-123");
     expect(await screen.findByRole("alert")).toHaveTextContent("E-mail ou senha incorretos");
-    expect(screen.getByLabelText("Senha")).toHaveValue("");
-    expect(screen.getByLabelText("E-mail")).toHaveValue("ana@example.test");
+    expect(screen.getByLabelText("Sua senha")).toHaveValue("");
+    expect(screen.getByLabelText("Seu e-mail")).toHaveValue("ana@example.test");
     expect(router.replace).not.toHaveBeenCalled();
   });
 
@@ -71,8 +71,8 @@ describe("LoginForm (login real)", () => {
     vi.useFakeTimers();
     vi.spyOn(api.auth, "login").mockResolvedValue(problem("rate_limited", 429, { retryAfterSeconds: 30 }));
     render(<LoginForm />);
-    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "ana@example.test" } });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-errada-123" } });
+    fireEvent.change(screen.getByLabelText("Seu e-mail"), { target: { value: "ana@example.test" } });
+    fireEvent.change(screen.getByLabelText("Sua senha"), { target: { value: "senha-errada-123" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
     });
@@ -125,8 +125,8 @@ describe("LoginForm (login real)", () => {
 
   it("campos com autocomplete de login e senha sem corretor ortografico", () => {
     render(<LoginForm />);
-    expect(screen.getByLabelText("E-mail")).toHaveAttribute("autocomplete", "username");
-    expect(screen.getByLabelText("Senha")).toHaveAttribute("autocomplete", "current-password");
-    expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText("Seu e-mail")).toHaveAttribute("autocomplete", "username");
+    expect(screen.getByLabelText("Sua senha")).toHaveAttribute("autocomplete", "current-password");
+    expect(screen.getByLabelText("Sua senha")).toHaveAttribute("type", "password");
   });
 });

@@ -141,8 +141,10 @@ export function ContributionFlow({ school }: { school: PublicSchool }) {
 
   return (
     <div>
-      <h1 className="text-title text-ink sm:text-[2.25rem]">Contribuir com a APM</h1>
-      <p className="mb-8 mt-2 text-body text-ink-2">Pelo celular, em poucos passos e sem criar conta.</p>
+      <h1 className="text-title sm:text-[2.25rem]">Contribuir com a APM</h1>
+      <p className="mb-8 mt-1.5 text-body text-ink-3">
+        {school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`}
+      </p>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-14">
         <div className="min-w-0">

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { TextField } from "@/components/ui/TextField";
+import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import type { ApiResult, Closing, Page } from "@/lib/api/types";
 import { saveBlob } from "@/lib/download";
@@ -20,10 +20,10 @@ function previousMonth(period: string): string {
 
 function Row({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="px-4 py-3">
+    <div className="px-5 py-4 sm:px-6">
       <dt className="text-sub text-ink-2">{label}</dt>
-      <dd className="mt-0.5 text-headline tabular-nums text-ink">{value}</dd>
-      {note && <dd className="mt-0.5 text-foot text-ink-2">{note}</dd>}
+      <dd className="mt-0.5 text-[1.125rem] font-bold tabular-nums text-brand-800 sm:text-[1.25rem]">{value}</dd>
+      {note && <dd className="mt-0.5 text-foot text-ink-2 [overflow-wrap:anywhere]">{note}</dd>}
     </div>
   );
 }
@@ -89,23 +89,23 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
   }
 
   return (
-    <li data-status={reopened ? "reopened" : "closed"}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 sm:px-5">
-        <div className="min-w-0 flex-1">
-          <p className="text-body font-semibold capitalize text-ink">{periodLabel(c.period)}</p>
+    <li data-status={reopened ? "reopened" : "closed"} className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
+        <div className="min-w-0 flex-1 basis-56">
+          <p className="text-[1.0625rem] font-semibold capitalize leading-snug text-brand-800 sm:text-[1.25rem]">{periodLabel(c.period)}</p>
           <p className="text-sub text-ink-2">
             Saldo em caixa <span className="tabular-nums">{formatBRL(c.closingBalanceCents)}</span> · fechado em {formatDateLong(c.closedAt)}
           </p>
         </div>
         <StatusPill tone={reopened ? "warning" : "success"}>{reopened ? "Reaberto" : "Fechado"}</StatusPill>
-        <Button variant="secondary" size="md" aria-expanded={open} aria-label={`${open ? "Fechar" : "Abrir"} o fechamento de ${periodLabel(c.period)}`} onClick={onToggle}>
+        <Button variant="chip" size="md" aria-expanded={open} aria-label={`${open ? "Fechar" : "Abrir"} o fechamento de ${periodLabel(c.period)}`} onClick={onToggle} className="min-h-12 w-full px-8 sm:w-auto">
           {open ? "Fechar" : "Ver"}
         </Button>
       </div>
 
       {open && (
-        <div className="border-t border-line bg-bg/40 px-4 py-4 sm:px-5" data-testid="closing-detail">
-          <dl className="grid divide-y divide-line overflow-hidden rounded-[var(--r-md)] bg-surface shadow-[0_0_0_1px_var(--line)] sm:grid-cols-2 sm:divide-y-0 sm:[&>div:nth-child(n+3)]:border-t sm:[&>div:nth-child(even)]:border-l sm:[&>div]:border-line">
+        <div className="border-t border-line px-5 py-6 sm:px-8 sm:py-8" data-testid="closing-detail">
+          <dl className="grid divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line sm:grid-cols-2 sm:divide-y-0 sm:[&>div:nth-child(n+3)]:border-t sm:[&>div:nth-child(even)]:border-l sm:[&>div]:border-line">
             <Row label="Saldo inicial" value={formatBRL(c.openingBalanceCents)} />
             <Row
               label="Entradas"
@@ -142,17 +142,17 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
 
           <div className="mt-4 flex flex-wrap gap-3">
             {!reopened && canPdf && (
-              <Button size="md" onClick={() => void pdf()} disabled={busy !== null} aria-busy={busy === "pdf"}>
+              <Button size="md" onClick={() => void pdf()} disabled={busy !== null} aria-busy={busy === "pdf"} className="min-h-12 rounded-full! px-7">
                 {busy === "pdf" ? "Gerando…" : "Baixar PDF do extrato mensal"}
               </Button>
             )}
             {!reopened && canVerify && (
-              <Button size="md" variant="secondary" onClick={() => void verify()} disabled={busy !== null} aria-busy={busy === "verify"}>
+              <Button size="md" variant="secondary" onClick={() => void verify()} disabled={busy !== null} aria-busy={busy === "verify"} className="min-h-12 rounded-full! px-7">
                 {busy === "verify" ? "Verificando…" : "Verificar"}
               </Button>
             )}
             {!reopened && areas.reopenMonths && (
-              <Button size="md" variant="plain" aria-expanded={reopening} onClick={() => setReopening((v) => !v)}>
+              <Button size="md" variant="plain" aria-expanded={reopening} onClick={() => setReopening((v) => !v)} className="min-h-12 rounded-full! px-7">
                 Reabrir mês
               </Button>
             )}
@@ -166,15 +166,15 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
                 e.preventDefault();
                 void reopen();
               }}
-              className="mt-4 space-y-3 rounded-[var(--r-md)] bg-neutral-soft/60 p-4"
+              className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
             >
               <p className="text-sub text-ink-2">Reabrir só vale para o último fechamento e fica registrado com o seu nome e o motivo.</p>
               <TextField label="Motivo da reabertura" name="reopen-reason" autoComplete="off" maxLength={500} hint="De 10 a 500 caracteres." value={reason} onChange={(e) => setReason(e.target.value)} error={reasonError ?? undefined} />
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button type="submit" size="md" disabled={busy !== null}>
+                <Button type="submit" size="md" disabled={busy !== null} className="rounded-full!">
                   {busy === "reopen" ? "Reabrindo…" : "Reabrir o fechamento"}
                 </Button>
-                <Button variant="plain" size="md" onClick={() => setReopening(false)} disabled={busy !== null}>
+                <Button variant="plain" size="md" onClick={() => setReopening(false)} disabled={busy !== null} className="rounded-full!">
                   Voltar
                 </Button>
               </div>
@@ -215,27 +215,22 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
         e.preventDefault();
         void close();
       }}
-      className="mb-8 space-y-4 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6"
+      className="mb-8 space-y-5 rounded-[var(--r-lg)] border border-line p-5 sm:p-7"
     >
-      <h2 id="close-title" className="text-heading text-ink">
+      <h2 id="close-title" className="text-heading">
         Fechar mês
       </h2>
       <p className="max-w-[60ch] text-sub text-ink-2">
         Os meses são fechados em ordem e só depois que terminam. O fechamento congela os números do mês e gera o código de verificação.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="close-period" className="mb-1.5 block text-sub font-semibold text-ink">
-            Mês a fechar
-          </label>
-          <select id="close-period" value={period} onChange={(e) => setPeriod(e.target.value)} className="block w-full min-h-[52px] rounded-[14px] border border-field-border bg-field px-4 text-body text-ink">
-            {options.map((p) => (
-              <option key={p} value={p}>
-                {periodLabel(p)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectField id="close-period" label="Mês a fechar" value={period} onChange={(e) => setPeriod(e.target.value)}>
+          {options.map((p) => (
+            <option key={p} value={p}>
+              {periodLabel(p)}
+            </option>
+          ))}
+        </SelectField>
         <TextField
           label="Saldo informado pelo banco"
           optional
@@ -250,7 +245,7 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
         />
       </div>
       <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
-      <Button type="submit" disabled={busy} aria-busy={busy}>
+      <Button type="submit" disabled={busy} aria-busy={busy} className="rounded-full!">
         {busy ? "Fechando…" : "Fechar mês"}
       </Button>
     </form>
@@ -308,7 +303,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
         />
       )}
       {!areas.closeMonths && (
-        <p role="note" className="mb-6 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-info">
+        <p role="note" className="mb-6 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
           Você pode consultar os fechamentos e baixar o PDF. Fechar o mês é da tesouraria e da direção.
         </p>
       )}
@@ -318,7 +313,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
       {!res && (
         <div role="status" aria-busy="true" aria-live="polite">
           <span className="sr-only">Carregando os fechamentos…</span>
-          <div aria-hidden="true" className="rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)]">
+          <div aria-hidden="true" className="rounded-[var(--r-lg)] border border-line p-6">
             <div className="skeleton h-4 w-48" />
             <div className="skeleton mt-4 h-10 w-full" />
           </div>
@@ -330,13 +325,13 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
         </p>
       )}
       {res && res.ok && items.length === 0 && (
-        <div className="rounded-[var(--r-lg)] bg-surface px-6 py-12 text-center shadow-[0_0_0_1px_var(--line)]">
-          <h2 className="text-heading text-ink">Nenhum mês fechado ainda</h2>
+        <div className="rounded-[var(--r-lg)] border border-line px-6 py-12 text-center">
+          <h2 className="text-heading">Nenhum mês fechado ainda</h2>
           <p className="mx-auto mt-2 max-w-[44ch] text-body text-ink-2">Quando a tesouraria fechar um mês, o fechamento aparece aqui, com os números e o PDF.</p>
         </div>
       )}
       {items.length > 0 && (
-        <ul aria-label="Fechamentos mensais" className="divide-y divide-line overflow-hidden rounded-[var(--r-lg)] bg-surface shadow-[0_0_0_1px_var(--line)]">
+        <ul aria-label="Fechamentos mensais" className="space-y-4">
           {items.map((c) => (
             <ClosingCard
               key={c.id}

@@ -1,53 +1,69 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ tokens
-   Chrome neutro. A cor da escola entra so por --accent* (ver .school-theme). */
+   Fonte: o arquivo "APM Digital" no Figma (paleta "fknelo", 42dot Sans, halftone).
+   O Figma so tem tema claro: o site e claro de proposito (color-scheme: light). */
+
+/* Paleta da marca: gera as classes bg-brand-800, text-brand-500 etc. */
+@theme {
+  --color-brand-900: #162465; /* Azul marinho sombreado (cantos inferiores) */
+  --color-brand-800: #182c7a; /* Azul escuro / base: titulos, numeros, botoes */
+  --color-brand-700: #2c51e0; /* fim do degrade dos botoes da gestao */
+  --color-brand-600: #346ae3; /* Azul royal (intermediario) */
+  --color-brand-500: #4b89f4; /* Azul vivo (meio/iluminado) */
+  --color-brand-300: #7bb3ff; /* Azul claro / brilho */
+  --color-brand-200: #98c7ff; /* Icy blue / destaque maximo */
+}
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  --bg: #f3f4f6;
+  --bg: #e9e9e9; /* fundo da area da gestao (fora do painel branco) */
   --surface: #ffffff;
   --raised: #ffffff;
-  --field: #f6f7f9;
-  --line: rgb(20 24 32 / 0.11);
-  --field-border: #868d9a;
-  --grid: rgb(20 24 32 / 0.055);
+  --field: #f0f0f0; /* campo "cheio" do login */
+  --line: rgb(0 0 0 / 0.16); /* borda de cartao (preto a 20% no Figma) */
+  --line-strong: #bdbdbd;
+  --field-border: #d1d1d1;
 
-  --ink: #14171c;
-  --ink-2: #4b5260;
-  --ink-3: #626a78;
+  --ink: #161616;
+  --ink-2: #414141;
+  --ink-3: #5c5c5c;
 
-  --ok: #176f45;
-  --ok-soft: #e1f3e9;
-  --warn: #8a4b00;
-  --warn-soft: #fdeed6;
+  --ok: #0f7a52;
+  --ok-soft: #dff5ec;
+  --warn: #7a4100;
+  --warn-soft: #ffd9b0; /* o laranja do Figma ("Reembolso pendente") */
   --bad: #b3232f;
   --bad-soft: #fde6e8;
-  --info: #2450b8;
-  --info-soft: #e5ecfb;
-  --neutral-soft: #eceef2;
+  --info: var(--color-brand-800);
+  --info-soft: #e6ecfb;
+  --neutral-soft: #ececec;
+  --chip: #e1e1e1; /* filtro inativo */
 
-  --focus: #0a62d6;
+  --focus: var(--color-brand-600);
 
-  /* Series do grafico (paleta categorica validada: azul = entradas, laranja = saidas) */
-  --series-in: #2a78d6;
-  --series-out: #eb6834;
+  /* Series do grafico "Composicao do saldo" (cores medidas no Figma) */
+  --series-base: #1e2a84; /* saldo inicial / saldo em caixa */
+  --series-in: #1baf7a; /* entradas */
+  --series-out: #eb6834; /* saidas pagas / reembolsos pendentes */
+  --series-after: #9aa4e0; /* apos pendencias */
 
-  --accent: #16181d;
+  --accent: var(--color-brand-800);
   --accent-contrast: #ffffff;
-  --accent-ink: var(--ink);
+  --accent-ink: var(--color-brand-800);
 
   /* Alpha de base alto (>= 0,9; 0,96): se o WebKit nao desfocar (WKWebView, portal do Maestri), o
      texto que passa por baixo nao transparece e nao colide com o da barra. */
   --bar: rgb(255 255 255 / 0.96);
-  --shadow-float: 0 1px 2px rgb(16 20 28 / 0.06), 0 12px 32px -8px rgb(16 20 28 / 0.18);
-  --shadow-sheet: 0 1px 1px rgb(16 20 28 / 0.05), 0 10px 28px -10px rgb(16 20 28 / 0.22);
+  --shadow-float: 0 1px 2px rgb(16 20 40 / 0.06), 0 12px 32px -8px rgb(16 20 40 / 0.2);
+  --shadow-sheet: 0 1px 1px rgb(16 20 40 / 0.05), 0 24px 60px -16px rgb(16 20 40 / 0.35);
 
   --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 22px;
-  --r-xl: 30px;
+  --r-ctl: 18px; /* campos e botoes retangulares */
+  --r-md: 16px;
+  --r-lg: 26px; /* cartoes e paineis */
+  --r-xl: 34px; /* janela modal */
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --spring: linear(
@@ -57,67 +73,17 @@
   );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --surface: #1a1d23;
-    --raised: #242831;
-    --field: #12151a;
-    --line: rgb(255 255 255 / 0.12);
-    --field-border: #7c8494;
-    --grid: rgb(255 255 255 / 0.05);
-
-    --ink: #f1f3f6;
-    --ink-2: #b4bac6;
-    --ink-3: #98a0ae;
-
-    --ok: #62d79d;
-    --ok-soft: rgb(98 215 157 / 0.14);
-    --warn: #f3b563;
-    --warn-soft: rgb(243 181 99 / 0.14);
-    --bad: #ff8f99;
-    --bad-soft: rgb(255 143 153 / 0.14);
-    --info: #94b3ff;
-    --info-soft: rgb(148 179 255 / 0.15);
-    --neutral-soft: rgb(255 255 255 / 0.09);
-
-    --focus: #7db0ff;
-
-    --series-in: #3987e5;
-    --series-out: #d95926;
-
-    --accent: #f1f3f6;
-    --accent-contrast: #0f1115;
-
-    --bar: rgb(26 29 35 / 0.96);
-    --shadow-float: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 36px -8px rgb(0 0 0 / 0.65);
-    --shadow-sheet: 0 1px 1px rgb(0 0 0 / 0.4), 0 12px 30px -10px rgb(0 0 0 / 0.7);
-  }
-}
-
-/* Cor da escola, calculada em runtime (lib/color.ts) e aplicada no wrapper do portal. */
-.school-theme {
-  --accent: var(--school-accent-light);
-  --accent-contrast: var(--school-accent-contrast-light);
-  --accent-ink: var(--school-accent-ink-light);
-}
-@media (prefers-color-scheme: dark) {
-  .school-theme {
-    --accent: var(--school-accent-dark);
-    --accent-contrast: var(--school-accent-contrast-dark);
-    --accent-ink: var(--school-accent-ink-dark);
-  }
-}
-
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* --font-42dot vem do next/font (layout.tsx): o arquivo e servido pelo proprio site, sem terceiros. */
+  --font-sans: var(--font-42dot), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
   --color-field: var(--field);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-field-border: var(--field-border);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
@@ -131,6 +97,7 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-neutral-soft: var(--neutral-soft);
+  --color-chip: var(--chip);
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
   --color-accent-ink: var(--accent-ink);
@@ -139,53 +106,69 @@
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
   --radius-xl: var(--r-xl);
+  --radius-ctl: var(--r-ctl);
 
-  --text-hero: 2.75rem;
-  --text-hero--line-height: 1.04;
-  --text-hero--letter-spacing: -0.04em;
+  /* Degrades da marca (Figma): botao principal, item ativo do menu, filtros e chips. */
+  --background-image-grad-brand: linear-gradient(90deg, var(--color-brand-800), var(--color-brand-500));
+  --background-image-grad-chip: linear-gradient(90deg, var(--color-brand-800), var(--color-brand-700));
+
+  /* Escala tipografica (fluida: o Figma foi desenhado em quadros de 580 e 1712 px de largura). */
+  --text-display: clamp(2.5rem, 1.3rem + 3.6vw, 4rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+  --text-hero: clamp(2.25rem, 1.4rem + 3vw, 3.75rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.025em;
   --text-hero--font-weight: 700;
-  --text-title: 1.875rem;
-  --text-title--line-height: 1.12;
-  --text-title--letter-spacing: -0.03em;
+  --text-title: clamp(1.625rem, 1.35rem + 1.1vw, 2.25rem);
+  --text-title--line-height: 1.14;
+  --text-title--letter-spacing: -0.018em;
   --text-title--font-weight: 700;
-  --text-heading: 1.375rem;
-  --text-heading--line-height: 1.22;
-  --text-heading--letter-spacing: -0.02em;
-  --text-heading--font-weight: 650;
-  --text-headline: 1.0625rem;
+  --text-heading: clamp(1.25rem, 1.15rem + 0.45vw, 1.5rem);
+  --text-heading--line-height: 1.2;
+  --text-heading--letter-spacing: -0.01em;
+  --text-heading--font-weight: 600;
+  --text-kpi: clamp(1.5rem, 1.15rem + 0.95vw, 2rem);
+  --text-kpi--line-height: 1.1;
+  --text-kpi--letter-spacing: -0.015em;
+  --text-kpi--font-weight: 700;
+  --text-headline: 1.1875rem;
   --text-headline--line-height: 1.3;
-  --text-headline--letter-spacing: -0.012em;
+  --text-headline--letter-spacing: -0.006em;
   --text-headline--font-weight: 600;
   --text-body: 1.0625rem;
-  --text-body--line-height: 1.45;
-  --text-body--letter-spacing: -0.01em;
+  --text-body--line-height: 1.5;
   --text-sub: 0.9375rem;
-  --text-sub--line-height: 1.4;
-  --text-sub--letter-spacing: -0.006em;
-  --text-foot: 0.8125rem;
-  --text-foot--line-height: 1.38;
+  --text-sub--line-height: 1.45;
+  --text-foot: 0.875rem;
+  --text-foot--line-height: 1.4;
   --text-tab: 0.6875rem;
   --text-tab--line-height: 1.2;
 }
 
 @layer base {
   html {
-    /* O foco/rolagem nao pode parar atras das barras fixas (topo e acoes/abas embaixo). */
+    /* O foco/rolagem nao pode parar atras das barras fixas (topo e acoes embaixo). */
     scroll-padding-block: 5rem 7rem;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    background: var(--bg);
-    color: var(--ink);
+    background: var(--surface);
+    color: var(--ink-2);
     font-family: var(--font-sans);
     font-size: 1.0625rem;
-    line-height: 1.45;
-    letter-spacing: -0.01em;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
     overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--color-brand-800);
   }
   :focus-visible {
     outline: 3px solid var(--focus);
@@ -201,23 +184,14 @@
     cursor: not-allowed;
   }
   ::selection {
-    background: color-mix(in srgb, var(--focus) 28%, transparent);
-  }
-  /* Cantos continuos quando o navegador suporta (Chrome 139+, Safari TP). */
-  @supports (corner-shape: squircle) {
-    * {
-      corner-shape: squircle;
-    }
-    .rounded-full {
-      corner-shape: round;
-    }
+    background: color-mix(in srgb, var(--color-brand-500) 30%, transparent);
   }
 }
 
 /* ------------------------------------------------------------------ componentes */
 @layer components {
 
-  /* Barra translucente (topo, abas) */
+  /* Barra translucente (topo, acoes fixas) */
   .bar-material {
     background: var(--bar);
     -webkit-backdrop-filter: saturate(180%) blur(22px);
@@ -236,22 +210,28 @@
     }
   }
 
-  /* Caderno quadriculado: o fundo da primeira dobra */
-  .paper-grid {
+  /*
+   * Halftone da marca: pontos que surgem do rodape (arquivo do Figma, a 30%). E so enfeite:
+   * fica atras do conteudo (z-index: -1 dentro de um contexto proprio) e nao recebe clique.
+   * Aplique `halftone` no conteiner que ocupa a tela; o enfeite gruda no pe dele.
+   */
+  .halftone {
     position: relative;
     isolation: isolate;
   }
-  .paper-grid::before {
+  .halftone::after {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: auto 0 0 0;
+    height: clamp(8rem, 27%, 18rem);
     z-index: -1;
-    background-image: linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 28px 28px;
-    background-position: -1px -1px;
-    -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent 92%);
-    mask-image: linear-gradient(to bottom, #000 25%, transparent 92%);
+    background: url("/brand/halftone.webp") center top / cover no-repeat;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  /* Variante para cartoes/janelas com cantos arredondados */
+  .halftone-clip {
+    overflow: clip;
   }
 
   /* Recibo: folha com borda serrilhada embaixo */
@@ -260,12 +240,7 @@
     border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
   .receipt-wrap {
-    filter: drop-shadow(0 1px 1px rgb(16 20 28 / 0.08)) drop-shadow(0 14px 22px rgb(16 20 28 / 0.14));
-  }
-  @media (prefers-color-scheme: dark) {
-    .receipt-wrap {
-      filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5)) drop-shadow(0 14px 24px rgb(0 0 0 / 0.5));
-    }
+    filter: drop-shadow(0 1px 1px rgb(16 20 40 / 0.08)) drop-shadow(0 14px 22px rgb(16 20 40 / 0.14));
   }
   .receipt-edge {
     display: block;

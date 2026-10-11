@@ -99,7 +99,7 @@ export function AcceptInvitationForm({
   if (accepted) {
     const { membership } = accepted.result;
     return (
-      <div role="status" className="mt-6 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6">
+      <div role="status" className="mt-6 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-6">
         <h2 className="text-heading text-ink">Convite aceito</h2>
         <p className="mt-2 text-body text-ink-2">
           {accepted.created
@@ -134,7 +134,7 @@ export function AcceptInvitationForm({
         setError(null);
         setFieldErrors({});
       }}
-      className={`min-h-11 flex-1 rounded-[12px] px-3 text-sub font-semibold transition-colors ${mode === value ? "bg-ink text-bg" : "text-ink hover:bg-neutral-soft"}`}
+      className={`min-h-11 flex-1 rounded-full px-3 text-sub font-semibold transition-colors ${mode === value ? "bg-grad-chip text-white" : "text-brand-800 hover:bg-white/70"}`}
     >
       {label}
     </button>
@@ -146,9 +146,9 @@ export function AcceptInvitationForm({
       noValidate
       onSubmit={submit}
       aria-busy={pending}
-      className="mt-6 space-y-5 rounded-[var(--r-lg)] bg-surface p-5 shadow-[0_0_0_1px_var(--line)] sm:p-6"
+      className="mt-6 space-y-5"
     >
-      <div role="group" aria-label="Você já tem conta?" className="flex gap-1 rounded-[14px] bg-neutral-soft/70 p-1">
+      <div role="group" aria-label="Você já tem conta?" className="flex gap-1 rounded-full bg-chip/70 p-1">
         {choice("new", "Sou novo aqui")}
         {choice("existing", "Já tenho conta")}
       </div>
@@ -156,6 +156,7 @@ export function AcceptInvitationForm({
       {mode === "new" ? (
         <>
           <TextField
+            variant="filled"
             label="Nome completo"
             name="fullName"
             autoComplete="name"
@@ -164,6 +165,7 @@ export function AcceptInvitationForm({
             error={fieldErrors.fullName}
           />
           <TextField
+            variant="filled"
             label="Senha"
             name="new-password"
             type="password"
@@ -173,6 +175,7 @@ export function AcceptInvitationForm({
             error={fieldErrors.password}
           />
           <TextField
+            variant="filled"
             label="Repita a senha"
             name="confirm-password"
             type="password"
@@ -211,7 +214,7 @@ export function AcceptInvitationForm({
 
       {error?.needsLogin && (
         <p className="text-center text-sub text-ink-2">
-          <Link href={loginHref} className="inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-2">
+          <Link href={loginHref} className="inline-flex min-h-11 items-center font-semibold text-brand-800 underline underline-offset-2">
             Ir para a entrada
           </Link>
         </p>

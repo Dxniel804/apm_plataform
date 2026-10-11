@@ -41,7 +41,7 @@ export const config = {
   matcher: [
     {
       // Delimitadores explicitos: "api" so exclui /api e /api/*, nunca /apix, /api-docs ou /apiary.
-      source: "/((?!api$|api/|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
+      source: "/((?!api$|api/|_next/static|_next/image|favicon\\.ico|icon\\.png).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

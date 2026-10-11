@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type Ref } from "react";
-import { CheckIcon } from "@/components/ui/icons";
+import { CheckCircleFillIcon, CircleIcon } from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import type { PublicSchool } from "@/lib/api/types";
@@ -29,7 +29,7 @@ interface ChoiceRowProps {
 function ChoiceRow({ value, checked, title, description, trailing, onSelect }: ChoiceRowProps) {
   return (
     <label
-      className="group relative flex min-h-[4.5rem] cursor-pointer items-center gap-4 rounded-[var(--r-md)] bg-surface px-4 py-3.5 shadow-[0_0_0_1px_var(--line)] transition-shadow duration-150 has-[:checked]:bg-[color-mix(in_srgb,var(--accent)_9%,var(--surface))] has-[:checked]:shadow-[0_0_0_2px_var(--accent)] has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]"
+      className="group relative flex min-h-[5.25rem] cursor-pointer items-center gap-4 rounded-ctl border border-field-border bg-white px-5 py-4 transition-colors duration-150 has-[:checked]:border-brand-800 has-[:checked]:bg-info-soft/50 has-[:checked]:shadow-[0_0_0_1px_var(--color-brand-800)] has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]"
     >
       <input
         type="radio"
@@ -39,17 +39,15 @@ function ChoiceRow({ value, checked, title, description, trailing, onSelect }: C
         onChange={() => onSelect(value)}
         className="sr-only"
       />
-      <span
-        aria-hidden="true"
-        className="grid size-6 shrink-0 place-items-center rounded-full border-2 border-field-border text-accent-contrast transition-colors group-has-[:checked]:border-accent group-has-[:checked]:bg-accent"
-      >
-        <CheckIcon size={14} strokeWidth={3} className="opacity-0 group-has-[:checked]:opacity-100" />
+      <span aria-hidden="true" className="relative grid size-8 shrink-0 place-items-center">
+        <CircleIcon size={30} className="text-ink-3 group-has-[:checked]:opacity-0" />
+        <CheckCircleFillIcon size={30} className="absolute text-brand-800 opacity-0 group-has-[:checked]:opacity-100" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-body font-semibold leading-snug text-ink">{title}</span>
-        <span className="mt-0.5 block text-sub text-ink-2">{description}</span>
+        <span className="block text-[1.25rem] font-bold leading-snug text-brand-800 sm:text-[1.5rem]">{title}</span>
+        <span className="mt-0.5 block text-sub font-medium text-ink-2">{description}</span>
       </span>
-      <span className="shrink-0 text-body font-semibold tabular-nums text-ink">{trailing}</span>
+      {trailing && <span className="shrink-0 text-body font-semibold tabular-nums text-ink">{trailing}</span>}
     </label>
   );
 }
@@ -117,7 +115,7 @@ export function AmountStep({
         onContinue();
       }}
     >
-      <h2 id="amount-heading" ref={headingRef} tabIndex={-1} className="text-title text-ink outline-none">
+      <h2 id="amount-heading" ref={headingRef} tabIndex={-1} className="text-title outline-none">
         Quanto você quer contribuir?
       </h2>
       <p className="mt-2 max-w-[52ch] text-body text-ink-2">
@@ -127,7 +125,7 @@ export function AmountStep({
         O dinheiro vai direto para a conta da APM.
       </p>
 
-      <div role="radiogroup" aria-labelledby="amount-heading" className="mt-6 space-y-3">
+      <div role="radiogroup" aria-labelledby="amount-heading" className="mt-6 space-y-3.5">
         {school.suggestedAmountsCents.map((cents) => (
           <ChoiceRow
             key={cents}
@@ -192,7 +190,7 @@ export function AmountStep({
       </div>
 
       <StickyActions>
-        <Button type="submit" className="flex-1 sm:min-w-48 sm:flex-none">
+        <Button type="submit" variant="solid" className="flex-1 sm:min-w-56 sm:flex-none">
           Continuar
         </Button>
       </StickyActions>

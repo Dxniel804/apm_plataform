@@ -25,10 +25,10 @@ describe("CashContributionForm", () => {
     const record = vi.spyOn(api.statement, "recordCash").mockResolvedValue(ok);
     const { onRecorded, user } = setup();
     await user.type(screen.getByLabelText("Valor"), "5000");
-    await user.selectOptions(screen.getByLabelText("Forma"), "TRANSFER");
+    await user.selectOptions(screen.getByLabelText("Forma de pagamento"), "TRANSFER");
     await user.selectOptions(screen.getByLabelText("Tipo de entrada"), "donation");
     await user.type(screen.getByLabelText(/Nome do responsável/), "João Dinheiro");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(record).toHaveBeenCalledTimes(1);
     const [schoolId, input, key] = record.mock.calls[0]!;
@@ -43,7 +43,7 @@ describe("CashContributionForm", () => {
   it("valor vazio: avisa e nao chama a API", async () => {
     const record = vi.spyOn(api.statement, "recordCash");
     const { user } = setup();
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     expect(screen.getByText("Informe o valor.")).toBeInTheDocument();
     expect(record).not.toHaveBeenCalled();
   });
@@ -56,13 +56,13 @@ describe("CashContributionForm", () => {
       .mockResolvedValueOnce(ok);
     const { user } = setup();
     await user.type(screen.getByLabelText("Valor"), "5000");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Nada foi registrado");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(record).toHaveBeenCalledTimes(2));
     expect(record.mock.calls[1]![2]).toBe(record.mock.calls[0]![2]);
     await user.type(screen.getByLabelText("Valor"), "0"); // 50,00 -> 500,00
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(record).toHaveBeenCalledTimes(3));
     expect(record.mock.calls[2]![2]).not.toBe(record.mock.calls[0]![2]);
   });
@@ -73,9 +73,9 @@ describe("CashContributionForm", () => {
       .mockResolvedValueOnce(fail({ kind: "problem", status: 422, code: "validation_error", fields: [{ field: "guardian_name", code: "invalid" }, { field: "amount_cents", code: "out_of_range" }] }));
     const { user } = setup();
     await user.type(screen.getByLabelText("Valor"), "5000");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Você não tem permissão para registrar contribuições");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText("Confira o valor da contribuição.")).toBeInTheDocument();
     expect(screen.getByText("Confira este campo.")).toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe("CashContributionForm", () => {
     vi.spyOn(api.statement, "recordCash").mockResolvedValue(fail({ kind: "network" }));
     const { user } = setup();
     await user.type(screen.getByLabelText("Valor"), "5000");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     await screen.findByRole("alert");
     expect(setItem).not.toHaveBeenCalled();
     for (const spy of spies) expect(spy).not.toHaveBeenCalled();

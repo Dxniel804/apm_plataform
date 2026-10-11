@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button, chipClass } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import type { ApiResult, ExpenseCategory, ExpenseStatus, ExpenseSummary, Page } from "@/lib/api/types";
@@ -91,7 +91,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
   return (
     <div>
       {scope === "queue" && (
-        <div role="group" aria-label="Filtrar por situação" className="mb-5 flex flex-wrap gap-2">
+        <div role="group" aria-label="Filtrar por situação" className="mb-6 flex flex-wrap gap-2.5">
           {QUEUE_FILTERS.map((f) => (
             <button
               key={f.label}
@@ -102,7 +102,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
                 setOpenId(null);
                 setBanner(null);
               }}
-              className={`min-h-11 rounded-full px-4 text-sub font-semibold transition-colors ${filter === f.status ? "bg-ink text-bg" : "bg-neutral-soft text-ink hover:brightness-[0.97]"}`}
+              className={chipClass(filter === f.status)}
             >
               {f.label}
             </button>
@@ -112,7 +112,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
 
       {scope === "mine" && canSubmit && (
         <div className="mb-5">
-          <Button variant="secondary" size="md" aria-expanded={creating} onClick={() => setCreating((v) => !v)}>
+          <Button variant="chip" size="md" aria-expanded={creating} onClick={() => setCreating((v) => !v)} className="min-h-12 px-7">
             {creating ? "Fechar o formulário" : "Nova despesa"}
           </Button>
         </div>
@@ -141,7 +141,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
       {!res && (
         <div role="status" aria-busy="true" aria-live="polite">
           <span className="sr-only">Carregando as despesas…</span>
-          <div aria-hidden="true" className="rounded-[var(--r-lg)] bg-surface p-6 shadow-[0_0_0_1px_var(--line)]">
+          <div aria-hidden="true" className="rounded-[var(--r-lg)] border border-line p-6">
             <div className="skeleton h-4 w-48" />
             <div className="skeleton mt-4 h-10 w-full" />
           </div>
@@ -154,8 +154,8 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
       )}
 
       {res && res.ok && items.length === 0 && (
-        <div className="rounded-[var(--r-lg)] bg-surface px-6 py-12 text-center shadow-[0_0_0_1px_var(--line)]">
-          <h2 className="text-heading text-ink">{scope === "mine" ? "Você ainda não enviou despesas" : "Nenhuma despesa nesta situação"}</h2>
+        <div className="rounded-[var(--r-lg)] border border-line px-6 py-12 text-center">
+          <h2 className="text-heading">{scope === "mine" ? "Você ainda não enviou despesas" : "Nenhuma despesa nesta situação"}</h2>
           <p className="mx-auto mt-2 max-w-[44ch] text-body text-ink-2">
             {scope === "mine" ? "Use “Nova despesa” para registrar uma compra e anexar a nota." : "Quando houver despesas nesta situação, elas aparecem aqui."}
           </p>
@@ -163,25 +163,25 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
       )}
 
       {items.length > 0 && (
-        <ul aria-label={scope === "mine" ? "Minhas despesas" : "Despesas da escola"} className="divide-y divide-line overflow-hidden rounded-[var(--r-lg)] bg-surface shadow-[0_0_0_1px_var(--line)]">
+        <ul aria-label={scope === "mine" ? "Minhas despesas" : "Despesas da escola"} className="space-y-4">
           {items.map((e) => {
             const status = expenseStatusView(e.status, e.paidBy);
             const open = openId === e.id;
             return (
-              <li key={e.id}>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 sm:px-5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-body font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{e.description}</p>
-                    <p className="mt-0.5 text-sub text-ink-2">
+              <li key={e.id} className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="text-[1.0625rem] font-semibold leading-snug text-brand-800 [overflow-wrap:anywhere] sm:text-[1.25rem]">{e.description}</p>
+                    <p className="mt-1 text-sub text-ink-2">
                       {e.category.name} · {formatDateShort(e.occurredAt)} · nº {e.referenceCode}
                       {e.submittedByUserId === userId && scope === "queue" ? " · sua" : ""}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <p className="text-body font-semibold tabular-nums text-ink">{amountSummary(e.amountCents, e.approvedAmountCents)}</p>
+                  <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                    <p className="text-[1.25rem] font-bold tabular-nums text-brand-800 sm:text-[1.5rem]">{amountSummary(e.amountCents, e.approvedAmountCents)}</p>
                     <StatusPill tone={status.tone}>{status.label}</StatusPill>
                   </div>
-                  <Button variant="secondary" size="md" aria-expanded={open} aria-label={`${open ? "Fechar" : "Abrir"} detalhes da despesa nº ${e.referenceCode}`} onClick={() => setOpenId(open ? null : e.id)}>
+                  <Button variant="chip" size="md" aria-expanded={open} aria-label={`${open ? "Fechar" : "Abrir"} detalhes da despesa nº ${e.referenceCode}`} onClick={() => setOpenId(open ? null : e.id)} className="min-h-12 w-full px-8 sm:w-auto">
                     {open ? "Fechar" : "Detalhes"}
                   </Button>
                 </div>

@@ -73,7 +73,7 @@ export function IdentificationStep({
         onContinue(focusField);
       }}
     >
-      <h2 ref={headingRef} tabIndex={-1} className="text-title text-ink outline-none">
+      <h2 ref={headingRef} tabIndex={-1} className="text-title outline-none">
         Quem está contribuindo?
       </h2>
       <p className="mt-2 max-w-[52ch] text-body text-ink-2">
@@ -109,7 +109,7 @@ export function IdentificationStep({
         <Button variant="secondary" className="shrink-0 sm:min-w-32" onClick={onBack}>
           Voltar
         </Button>
-        <Button type="submit" className="flex-1 sm:min-w-48 sm:flex-none">
+        <Button type="submit" variant="solid" className="flex-1 sm:min-w-56 sm:flex-none">
           Continuar
         </Button>
       </StickyActions>

@@ -69,7 +69,7 @@ function ZigzagEdge() {
   );
 }
 
-/** Comprovante de contribuicao. A cor vem do tema da escola (--accent) acima na arvore. */
+/** Comprovante de contribuicao, na cor da marca (--accent). */
 export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; headingLevel?: 2 | 3 }) {
   const status = pixStatusView(receipt.status);
   const Heading = `h${headingLevel}` as "h2" | "h3";
@@ -85,7 +85,7 @@ export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; h
         <div className="px-6 pb-7 pt-6 sm:px-8">
           <header className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <Heading className="text-headline text-ink">{receipt.schoolName}</Heading>
+              <Heading className="text-headline">{receipt.schoolName}</Heading>
               <p className="mt-0.5 text-foot text-ink-2">Comprovante de contribuição</p>
             </div>
             <p className="shrink-0 text-right text-foot text-ink-2">
@@ -98,7 +98,7 @@ export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; h
           <div className="my-5 border-t border-dashed border-line" aria-hidden="true" />
 
           <p className="text-foot text-ink-2">Valor</p>
-          <p className="mt-1 text-[2.5rem] font-bold leading-none tracking-[-0.04em] text-ink">
+          <p className="mt-1 text-[2.5rem] font-bold leading-none tracking-[-0.04em] text-brand-800">
             {formatBRL(receipt.amountCents)}
           </p>
 

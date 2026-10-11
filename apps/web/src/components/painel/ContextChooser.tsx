@@ -1,5 +1,5 @@
-import { Wordmark } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { PageFrame } from "@/components/ui/PageFrame";
 import type { Session } from "@/lib/api/types";
 import { MembershipList } from "./MembershipList";
 
@@ -19,31 +19,26 @@ interface ContextChooserProps {
 export function ContextChooser({ session, busy, signingOut, problem, onSelect, onSignOut }: ContextChooserProps) {
   const none = session.memberships.length === 0;
   return (
-    <div className="paper-grid flex min-h-dvh flex-col">
-      <header className="mx-auto w-full max-w-6xl px-5 pt-5 sm:px-8 sm:pt-7">
-        <Wordmark />
-      </header>
-      <main id="conteudo" tabIndex={-1} className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-5 pb-20 pt-8 outline-none">
-        <h1 className="text-title sm:text-[2.25rem]">{none ? "Sem vínculo ativo" : "Onde você vai atuar?"}</h1>
-        <p className="mt-2 text-body text-ink-2">
-          {none
-            ? `${session.user.fullName}, a sua conta ainda não tem vínculo ativo com nenhuma APM. Peça um convite a quem administra a sua organização.`
-            : `${session.user.fullName}, a sua conta tem mais de um vínculo. Escolha com qual deles você quer entrar agora.`}
+    <PageFrame logoHref={null}>
+      <h1 className="text-title sm:text-[2.25rem]">{none ? "Sem vínculo ativo" : "Onde você vai atuar?"}</h1>
+      <p className="mt-2 text-body text-ink-2">
+        {none
+          ? `${session.user.fullName}, a sua conta ainda não tem vínculo ativo com nenhuma APM. Peça um convite a quem administra a sua organização.`
+          : `${session.user.fullName}, a sua conta tem mais de um vínculo. Escolha com qual deles você quer entrar agora.`}
+      </p>
+      {!none && (
+        <div className="mt-6 rounded-[var(--r-lg)] border border-line bg-surface p-2">
+          <MembershipList memberships={session.memberships} activeId={null} disabled={busy} onSelect={onSelect} />
+        </div>
+      )}
+      {problem && (
+        <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
+          {problem}
         </p>
-        {!none && (
-          <div className="mt-6 rounded-[var(--r-lg)] bg-surface p-2 shadow-[0_0_0_1px_var(--line)]">
-            <MembershipList memberships={session.memberships} activeId={null} disabled={busy} onSelect={onSelect} />
-          </div>
-        )}
-        {problem && (
-          <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
-            {problem}
-          </p>
-        )}
-        <Button variant="secondary" onClick={onSignOut} disabled={signingOut} className="mt-6 w-full">
-          {signingOut ? "Saindo…" : "Sair"}
-        </Button>
-      </main>
-    </div>
+      )}
+      <Button variant="secondary" onClick={onSignOut} disabled={signingOut} className="mt-6 w-full">
+        {signingOut ? "Saindo…" : "Sair"}
+      </Button>
+    </PageFrame>
   );
 }

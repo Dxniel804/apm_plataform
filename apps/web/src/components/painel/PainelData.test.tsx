@@ -24,26 +24,40 @@ describe("PainelData: resumo real", () => {
     const summary = vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     const pend = vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([pending(), pending({ transactionId: "p2", referenceCode: 7, kind: "CONTRIBUTION", direction: "IN", status: "REVIEW_REQUIRED", section: "REVIEW", amountCents: 4000 })])));
     setup();
-    expect(await screen.findByText(/Saldo em caixa em outubro de 2026/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /saldo em caixa em outubro de 2026/ })).toBeInTheDocument();
     expect(summary).toHaveBeenCalledWith(SCHOOL_ID, undefined);
     expect(pend).toHaveBeenCalledWith(SCHOOL_ID, { limit: 100 });
     // principal (grande) e secundario (rotulado)
     expect(screen.getByText("R$ 684,10")).toBeInTheDocument();
-    expect(screen.getByText(/Após reembolsos pendentes:/)).toHaveTextContent("R$ 639,10");
-    expect(screen.getByText(/menos R\$ 45,00 de reembolsos ainda a pagar/)).toBeInTheDocument();
-    // pendencias fora do saldo, agrupadas
+    expect(screen.getByText("Após reembolsos pendentes").parentElement).toHaveTextContent("R$ 639,10");
+    // pendencias fora do saldo: quatro cartoes-resumo; os itens so aparecem ao abrir o cartao
     expect(await screen.findByRole("heading", { name: "Pendências (fora do saldo)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "A pagar" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Pagamento em análise" })).toBeInTheDocument();
-    expect(screen.getByText("Reembolso nº 16")).toBeInTheDocument();
-    expect(screen.getByText(/Ainda não é contribuição confirmada/)).toBeInTheDocument();
+    expect(screen.queryByText("Reembolso nº 16")).not.toBeInTheDocument();
+    const payable = screen.getByRole("button", { name: /A pagar/ });
+    expect(payable).toHaveTextContent("R$ 45,00");
+    expect(payable).toHaveTextContent("1 item");
+    expect(screen.getByRole("button", { name: /Pagamento em análise/ })).toHaveTextContent("R$ 40,00");
+    expect(screen.getByRole("button", { name: /Aguardando correção/ })).toBeDisabled(); // sem itens: nada a abrir
+
+    await userEvent.setup().click(payable);
+    const dialog = screen.getByRole("dialog", { name: "A pagar" });
+    expect(within(dialog).getByRole("heading", { name: "A pagar" })).toBeInTheDocument();
+    expect(within(dialog).getByText("Reembolso nº 16")).toBeInTheDocument();
+  });
+
+  it("o cartao de 'Pagamento em análise' explica que ainda nao e contribuicao confirmada", async () => {
+    vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
+    vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([pending({ transactionId: "p2", referenceCode: 7, kind: "CONTRIBUTION", direction: "IN", status: "REVIEW_REQUIRED", section: "REVIEW", amountCents: 4000 })])));
+    setup();
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Pagamento em análise/ }));
+    expect(within(screen.getByRole("dialog")).getByText(/Ainda não é contribuição confirmada/)).toBeInTheDocument();
   });
 
   it("o mes da URL vai para a API e o seletor de mes avisa o painel", async () => {
     const summary = vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     const { onPeriodChange } = setup({ period: "2026-09" });
-    await screen.findByText(/Saldo em caixa/);
+    await screen.findByRole("heading", { name: /saldo em caixa em/i });
     expect(summary).toHaveBeenCalledWith(SCHOOL_ID, "2026-09");
     await userEvent.setup().selectOptions(screen.getByLabelText("Mês"), "2026-08");
     expect(onPeriodChange).toHaveBeenCalledWith("2026-08");
@@ -55,11 +69,11 @@ describe("PainelData: resumo real", () => {
     const pend = vi.spyOn(api.statement, "pending");
     const entries = vi.spyOn(api.statement, "entries");
     setup({ permissions: VIEWER });
-    expect(await screen.findByText(/Saldo em caixa/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /saldo em caixa em/i })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent("vê só os totais do mês");
     expect(pend).not.toHaveBeenCalled();
     expect(entries).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: /Registrar contribuição em dinheiro/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Contribuição em dinheiro/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Baixar PDF das contribuições do mês" })).toBeInTheDocument();
   });
 
@@ -67,7 +81,7 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(fail(403, "permission_denied"));
     setup();
-    expect(await screen.findByText(/Saldo em caixa/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /saldo em caixa em/i })).toBeInTheDocument();
     expect(await screen.findByText(/não vê as pendências/)).toBeInTheDocument();
   });
 
@@ -94,8 +108,8 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     setup({ permissions: ["statement:read", "reports:read"] });
-    await screen.findByText(/Saldo em caixa/);
-    expect(screen.queryByRole("button", { name: /Registrar contribuição em dinheiro/ })).not.toBeInTheDocument();
+    await screen.findByRole("heading", { name: /saldo em caixa em/i });
+    expect(screen.queryByRole("button", { name: /Contribuição em dinheiro/ })).not.toBeInTheDocument();
   });
 
   it("depois de registrar uma contribuicao em dinheiro, os numeros sao recarregados", async () => {
@@ -103,11 +117,11 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     vi.spyOn(api.statement, "recordCash").mockResolvedValue(ok({ id: "i", referenceCode: "APM-000042", status: "PAID", amountCents: 5000, method: "CASH" }));
     setup();
-    await screen.findByText(/Saldo em caixa/);
+    await screen.findByRole("heading", { name: /saldo em caixa em/i });
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Registrar contribuição em dinheiro" }));
+    await user.click(screen.getByRole("button", { name: "Contribuição em dinheiro" }));
     await user.type(screen.getByLabelText("Valor"), "5000");
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText(/APM-000042 registrada: R\$ 50,00/)).toBeInTheDocument();
     await waitFor(() => expect(summary).toHaveBeenCalledTimes(2));
   });
