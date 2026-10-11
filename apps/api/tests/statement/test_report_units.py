@@ -226,7 +226,7 @@ def test_a_large_period_runs_over_many_pages_with_the_page_count_and_the_code_on
     for number, page in enumerate(pages, start=1):
         assert f"Página {number} de {len(pages)}" in page
         assert "ab" * 32 in page
-    assert "Tesoureiro" in pages[-1]
+    assert "Gestão" in pages[-1]
     assert "Subtotal de entradas (300) R$ 300,00" in " ".join(pages)
 
 

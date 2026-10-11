@@ -30,7 +30,7 @@ const buttons = () => screen.getAllByRole("button").map((b) => b.getAttribute("a
 beforeEach(() => saveBlob.mockReset());
 afterEach(() => vi.restoreAllMocks());
 
-describe("professora (autora)", () => {
+describe("funcionário (autor)", () => {
   it("correcao pedida: mostra o motivo da gestao e as acoes de editar, anexar, enviar e cancelar", async () => {
     setup(detail({ status: "CORRECTION_REQUESTED", correctionReason: "Falta o CNPJ na nota" }), AUTHOR_ID, STAFF);
     expect(await screen.findByRole("note")).toHaveTextContent("A gestão pediu correção: Falta o CNPJ na nota");
@@ -100,7 +100,7 @@ describe("professora (autora)", () => {
   });
 });
 
-describe("gestao (tesoureira)", () => {
+describe("gestao", () => {
   it("enviada por outra pessoa: aprovar, pedir correcao e recusar; nada de editar", async () => {
     setup(detail({ status: "SUBMITTED" }), MANAGER_ID, TREASURER);
     await screen.findByRole("button", { name: "Aprovar" });

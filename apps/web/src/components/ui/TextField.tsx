@@ -2,7 +2,7 @@ import { useId, type InputHTMLAttributes, type Ref, type SelectHTMLAttributes } 
 import { ChevronExpandIcon, InfoIcon } from "./icons";
 
 /**
- * Campos do Figma. `outline` (modal da tesouraria e fluxo da familia): branco com borda cinza e cantos
+ * Campos do Figma. `outline` (modal da gestao e fluxo da familia): branco com borda cinza e cantos
  * de 18 px. `filled` (login): cinza claro sem borda. Com 16 px de fonte o iOS nao da zoom ao focar.
  */
 type FieldVariant = "outline" | "filled";

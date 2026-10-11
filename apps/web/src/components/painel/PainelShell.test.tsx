@@ -169,7 +169,7 @@ describe("sessao sem vinculo ativo (varios vinculos, nenhum escolhido)", () => {
   it("os dois vinculos aparecem com o papel de cada um", () => {
     renderShell(session({ active_membership: null }));
     expect(screen.getByRole("button", { name: /Escola Outra/ })).toHaveTextContent("Administrador da escola");
-    expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Tesouraria");
+    expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Gestão");
   });
 });
 

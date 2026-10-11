@@ -59,7 +59,7 @@ describe("/painel no servidor", () => {
     expect(html).not.toContain("csrf-token-que-a-interface-ignora");
   });
 
-  it("professora (so despesas) que abre /painel vai para 'Minhas despesas'; quem pode ver a area fica nela", async () => {
+  it("funcionário (so despesas) que abre /painel vai para 'Minhas despesas'; quem pode ver a area fica nela", async () => {
     const staff = withPermissions(["expenses:read_own", "expenses:submit"]);
     await expect(render(staff, "resumo")).rejects.toThrow("NEXT_REDIRECT:/painel/despesas");
     await expect(render(staff, "fechamento")).rejects.toThrow("NEXT_REDIRECT:/painel/despesas");

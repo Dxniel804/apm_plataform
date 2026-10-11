@@ -94,7 +94,7 @@ for (const width of [320, 360]) {
             fits: el.getBoundingClientRect().right <= document.documentElement.clientWidth,
           })),
       );
-      // tesoureira: Dashboard, Lancamento do mes (com os 4 tipos), Despesas e Fechamento
+      // gestao: Dashboard, Lancamento do mes (com os 4 tipos), Despesas e Fechamento
       const names = labels.map((l) => l.text);
       expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamento do mês", "Despesas", "Fechamento"]));
       for (const label of labels) {

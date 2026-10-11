@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { BRUNO, CARLA, ELISA, apiAcceptsThisOrigin, apiSession, demoPassword, loginAs } from "./auth-helpers";
 
 /**
- * TASK-011 (fatia 3): fechamento mensal contra a API REAL. A tesoureira fecha um mes, ve os dois saldos,
+ * TASK-011 (fatia 3): fechamento mensal contra a API REAL. A gestao fecha um mes, ve os dois saldos,
  * verifica e baixa o PDF (%PDF); o administrador da escola (months:reopen) desfaz pela API; o fechamento
  * reaberto nao tem PDF. Mes usado: JANEIRO DE 2026 (o demo so tem dados a partir de setembro, entao o
  * fechamento e vazio e nenhum outro teste precisa dele). Se ja existir um fechamento ativo na escola, o teste
@@ -17,11 +17,11 @@ test.beforeEach(({}, testInfo) => {
 });
 
 const JAN = "janeiro de 2026";
-test("tesoureira: fecha o mes, ve os dois saldos, verifica, baixa o PDF e a ordem dos meses e respeitada", async ({ page }) => {
+test("gestao: fecha o mes, ve os dois saldos, verifica, baixa o PDF e a ordem dos meses e respeitada", async ({ page }) => {
   await loginAs(page, CARLA.email);
   await page.goto("/painel/fechamento");
   await expect(page.getByRole("heading", { level: 1, name: "Fechamento" })).toBeVisible();
-  // tesoureira: fecha mes, mas nao reabre
+  // gestao: fecha mes, mas nao reabre
   await expect(page.getByRole("heading", { name: "Fechar mês" })).toBeVisible();
 
   // espera a lista chegar: so entao se sabe se ja ha fechamento ativo (e o formulario ja esta no mes sugerido)
@@ -89,7 +89,7 @@ test("viewer: so le o fechamento (sem fechar, sem reabrir) e nao ve despesas", a
   await loginAs(page, ELISA.email);
   await page.goto("/painel/fechamento");
   await expect(page.getByRole("heading", { level: 1, name: "Fechamento" })).toBeVisible();
-  await expect(page.getByRole("note")).toContainText("Fechar o mês é da tesouraria e da direção");
+  await expect(page.getByRole("note")).toContainText("Fechar o mês é da gestão e da direção");
   await expect(page.getByRole("button", { name: "Fechar mês" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Reabrir mês" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Despesas" })).toHaveCount(0);

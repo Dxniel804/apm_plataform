@@ -2,8 +2,8 @@ import type { Membership, Role } from "@/lib/api/types";
 
 export const ROLE_LABELS: Record<Role, string> = {
   school_admin: "Administrador da escola",
-  treasurer: "Tesouraria",
-  staff: "Equipe",
+  treasurer: "Gestão",
+  staff: "Funcionário",
   viewer: "Leitura",
 };
 

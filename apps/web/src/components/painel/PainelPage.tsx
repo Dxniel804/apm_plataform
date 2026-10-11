@@ -14,7 +14,7 @@ interface Props {
 
 /**
  * Pagina de servidor de todas as areas do painel: exige sessao (sem ela volta para o login), manda quem nao
- * pode ver a area para a sua (professora: Minhas despesas) e entrega ao cliente so a sessao. Os numeros vem da
+ * pode ver a area para a sua (funcionario: Minhas despesas) e entrega ao cliente so a sessao. Os numeros vem da
  * API, no navegador, para a escola do vinculo ativo.
  */
 export async function PainelPage({ area, tipo, mes, aba }: Props) {

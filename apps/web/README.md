@@ -70,7 +70,7 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   "Registrar contribuição em dinheiro" (`contributions:record_cash`) e link do PDF das contribuições do mês.
   Rota que responder 403 (o `viewer` só lê o resumo) vira aviso. Todo vínculo é de uma escola, então o painel
   sempre mostra os números dela. Quem tem 2 ou mais vínculos escolhe o contexto como antes.
-- **Despesas (REAL)**, `/painel/despesas`, `docs/expenses.md` (`src/lib/api/expenses.ts`): a professora vê só
+- **Despesas (REAL)**, `/painel/despesas`, `docs/expenses.md` (`src/lib/api/expenses.ts`): o funcionário vê só
   "Minhas despesas" (lista com status em português, formulário com anexo multipart, enviar, cancelar, motivo da
   correção pedida); a gestão vê a fila de análise (filtro por situação na API) e age conforme a permissão da
   sessão: aprovar (inclusive parcial, só quando um colaborador pagou, com motivo), recusar, pedir correção
@@ -87,8 +87,8 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   viewer só lê. O "PDF das contribuições do mês" segue no Resumo.
 - **Alterar senha (REAL)**, `/painel/conta`, `POST /auth/password`: 12 a 128 caracteres e diferente da atual; a
   API encerra as outras sessões e abre uma nova neste navegador.
-- **Menu por perfil**, a partir de `active_membership.permissions` (`src/lib/permissions.ts`): professora =
-  "Minhas despesas"; tesoureira e direção = Resumo, Despesas e Fechamento; viewer = Resumo e Fechamento (leitura).
+- **Menu por perfil**, a partir de `active_membership.permissions` (`src/lib/permissions.ts`): funcionário =
+  "Minhas despesas"; gestão e direção = Resumo, Despesas e Fechamento; viewer = Resumo e Fechamento (leitura).
   Os lançamentos por tipo (contribuições, despesas, reembolsos, devoluções) ficam em links dentro do Resumo.
 - **Simulado**: nada. Não há mais camada de mocks nem selo de protótipo. Ainda **sem tela**: administração
   (escolas, categorias, convites de usuário).

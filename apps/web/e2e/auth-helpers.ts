@@ -24,8 +24,8 @@ export function demoPassword(): string | null {
 
 /** Administradora da Escola Horizonte (demo). Cada escola e um cliente (ADR-020): nao existe administrador de rede. */
 export const ANA = { email: "ana.admin@example.test", name: "Ana Administradora (demo)", school: "Escola Horizonte (demo)" };
-/** Tesoureira da Escola Aurora (demo): tem statement:read, contributions:record_cash e reports:read. */
-export const CARLA = { email: "carla.tesoureira@example.test", name: "Carla Tesoureira (demo)", school: "Escola Aurora (demo)" };
+/** Gestao da Escola Aurora (demo): tem statement:read, contributions:record_cash e reports:read. */
+export const CARLA = { email: "carla.tesoureira@example.test", name: "Carla Gestão (demo)", school: "Escola Aurora (demo)" };
 /** Leitora da Escola Horizonte (demo): so reports:read_aggregate (o resumo do mes). */
 export const ELISA = { email: "elisa.leitora@example.test", school: "Escola Horizonte (demo)" };
 
@@ -36,7 +36,7 @@ export async function loginAs(page: Page, email = CARLA.email): Promise<void> {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
-  // quem nao ve o resumo (professora) cai em /painel/despesas
+  // quem nao ve o resumo (funcionario) cai em /painel/despesas
   await expect(page).toHaveURL(/\/painel(\/despesas)?$/);
 }
 
@@ -51,7 +51,7 @@ export function apiAcceptsThisOrigin(): boolean {
   return /^http:\/\/(127\.0\.0\.1|localhost):31(0[0-2]|1[0-9])$/.test(process.env.E2E_BASE_URL ?? "");
 }
 
-export const PAULA = { email: "paula.professora@example.test", name: "Paula Professora (demo)" };
+export const PAULA = { email: "paula.professora@example.test", name: "Paula Funcionária (demo)" };
 export const BRUNO = { email: "bruno.diretor@example.test", name: "Bruno Diretor (demo)" };
 
 /** Identificador unico por execucao: o banco de demonstracao e compartilhado e persistente. */

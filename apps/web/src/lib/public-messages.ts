@@ -8,7 +8,7 @@ import { FIELD_FROM_API, MISSING_MESSAGES, type IdentificationErrors } from "@/l
  */
 const NETWORK = "Não foi possível falar com o servidor. Confira a conexão e tente de novo. Nada foi cobrado.";
 const GENERIC = "Não foi possível gerar o Pix agora. Tente de novo em instantes. Nada foi cobrado.";
-const UNAVAILABLE = "O Pix ainda não está disponível para esta escola. Fale com a tesouraria da APM.";
+const UNAVAILABLE = "O Pix ainda não está disponível para esta escola. Fale com a gestão da APM.";
 
 export interface ContributionProblems {
   general: string | null;
@@ -72,7 +72,7 @@ export function describeRenewError(error: ApiError): string {
   return "Não foi possível gerar um novo QR agora. Tente de novo em instantes.";
 }
 
-/** Erro do registro de contribuicao em dinheiro pela tesouraria (POST /schools/{id}/contributions). */
+/** Erro do registro de contribuicao em dinheiro pela gestao (POST /schools/{id}/contributions). */
 export function describeCashError(error: ApiError): ContributionProblems {
   const none: ContributionProblems = { general: null, amount: null, fields: {} };
   if (error.kind === "network" || error.kind === "timeout") return { ...none, general: "Não foi possível falar com o servidor. Confira a conexão e tente de novo. Nada foi registrado." };

@@ -20,7 +20,7 @@ export default async function AcceptInvitationPage({ searchParams }: Props) {
       {token ? (
         <>
           <p className="mt-3 text-center text-body text-ink-2">
-            Você foi convidado para atuar na tesouraria de uma APM. Confirme abaixo para aceitar.
+            Você foi convidado para atuar na gestão de uma APM. Confirme abaixo para aceitar.
           </p>
           <AcceptInvitationForm token={token} signedInAs={signedInAs} />
         </>

@@ -178,7 +178,7 @@ function parseCash(body: unknown, status: number): CashContributionResult | null
 }
 
 /**
- * POST .../contributions (tesouraria: dinheiro, transferencia ou outra forma; `contributions:record_cash`).
+ * POST .../contributions (gestao: dinheiro, transferencia ou outra forma; `contributions:record_cash`).
  * `idempotencyKey` (uuid) e gerada UMA vez por tentativa pelo chamador: repetir devolve a mesma contribuicao (200).
  */
 export function recordCashContribution(

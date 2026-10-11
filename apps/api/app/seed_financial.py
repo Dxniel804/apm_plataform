@@ -29,7 +29,7 @@ DEFAULT_CATEGORIES: tuple[tuple[str, str, str, str], ...] = (
     ("donation", "Doações", "IN", "OTHER_INCOME"),
     ("other_income", "Outras entradas", "IN", "OTHER_INCOME"),
     ("apm_revenue", "Receitas da APM", "IN", "OTHER_INCOME"),
-    ("teacher_reimbursement", "Reembolso de professor", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("teacher_reimbursement", "Reembolso de funcionário", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("director_reimbursement", "Reembolso de diretor", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("school_supplies", "Compra de material", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("services", "Serviços", "OUT", "EXPENSES_REIMBURSEMENTS"),

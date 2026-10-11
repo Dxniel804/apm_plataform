@@ -106,7 +106,7 @@ def test_upgrade_from_an_empty_database_creates_everything(scratch_db: ScratchDb
     assert result.returncode == 0, result.stderr
     assert _catalog(scratch_db) == EXPECTED_CATALOG
     current = run_alembic(scratch_db, "current")
-    assert "0010_one_school_per_account (head)" in current.stdout + current.stderr
+    assert "0011_employee_wording (head)" in current.stdout + current.stderr
     admin = _admin_engine(scratch_db)
     try:
         assert _role(admin, "apm_app") == (False, False, True, False, False)

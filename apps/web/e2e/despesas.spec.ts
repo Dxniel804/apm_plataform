@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { BRUNO, CARLA, ELISA, PAULA, apiAcceptsThisOrigin, demoPassword, loginAs, tinyPdf, uniqueTag } from "./auth-helpers";
 
 /**
- * TASK-011 (fatia 3): despesas contra a API REAL. Professora cria, anexa e envia; a gestao aprova (inclusive
+ * TASK-011 (fatia 3): despesas contra a API REAL. Funcionario cria, anexa e envia; a gestao aprova (inclusive
  * parcial), reembolsa e paga. Precisa da API com o seed, do `npm run dev` na 3101 e da senha de demonstracao
  * (e2e/auth-helpers.ts). Cria despesas de demonstracao com descricao unica: o banco e compartilhado.
  * Serial e so no chromium-desktop: os passos dependem uns dos outros e criam dados. Os valores sao de
@@ -30,8 +30,8 @@ async function createExpense(page: Page, description: string, opts: { paidBy: "C
 
 const row = (page: Page, text: string) => page.getByRole("listitem").filter({ hasText: text });
 
-test("professora: so 'Minhas despesas'; cria, anexa e envia; baixa o anexo; ve o status em portugues", async ({ page }) => {
-  await loginAs(page, PAULA.email); // a professora nao ve o resumo: o login cai em Minhas despesas
+test("funcionario: so 'Minhas despesas'; cria, anexa e envia; baixa o anexo; ve o status em portugues", async ({ page }) => {
+  await loginAs(page, PAULA.email); // o funcionario nao ve o resumo: o login cai em Minhas despesas
   await expect(page).toHaveURL(/\/painel\/despesas$/);
   await expect(page.getByRole("heading", { level: 1, name: "Minhas despesas" })).toBeVisible();
   // menu: so a propria area (o nome do usuario vem do login: nenhum campo de nome)
@@ -106,7 +106,7 @@ test("despesa paga pela APM: aprova pelo valor pedido e registra o pagamento (se
   await expect(row(page, apmTag)).toContainText("Paga");
 });
 
-test("correcao pedida: a professora le o motivo da gestao e reenvia", async ({ page }) => {
+test("correcao pedida: o funcionario le o motivo da gestao e reenvia", async ({ page }) => {
   const fixTag = `${tag} corrigir`;
   await loginAs(page, PAULA.email);
   await page.goto("/painel/despesas");
@@ -151,7 +151,7 @@ test("o autor nao decide a propria despesa: o diretor ve o aviso e nenhum botao 
   await row(page, ownTag).getByRole("button", { name: /Abrir detalhes/ }).click();
   await expect(page.getByText("Esta despesa é sua: outra pessoa da gestão precisa decidir.")).toBeVisible();
   for (const name of ["Aprovar", "Recusar", "Pedir correção"]) await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
-  // quem decide e a tesoureira; recusa para deixar a fila limpa
+  // quem decide e a gestao; recusa para deixar a fila limpa
   await page.context().clearCookies();
   await loginAs(page, CARLA.email);
   await page.goto("/painel/despesas");

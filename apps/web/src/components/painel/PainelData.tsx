@@ -79,7 +79,7 @@ interface PainelDataProps {
 
 /**
  * Numeros REAIS da escola do vinculo ativo (docs/statement.md): resumo do mes, lancamentos por tipo
- * (com "carregar mais"), pendencias fora do saldo e as acoes da tesouraria. Cada rota que responder 403
+ * (com "carregar mais"), pendencias fora do saldo e as acoes da gestao. Cada rota que responder 403
  * (perfil `viewer` so le o resumo) vira um aviso: a tela nao quebra.
  */
 export function PainelData({ schoolId, section, period, permissions, onPeriodChange }: PainelDataProps) {
@@ -230,7 +230,7 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
 
           {!canReadStatement && summary.state === "ready" && (
             <Notice tone="info">
-              O seu perfil vê só os totais do mês. Os lançamentos e as pendências são da tesouraria.
+              O seu perfil vê só os totais do mês. Os lançamentos e as pendências são da gestão.
             </Notice>
           )}
 

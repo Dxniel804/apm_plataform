@@ -6,7 +6,7 @@ import { PageFrame } from "@/components/ui/PageFrame";
 /**
  * Tela de erro inesperado (error.tsx e global-error.tsx). Texto em portugues, com a identidade do
  * produto. NUNCA mostra error.message (pode conter detalhe interno); so o codigo (digest), que e um
- * hash, para a tesouraria poder informar a quem cuida do sistema.
+ * hash, para a gestao poder informar a quem cuida do sistema.
  */
 export function ErrorView({ reset, digest }: { reset: () => void; digest?: string }) {
   return (

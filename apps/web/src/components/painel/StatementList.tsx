@@ -7,7 +7,7 @@ import { categoryLabel, entryStatus, formatLocalDateShort, pendingStatus } from 
 /**
  * O cartao das listas e o MESMO da rota Despesas (Figma): titulo em azul, uma linha de detalhes, o valor em
  * destaque e a situacao em pilula. Os lancamentos por tipo (contribuicoes, despesas, reembolsos, devolucoes)
- * e as pendencias usam este molde, entao a tesouraria le tudo do mesmo jeito.
+ * e as pendencias usam este molde, entao a gestao le tudo do mesmo jeito.
  */
 const CARD = "rounded-[var(--r-lg)] border border-line bg-white px-5 py-5 sm:px-8 sm:py-6";
 const TITLE = "text-[1.0625rem] font-semibold leading-snug text-brand-800 [overflow-wrap:anywhere] sm:text-[1.25rem]";

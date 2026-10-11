@@ -31,7 +31,7 @@ describe("statement-labels", () => {
 
   it("categorias conhecidas e codigo legivel para as outras", () => {
     expect(categoryLabel("parent_contribution")).toBe("Contribuição de pais");
-    expect(categoryLabel("teacher_reimbursement")).toBe("Reembolso de professor");
+    expect(categoryLabel("teacher_reimbursement")).toBe("Reembolso de funcionário");
     expect(categoryLabel("bank_fee")).toBe("bank fee");
   });
 

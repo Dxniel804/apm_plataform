@@ -119,7 +119,7 @@ export function describeExpenseError(error: ApiError): ProblemText {
     case "length_required":
       return { ...none, general: "O arquivo é grande demais. O limite é de 10 MB." };
     case "attachment_unavailable":
-      return { ...none, general: "O arquivo não está disponível agora. Avise a tesouraria." };
+      return { ...none, general: "O arquivo não está disponível agora. Avise a gestão." };
     case "partial_approval_not_allowed":
       return { ...none, general: "Só dá para aprovar um valor menor quando um colaborador pagou do próprio bolso. Aprove pelo valor pedido." };
     case "reimbursement_not_applicable":

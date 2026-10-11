@@ -30,7 +30,7 @@ const KIND_NAV: Array<{ kind: MovementKind; label: string; icon: ReactNode }> = 
 
 /**
  * Menu por perfil, a partir das permissoes da sessao (nunca de um papel fixo no cliente):
- * professora = "Minhas despesas"; gestao = Dashboard, Lancamento do mes, Despesas e Fechamento;
+ * funcionario = "Minhas despesas"; gestao = Dashboard, Lancamento do mes, Despesas e Fechamento;
  * viewer = Dashboard e Fechamento (leitura, sem o extrato).
  */
 export function navFor(areas: Areas, period?: string, options: { statement?: boolean } = {}): NavItem[] {

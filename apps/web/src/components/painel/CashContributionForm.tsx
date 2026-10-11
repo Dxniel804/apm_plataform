@@ -21,7 +21,7 @@ const CATEGORIES: Array<[CashCategory, string]> = [
   ["other_income", "Outra entrada"],
   ["apm_revenue", "Receita da APM"],
 ];
-// So estes campos de identificacao: a tesouraria nao precisa de e-mail nem telefone aqui.
+// So estes campos de identificacao: a gestao nao precisa de e-mail nem telefone aqui.
 const FIELDS: IdentificationField[] = ["guardianName", "studentName", "classroom"];
 const OPTIONAL = { guardianName: "OPTIONAL", studentName: "OPTIONAL", classroom: "OPTIONAL", contributorEmail: "HIDDEN", contributorPhone: "HIDDEN" } as const;
 

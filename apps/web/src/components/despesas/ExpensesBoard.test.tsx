@@ -22,7 +22,7 @@ function stubCategories() {
   vi.spyOn(api.expenses, "categories").mockResolvedValue({ ok: true, data: [CATEGORY] });
 }
 
-describe("Minhas despesas (professora)", () => {
+describe("Minhas despesas (funcionário)", () => {
   it("lista as proprias despesas com o status em portugues; abre o detalhe sob demanda", async () => {
     stubCategories();
     const list = vi.spyOn(api.expenses, "list").mockResolvedValue(ok([
@@ -125,7 +125,7 @@ describe("Fila da gestao", () => {
 });
 
 describe("ExpensesArea (por perfil)", () => {
-  it("professora: so 'Minhas despesas'; tesoureira: so a fila; diretor: abas; viewer: sem acesso", async () => {
+  it("funcionário: so 'Minhas despesas'; gestão: so a fila; diretor: abas; viewer: sem acesso", async () => {
     stubCategories();
     vi.spyOn(api.expenses, "list").mockResolvedValue(ok([]));
     const staff = render(<ExpensesArea schoolId={SCHOOL_ID} userId={AUTHOR_ID} permissions={STAFF} tab="fila" />);

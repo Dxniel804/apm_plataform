@@ -15,7 +15,7 @@ const sans = localFont({
 export const metadata: Metadata = {
   title: { default: "APM Digital", template: "%s · APM Digital" },
   description:
-    "Contribuições da APM por Pix, com comprovante, e a prestação de contas da tesouraria no mesmo lugar.",
+    "Contribuições da APM por Pix, com comprovante, e a prestação de contas da gestão no mesmo lugar.",
   robots: { index: false, follow: false },
 };
 

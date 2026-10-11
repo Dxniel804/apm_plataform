@@ -77,7 +77,7 @@ export function IdentificationStep({
         Quem está contribuindo?
       </h2>
       <p className="mt-2 max-w-[52ch] text-body text-ink-2">
-        Esses dados ajudam a tesouraria a identificar o pagamento. Você não precisa criar conta nem fazer login.
+        Esses dados ajudam a gestão a identificar o pagamento. Você não precisa criar conta nem fazer login.
         {hasOptional && " Campos marcados como opcionais podem ficar em branco."}
       </p>
 

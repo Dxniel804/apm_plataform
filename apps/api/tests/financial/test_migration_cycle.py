@@ -27,7 +27,7 @@ def _module() -> Any:
 
 
 BASE: str = _module().down_revision
-HEAD_LABEL = "0010_one_school_per_account (head)"
+HEAD_LABEL = "0011_employee_wording (head)"
 FINANCIAL = {
     "audit_logs", "categories", "contributions", "expense_attachments", "expenses",
     "financial_transactions", "monthly_closings", "payment_accounts", "pix_charges", "refunds",

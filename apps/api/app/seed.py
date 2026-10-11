@@ -43,18 +43,18 @@ SCHOOLS = [
 USERS = [
     ("ana.admin@example.test", "Ana Administradora (demo)"),
     ("bruno.diretor@example.test", "Bruno Diretor (demo)"),
-    ("carla.tesoureira@example.test", "Carla Tesoureira (demo)"),
-    ("diego.professor@example.test", "Diego Professor (demo)"),
+    ("carla.tesoureira@example.test", "Carla Gestão (demo)"),
+    ("diego.professor@example.test", "Diego Funcionário (demo)"),
     ("elisa.leitora@example.test", "Elisa Leitora (demo)"),
     ("fabio.admin@example.test", "Fabio Administrador (demo)"),
-    ("gina.tesoureira@example.test", "Gina Tesoureira (demo)"),
+    ("gina.tesoureira@example.test", "Gina Gestão (demo)"),
     # Three memberships, one in each school, to try the switch of context in the site: each school
     # invited this person on its own and none of them gives access to another.
     ("helena.multipla@example.test", "Helena Multipla (demo)"),
     # One more teacher in Aurora and one more treasurer in Horizonte, so that every school has a
     # person who submits an expense and a different person who approves it.
-    ("paula.professora@example.test", "Paula Professora (demo)"),
-    ("marcos.tesoureiro@example.test", "Marcos Tesoureiro (demo)"),
+    ("paula.professora@example.test", "Paula Funcionária (demo)"),
+    ("marcos.tesoureiro@example.test", "Marcos Gestão (demo)"),
 ]
 # (email, organization slug, school slug, role)
 MEMBERSHIPS = [

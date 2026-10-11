@@ -8,12 +8,12 @@ const SCHOOL_ADMIN = [...TREASURER, "expenses:read_own", "expenses:submit", "inv
 const VIEWER = ["reports:read_aggregate"];
 
 describe("areasFor", () => {
-  it("professora (staff): so 'Minhas despesas'", () => {
+  it("funcionário (staff): so 'Minhas despesas'", () => {
     expect(areasFor(STAFF)).toEqual({ resumo: false, fechamento: false, manageExpenses: false, myExpenses: true, closeMonths: false, reopenMonths: false });
     expect(homeArea(areasFor(STAFF))).toBe("despesas");
   });
 
-  it("tesoureira: resumo, fila de analise e fechamento; fecha mes mas nao reabre; nao envia despesa propria", () => {
+  it("gestão (treasurer): resumo, fila de analise e fechamento; fecha mes mas nao reabre; nao envia despesa propria", () => {
     expect(areasFor(TREASURER)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: false });
   });
 

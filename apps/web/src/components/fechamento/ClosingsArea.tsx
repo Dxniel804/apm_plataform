@@ -304,7 +304,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
       )}
       {!areas.closeMonths && (
         <p role="note" className="mb-6 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
-          Você pode consultar os fechamentos e baixar o PDF. Fechar o mês é da tesouraria e da direção.
+          Você pode consultar os fechamentos e baixar o PDF. Fechar o mês é da gestão e da direção.
         </p>
       )}
 
@@ -327,7 +327,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
       {res && res.ok && items.length === 0 && (
         <div className="rounded-[var(--r-lg)] border border-line px-6 py-12 text-center">
           <h2 className="text-heading">Nenhum mês fechado ainda</h2>
-          <p className="mx-auto mt-2 max-w-[44ch] text-body text-ink-2">Quando a tesouraria fechar um mês, o fechamento aparece aqui, com os números e o PDF.</p>
+          <p className="mx-auto mt-2 max-w-[44ch] text-body text-ink-2">Quando a gestão fechar um mês, o fechamento aparece aqui, com os números e o PDF.</p>
         </div>
       )}
       {items.length > 0 && (

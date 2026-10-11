@@ -8,7 +8,7 @@ import { CARLA, ELISA, apiAcceptsThisOrigin, demoPassword, loginAs } from "./aut
  */
 test.skip(!demoPassword() || !apiAcceptsThisOrigin(), "precisa da senha de demonstracao e de E2E_BASE_URL=http://127.0.0.1:3102");
 
-test("tesoureira: resumo com os dois saldos, pendencias fora do saldo e PDF do mes", async ({ page }) => {
+test("gestao: resumo com os dois saldos, pendencias fora do saldo e PDF do mes", async ({ page }) => {
   await loginAs(page, CARLA.email);
   // a escola fica na barra lateral (desktop) ou na linha de contexto do topo do painel (celular)
   await expect(page.getByText(CARLA.school).locator("visible=true").first()).toBeVisible();
@@ -30,7 +30,7 @@ test("tesoureira: resumo com os dois saldos, pendencias fora do saldo e PDF do m
   expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
 });
 
-test("tesoureira: lancamentos por tipo, mes anterior e dinheiro em caixa", async ({ page }) => {
+test("gestao: lancamentos por tipo, mes anterior e dinheiro em caixa", async ({ page }) => {
   await loginAs(page, CARLA.email);
   // (navega por URL: no celular a barra de abas fica sob o botao do overlay do Next em desenvolvimento)
   await page.goto("/painel?tipo=contribuicoes");

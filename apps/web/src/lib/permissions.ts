@@ -39,7 +39,7 @@ export function areaHref(area: PainelArea, params: { period?: string; tab?: "min
   return query.length > 0 ? `${base}?${query.join("&")}` : base;
 }
 
-/** Para onde mandar quem abre /painel sem poder ver o resumo (ex.: professora): a sua area. */
+/** Para onde mandar quem abre /painel sem poder ver o resumo (ex.: funcionario): a sua area. */
 export function homeArea(areas: Areas): PainelArea {
   if (areas.resumo) return "resumo";
   if (areas.myExpenses || areas.manageExpenses) return "despesas";

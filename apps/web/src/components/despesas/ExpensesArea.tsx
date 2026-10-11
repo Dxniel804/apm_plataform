@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Area "Despesas". Professora: so "Minhas despesas". Gestao (tesoureira): so a fila de analise. Quem tem as
+ * Area "Despesas". Funcionario: so "Minhas despesas". Gestao: so a fila de analise. Quem tem as
  * duas funcoes (diretor): abas. As permissoes vem da sessao; a API confere de novo.
  */
 export function ExpensesArea({ schoolId, userId, permissions, tab }: Props) {

@@ -17,6 +17,8 @@ The **tenant is the organization**; a school is a sub-scope of it. Every table i
 
 Roles (a text `CHECK`, not a native enum, so migrating is easy): `school_admin`, `treasurer`, `staff`, `viewer` (the role of a network, `organization_admin`, was removed by 0010, ADR-020). Statuses: `invited` (default), `active`, `suspended`, `revoked`. The permission matrix (role → permissions) lives **in code** (`app/auth/permissions.py`, see [auth.md](auth.md)), not in tables.
 
+**The names on the screen** (the keys above do not change): `school_admin` is *Administrador da escola*, `treasurer` is *Gestão*, `staff` is *Funcionário* and `viewer` is *Leitura* (`apps/web/src/lib/roles.ts`). The ledger origin `TEACHER` is shown as *funcionário(a)* too.
+
 **Why `platform_admin` is not a membership role.** A platform administrator does not belong to an organization, and `memberships.organization_id` is `NOT NULL` on purpose. Putting a platform role there would either force a fake organization or weaken the invariant that every membership row has a tenant. Platform flows (jobs, super admin, creating tenants) need their own ADR and their own database role (ADR-014).
 
 ## One school per account (ADR-020)

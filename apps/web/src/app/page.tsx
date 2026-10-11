@@ -18,7 +18,7 @@ const DEMOS = [
   },
   {
     href: "/login",
-    title: "Entrar na tesouraria",
+    title: "Entrar na gestão",
     text: "Painel da escola com o extrato do mês, para quem cuida das contas.",
     featured: true,
   },
@@ -39,7 +39,7 @@ export default function HomePage() {
           Contribuir com a APM leva um minuto. Prestar contas, também.
         </h1>
         <p className="mt-5 max-w-[46ch] text-body text-ink-2 sm:text-[1.1875rem]">
-          Famílias pagam por Pix pelo celular, sem criar conta. A tesouraria acompanha cada contribuição, despesa e
+          Famílias pagam por Pix pelo celular, sem criar conta. A gestão acompanha cada contribuição, despesa e
           reembolso no mesmo lugar.
         </p>
 

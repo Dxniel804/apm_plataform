@@ -87,7 +87,7 @@ def test_the_pdf_of_march_has_the_summary_the_sections_and_the_signatures(
     for number, page in enumerate(pages, start=1):
         assert f"Página {number} de {len(pages)}" in page
         assert created["entries_hash"] in page
-    assert "Tesoureiro(a)" in pages[-1] and "Presidente ou diretor(a)" in pages[-1]
+    assert "Gestão" in pages[-1] and "Presidente ou diretor(a)" in pages[-1]
 
 
 def test_the_sections_close_with_the_summary_of_the_closing(scene: Scene, login: Login) -> None:
@@ -116,7 +116,7 @@ def test_where_the_money_went_comes_from_the_breakdown(scene: Scene, login: Logi
     )
 
     assert "Para onde foi o dinheiro" in everything
-    assert "Reembolso de professor (63,0%) R$ 40,00" in everything  # 4000 of 6350
+    assert "Reembolso de funcionário (63,0%) R$ 40,00" in everything  # 4000 of 6350
     assert "Compra de material (31,5%) R$ 20,00" in everything  # 2000 of 6350
     assert "Tarifas bancárias (5,5%) R$ 3,50" in everything  # 350 of 6350
 

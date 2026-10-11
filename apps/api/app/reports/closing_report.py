@@ -63,7 +63,7 @@ STATUS_LABELS = {
 }
 ORIGIN_LABELS = {
     "GUARDIAN": "responsável",
-    "TEACHER": "professor(a)",
+    "TEACHER": "funcionário(a)",
     "DIRECTOR": "diretor(a)",
     "EMPLOYEE": "funcionário(a)",
     "MANAGEMENT": "gestão",
@@ -541,7 +541,7 @@ def _signatures(report: ClosingReport) -> list[Flowable]:
     table = Table(
         [
             [para(line, "body"), para(line, "body")],
-            [para("Tesoureiro(a)", "cell_bold"), para("Presidente ou diretor(a)", "cell_bold")],
+            [para("Gestão", "cell_bold"), para("Presidente ou diretor(a)", "cell_bold")],
             [para("Nome e data:", "small"), para("Nome e data:", "small")],
         ],
         colWidths=[CONTENT_WIDTH / 2] * 2,

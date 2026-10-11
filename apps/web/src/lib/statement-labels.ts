@@ -43,7 +43,7 @@ export function pendingStatus(status: string): string {
 /** Secoes de statement_pending, na ordem em que a tela as mostra. */
 export const PENDING_SECTIONS: Array<{ section: string; title: string; note: string }> = [
   { section: "PAYABLE", title: "A pagar", note: "Despesas aprovadas e reembolsos que ainda saem do caixa." },
-  { section: "AWAITING_APPROVAL", title: "Aguardando aprovação", note: "Despesas enviadas que a tesouraria ainda não decidiu." },
+  { section: "AWAITING_APPROVAL", title: "Aguardando aprovação", note: "Despesas enviadas que a gestão ainda não decidiu." },
   { section: "AWAITING_CORRECTION", title: "Aguardando correção", note: "Despesas devolvidas para quem enviou corrigir." },
   { section: "REVIEW", title: "Pagamento em análise", note: "Pix recebido que a escola precisa conferir. Ainda não é contribuição confirmada." },
   { section: "RECEIVABLE", title: "A receber", note: "Pix gerado e ainda não pago, e devoluções a receber." },
@@ -58,7 +58,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   donation: "Doação",
   other_income: "Outra entrada",
   apm_revenue: "Receita da APM",
-  teacher_reimbursement: "Reembolso de professor",
+  teacher_reimbursement: "Reembolso de funcionário",
 };
 
 /** Categoria (codigo) em portugues; categoria desconhecida: o proprio codigo legivel, sem prosa do servidor. */

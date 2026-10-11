@@ -153,7 +153,7 @@ describe("fechar mes", () => {
 });
 
 describe("reabrir (so com months:reopen)", () => {
-  it("quem nao tem months:reopen (tesoureira, diretor) nao ve o botao", async () => {
+  it("quem nao tem months:reopen (gestão, diretor) nao ve o botao", async () => {
     const user = setup(TREASURER, [JAN]);
     await user.click(await screen.findByRole("button", { name: "Abrir o fechamento de janeiro de 2026" }));
     expect(screen.queryByRole("button", { name: "Reabrir mês" })).not.toBeInTheDocument();
@@ -189,7 +189,7 @@ describe("reabrir (so com months:reopen)", () => {
 describe("viewer (so leitura)", () => {
   it("ve a lista e baixa o PDF, mas nao fecha, nao reabre e nao verifica", async () => {
     const user = setup(VIEWER, [JAN]);
-    expect(await screen.findByRole("note")).toHaveTextContent("Fechar o mês é da tesouraria e da direção");
+    expect(await screen.findByRole("note")).toHaveTextContent("Fechar o mês é da gestão e da direção");
     expect(screen.queryByRole("button", { name: "Fechar mês" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Abrir o fechamento de janeiro de 2026" }));
     expect(screen.getByRole("button", { name: "Baixar PDF do extrato mensal" })).toBeInTheDocument();

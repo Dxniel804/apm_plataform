@@ -39,7 +39,7 @@ DEFAULT_CATEGORIES = (
     ("parent_contribution", "Contribuição de pais", "IN", "CONTRIBUTIONS"),
     ("donation", "Doações", "IN", "OTHER_INCOME"),
     ("school_supplies", "Compra de material", "OUT", "EXPENSES_REIMBURSEMENTS"),
-    ("teacher_reimbursement", "Reembolso de professor", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("teacher_reimbursement", "Reembolso de funcionário", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("refund", "Devolução", "IN", "REFUNDS"),
 )
 
