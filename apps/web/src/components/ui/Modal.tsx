@@ -14,6 +14,10 @@ const FOCUSABLE = [
 
 const noopSubscribe = () => () => {};
 
+/** Janelas abertas, da mais antiga para a mais nova. So a do topo trata o teclado (Esc e Tab): uma janela aberta
+ *  por cima de outra (a camera sobre o formulario) nao pode fechar a de baixo nem roubar o foco dela. */
+const openWindows: symbol[] = [];
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -50,7 +54,11 @@ export function Modal({ open, onClose, label, children, placement = "center", in
 
     (initialFocus?.current ?? panelRef.current)?.focus();
 
+    const token = Symbol("modal");
+    openWindows.push(token);
+
     const onKeyDown = (event: KeyboardEvent) => {
+      if (openWindows[openWindows.length - 1] !== token) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         onCloseRef.current();
@@ -82,6 +90,8 @@ export function Modal({ open, onClose, label, children, placement = "center", in
     document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
+      const at = openWindows.indexOf(token);
+      if (at >= 0) openWindows.splice(at, 1);
       root.style.overflow = previousOverflow;
       opener?.focus?.();
     };

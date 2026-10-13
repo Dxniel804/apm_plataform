@@ -14,6 +14,10 @@ import {
   approveExpense, cancelExpense, createExpense, downloadAttachment, getExpense, listCategories, listExpenses, payExpense,
   reimburseExpense, rejectExpense, requestCorrection, submitExpense, updateExpense, uploadAttachment,
 } from "./expenses";
+import {
+  cancelStaffRequest, createStaffRequest, downloadRequestPhoto, getStaffRequest, listStaffRequests, resolveStaffRequest, startStaffRequest,
+  uploadRequestPhoto,
+} from "./staff-requests";
 import { getPending, getStatement, getSummary, recordCashContribution } from "./statement";
 import { createContribution, getContribution, getPublicSchool, getReceipt, renewCharge, sandboxPay } from "./public";
 
@@ -42,6 +46,16 @@ export const api: {
     requestCorrection: typeof requestCorrection;
     reimburse: typeof reimburseExpense;
     pay: typeof payExpense;
+  };
+  requests: {
+    list: typeof listStaffRequests;
+    get: typeof getStaffRequest;
+    create: typeof createStaffRequest;
+    upload: typeof uploadRequestPhoto;
+    download: typeof downloadRequestPhoto;
+    start: typeof startStaffRequest;
+    resolve: typeof resolveStaffRequest;
+    cancel: typeof cancelStaffRequest;
   };
   closings: {
     list: typeof listClosings;
@@ -90,6 +104,16 @@ export const api: {
     requestCorrection,
     reimburse: reimburseExpense,
     pay: payExpense,
+  },
+  requests: {
+    list: listStaffRequests,
+    get: getStaffRequest,
+    create: createStaffRequest,
+    upload: uploadRequestPhoto,
+    download: downloadRequestPhoto,
+    start: startStaffRequest,
+    resolve: resolveStaffRequest,
+    cancel: cancelStaffRequest,
   },
   closings: {
     list: listClosings,

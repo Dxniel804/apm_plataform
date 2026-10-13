@@ -329,6 +329,49 @@ export interface ExpenseInput {
 
 export type ExpenseUpdate = Partial<Omit<ExpenseInput, "paidBy">>;
 
+// ---------------------------------------------------------------- REAL: solicitacoes (docs/staff-requests.md)
+
+export type RequestCategory = "SUPPLIES" | "MAINTENANCE" | "EVENT" | "FINANCE" | "OTHER";
+export type RequestStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CANCELLED";
+
+export interface RequestPhoto {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  createdAt: string;
+}
+
+/** Pedido de um funcionario a gestao. A API devolve so o id de quem escreveu (nao o nome). */
+export interface StaffRequestSummary {
+  id: string;
+  category: RequestCategory;
+  title: string;
+  status: RequestStatus;
+  authorUserId: string;
+  attachmentsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+}
+
+export interface StaffRequestDetail extends StaffRequestSummary {
+  description: string | null;
+  startedAt: string | null;
+  startedByUserId: string | null;
+  resolvedByUserId: string | null;
+  /** O que a gestao escreveu ao resolver (o autor le). */
+  resolutionNote: string | null;
+  photos: RequestPhoto[];
+}
+
+export interface StaffRequestInput {
+  category: RequestCategory;
+  title: string;
+  description?: string;
+}
+
 // ---------------------------------------------------------------- REAL: fechamento mensal (docs/statement.md)
 
 /** Fechamento do mes: numeros de statement_summary congelados, mais o codigo de verificacao. */

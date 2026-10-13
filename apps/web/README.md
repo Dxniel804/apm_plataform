@@ -85,6 +85,18 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   "Verificar", "Baixar PDF do extrato mensal" (só de fechamento ativo; reaberto não tem PDF) e "Reabrir mês" só
   para quem tem `months:reopen` (o administrador da escola), com motivo de 10 a 500 caracteres. O
   viewer só lê. O "PDF das contribuições do mês" segue no Resumo.
+- **Solicitações (REAL)**, `/painel/solicitacoes`, `docs/staff-requests.md` (`src/lib/api/staff-requests.ts`): o
+  funcionário abre pedidos para a gestão ("Nova solicitação": categoria, título, descrição e até 6 fotos); a gestão
+  tem a caixa de entrada (filtros de situação e categoria na API), inicia o atendimento e resolve com uma nota que o
+  autor lê; o autor cancela enquanto está aberto. O administrador da escola vê as duas abas (`?aba=minhas`). As
+  fotos vão em multipart e voltam pela API com a sessão (nunca há URL pública). O menu mostra "Solicitações" a
+  quem tem `requests:read_all` e "Minhas solicitações" a quem só abre pedidos.
+- **Fotos** (`PhotoPicker`, `CameraDialog`, `src/lib/photo.ts`): "Tirar foto" usa a câmera do navegador
+  (`getUserMedia`, câmera traseira quando há; sem ela, o campo `capture` do sistema) e "Escolher da galeria" aceita
+  PNG, JPEG e WebP. A foto é reduzida no navegador (lado maior de 2400 px, JPEG) para caber nos 10 MB e fica só na
+  memória até o envio. A câmera exige `Permissions-Policy: camera=(self)` (`next.config.ts`; antes era `camera=()`).
+  Uma janela aberta por cima de outra (a câmera sobre o formulário) é tratada pelo `Modal`: só a do topo responde a
+  Esc e Tab. Nos e2e o Chromium usa a câmera de mentira (`playwright.config.ts`).
 - **Alterar senha (REAL)**, `/painel/conta`, `POST /auth/password`: 12 a 128 caracteres e diferente da atual; a
   API encerra as outras sessões e abre uma nova neste navegador.
 - **Menu por perfil**, a partir de `active_membership.permissions` (`src/lib/permissions.ts`): funcionário =

@@ -10,6 +10,7 @@ const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/components/status/ApiStatusChip", () => ({ ApiStatusChip: () => null }));
 vi.mock("@/components/despesas/ExpensesArea", () => ({ ExpensesArea: () => <div data-testid="expenses-area" /> }));
+vi.mock("@/components/solicitacoes/RequestsArea", () => ({ RequestsArea: () => <div data-testid="requests-area" /> }));
 vi.mock("./PainelData", () => ({
   PainelData: (p: { schoolId: string; section: string; period?: string; permissions: string[] }) => (
     <div data-testid="data">{`${p.schoolId}|${p.section}|${p.period ?? ""}|${p.permissions.join(",")}`}</div>
@@ -24,7 +25,7 @@ const problem = (code: string, status: number): ApiResult<never> => ({
   error: { kind: "problem", status, code } as ApiError,
 });
 
-function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "fechamento"; period?: string } = {}) {
+function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "solicitacoes" | "fechamento"; period?: string } = {}) {
   return render(<PainelShell session={s} area={props.area ?? "resumo"} period={props.period} />);
 }
 
@@ -56,17 +57,19 @@ describe("PainelShell com sessao real", () => {
 
   it("o menu muda por perfil, a partir das permissoes da sessao", () => {
     const names = () => screen.getAllByRole("link").map((l) => l.textContent);
-    const staff = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "staff", permissions: ["expenses:read_own", "expenses:submit"] } });
+    const staff = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "staff", permissions: ["expenses:read_own", "expenses:submit", "requests:read_own", "requests:submit"] } });
     const { unmount } = renderShell(staff, { area: "despesas" });
     expect(screen.getAllByRole("link", { name: "Minhas despesas" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Minhas solicitações" })[0]).toHaveAttribute("href", "/painel/solicitacoes");
     expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Fechamento" })).not.toBeInTheDocument();
     unmount();
 
-    const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close"] } });
+    const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage"] } });
     const t = renderShell(treasurer);
-    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Fechamento"]));
+    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Fechamento"]));
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Minhas solicitações" })).not.toBeInTheDocument();
     t.unmount();
 
     const viewer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "viewer", permissions: ["reports:read_aggregate"] } });
@@ -74,6 +77,19 @@ describe("PainelShell com sessao real", () => {
     expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Fechamento"]));
     expect(screen.queryByRole("link", { name: "Despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Contribuições" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Solicitações/ })).not.toBeInTheDocument();
+  });
+
+  it("a area Solicitacoes mostra o titulo certo para cada perfil e a lista do perfil", () => {
+    const manager = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "requests:read_all", "requests:manage"] } });
+    const { unmount } = renderShell(manager, { area: "solicitacoes" });
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Solicitações");
+    expect(screen.getByTestId("requests-area")).toBeInTheDocument();
+    unmount();
+
+    const staff = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "staff", permissions: ["requests:read_own", "requests:submit"] } });
+    renderShell(staff, { area: "solicitacoes" });
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Minhas solicitações");
   });
 
   it("os links do menu carregam o mes escolhido (resumo e fechamento)", () => {

@@ -12,6 +12,13 @@ const baseURL = external ?? "http://127.0.0.1:3110";
 const mobile = { viewport: { width: 390, height: 844 }, colorScheme: "dark" as const };
 const desktop = { viewport: { width: 1440, height: 900 }, colorScheme: "light" as const };
 
+// Camera de mentira no Chromium (um video de teste) e a permissao ja concedida: o botao "Tirar foto" funciona sem
+// camera nem janela de pergunta. O WebKit nao tem esses recursos; os testes de camera so rodam no Chromium.
+const fakeCamera = {
+  launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+  permissions: ["camera" as const],
+};
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 120_000,
@@ -23,8 +30,8 @@ export default defineConfig({
   projects: [
     { name: "webkit-mobile", use: { ...devices["Desktop Safari"], ...mobile } },
     { name: "webkit-desktop", use: { ...devices["Desktop Safari"], ...desktop } },
-    { name: "chromium-mobile", use: { ...devices["Desktop Chrome"], ...mobile } },
-    { name: "chromium-desktop", use: { ...devices["Desktop Chrome"], ...desktop } },
+    { name: "chromium-mobile", use: { ...devices["Desktop Chrome"], ...mobile, ...fakeCamera } },
+    { name: "chromium-desktop", use: { ...devices["Desktop Chrome"], ...desktop, ...fakeCamera } },
   ],
   webServer: external
     ? undefined

@@ -81,3 +81,53 @@ describe("Modal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Modal aninhado (a camera abre por cima do formulario)", () => {
+  function Nested({ outerClose, innerClose }: { outerClose: () => void; innerClose: () => void }) {
+    const [outer, setOuter] = useState(true);
+    const [inner, setInner] = useState(true);
+    return (
+      <div>
+        <Modal open={outer} onClose={() => { outerClose(); setOuter(false); }} label="De baixo">
+          <button>Botao de baixo</button>
+        </Modal>
+        <Modal open={inner} onClose={() => { innerClose(); setInner(false); }} label="De cima">
+          <button>Botao de cima</button>
+          <button>Outro de cima</button>
+        </Modal>
+      </div>
+    );
+  }
+
+  it("Esc fecha so a janela de cima; a de baixo continua aberta e o proximo Esc a fecha", async () => {
+    const outerClose = vi.fn();
+    const innerClose = vi.fn();
+    const user = userEvent.setup();
+    render(<Nested outerClose={outerClose} innerClose={innerClose} />);
+
+    await user.keyboard("{Escape}");
+    expect(innerClose).toHaveBeenCalledTimes(1);
+    expect(outerClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "De cima" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "De baixo" })).toBeInTheDocument();
+    expect(document.documentElement.style.overflow).toBe("hidden"); // a pagina segue travada pela janela de baixo
+
+    await user.keyboard("{Escape}");
+    expect(outerClose).toHaveBeenCalledTimes(1);
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+
+  it("o Tab fica na janela de cima: a de baixo nao rouba o foco", async () => {
+    const user = userEvent.setup();
+    render(<Nested outerClose={() => {}} innerClose={() => {}} />);
+    const first = screen.getByRole("button", { name: "Botao de cima" });
+    const last = screen.getByRole("button", { name: "Outro de cima" });
+
+    await user.tab();
+    expect(first).toHaveFocus();
+    await user.tab();
+    expect(last).toHaveFocus();
+    await user.tab();
+    expect(first).toHaveFocus();
+  });
+});

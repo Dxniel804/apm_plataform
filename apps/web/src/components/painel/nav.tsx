@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
-import { BarChartIcon, CalendarCheckIcon, CashCoinIcon, Cart4Icon, CounterclockwiseIcon, ReplyAllIcon } from "@/components/ui/icons";
+import {
+  BarChartIcon,
+  CalendarCheckIcon,
+  CashCoinIcon,
+  Cart4Icon,
+  ChatLeftTextIcon,
+  CounterclockwiseIcon,
+  ReplyAllIcon,
+} from "@/components/ui/icons";
 import { sectionHref } from "@/lib/painel-section";
 import { areaHref, type Areas, type PainelArea } from "@/lib/permissions";
 import type { MovementKind } from "@/lib/status";
@@ -30,7 +38,8 @@ const KIND_NAV: Array<{ kind: MovementKind; label: string; icon: ReactNode }> = 
 
 /**
  * Menu por perfil, a partir das permissoes da sessao (nunca de um papel fixo no cliente):
- * funcionario = "Minhas despesas"; gestao = Dashboard, Lancamento do mes, Despesas e Fechamento;
+ * funcionario = "Minhas despesas" e "Minhas solicitacoes"; gestao = Dashboard, Lancamento do mes, Despesas,
+ * Solicitacoes e Fechamento;
  * viewer = Dashboard e Fechamento (leitura, sem o extrato).
  */
 export function navFor(areas: Areas, period?: string, options: { statement?: boolean } = {}): NavItem[] {
@@ -52,6 +61,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       label: areas.manageExpenses ? "Despesas" : "Minhas despesas",
       href: areaHref("despesas"),
       icon: <Cart4Icon size={22} />,
+    });
+  }
+  if (areas.requests) {
+    items.push({
+      area: "solicitacoes",
+      label: areas.manageRequests ? "Solicitações" : "Minhas solicitações",
+      href: areaHref("solicitacoes"),
+      icon: <ChatLeftTextIcon size={22} />,
     });
   }
   if (areas.fechamento) {

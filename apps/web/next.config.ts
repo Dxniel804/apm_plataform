@@ -26,7 +26,8 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    // A camera so a propria origem (o botao "Tirar foto" das solicitacoes e das despesas); o resto segue fechado.
+    value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
   },
 ];
 

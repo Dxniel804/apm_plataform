@@ -5,7 +5,8 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ExpensesArea } from "@/components/despesas/ExpensesArea";
 import { PasswordForm } from "@/components/conta/PasswordForm";
 import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
-import { BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, KeyIcon } from "@/components/ui/icons";
+import { RequestsArea } from "@/components/solicitacoes/RequestsArea";
+import { BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, KeyIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
@@ -110,7 +111,7 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
   const areas = areasFor(active.permissions);
   const navItems = navFor(areas, period, { statement: active.permissions.includes("statement:read") });
-  const { title, icon } = titleFor(area, section, areas.manageExpenses);
+  const { title, icon } = titleFor(area, section, areas.manageExpenses, areas.manageRequests);
   // O painel e da ESCOLA do vinculo ativo (todo vinculo tem uma, ADR-020). O id vem da sessao; a API ainda
   // confere contra o contexto.
   const schoolId = active.school.id;
@@ -191,6 +192,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <PasswordForm />
           ) : area === "despesas" ? (
             <ExpensesArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
+          ) : area === "solicitacoes" ? (
+            <RequestsArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
           ) : area === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : (
@@ -216,9 +219,10 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 }
 
 /** Titulo e icone do cabecalho, por area e por tipo de lancamento. */
-function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean): { title: string; icon: ReactNode } {
+function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean, manageRequests: boolean): { title: string; icon: ReactNode } {
   if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={26} /> };
   if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={26} /> };
+  if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={26} /> };
   if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={26} /> };
   if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={26} /> };
   return { title: KIND_META[section].plural, icon: KIND_META[section].icon };

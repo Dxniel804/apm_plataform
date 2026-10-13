@@ -20,7 +20,7 @@ vi.mock("@/components/status/ApiStatusChip", () => ({ ApiStatusChip: () => null 
 
 import { PainelPage } from "./PainelPage";
 
-async function render(state: ServerSession, area: "resumo" | "despesas" | "fechamento" = "resumo") {
+async function render(state: ServerSession, area: "resumo" | "despesas" | "solicitacoes" | "fechamento" = "resumo") {
   auth.current = state;
   const element = await PainelPage({ area });
   return renderToStaticMarkup(element);
@@ -68,5 +68,16 @@ describe("/painel no servidor", () => {
     expect(await render(treasurer, "despesas")).toContain("Despesas");
     const viewer = withPermissions(["reports:read_aggregate"]);
     await expect(render(viewer, "despesas")).rejects.toThrow("NEXT_REDIRECT:/painel");
+  });
+
+  it("solicitacoes: o funcionario e a gestao entram; o leitor volta para o resumo; quem so tem solicitacoes cai nelas", async () => {
+    const staff = withPermissions(["expenses:read_own", "expenses:submit", "requests:read_own", "requests:submit"]);
+    expect(await render(staff, "solicitacoes")).toContain("Minhas solicitações");
+    const manager = withPermissions(["statement:read", "requests:read_all", "requests:manage"]);
+    expect(await render(manager, "solicitacoes")).toContain("Solicitações");
+    const viewer = withPermissions(["reports:read_aggregate"]);
+    await expect(render(viewer, "solicitacoes")).rejects.toThrow("NEXT_REDIRECT:/painel");
+    const onlyRequests = withPermissions(["requests:read_own", "requests:submit"]);
+    await expect(render(onlyRequests, "resumo")).rejects.toThrow("NEXT_REDIRECT:/painel/solicitacoes");
   });
 });

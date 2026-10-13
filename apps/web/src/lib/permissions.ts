@@ -14,6 +14,12 @@ export interface Areas {
   myExpenses: boolean;
   closeMonths: boolean;
   reopenMonths: boolean;
+  /** "Solicitacoes": quem abre pedidos ou le os pedidos (a gestao le todos e responde). */
+  requests: boolean;
+  /** Caixa de entrada da gestao: ler todos os pedidos e responder. */
+  manageRequests: boolean;
+  /** "Minhas solicitacoes": quem pode abrir pedidos. */
+  myRequests: boolean;
 }
 
 export function areasFor(permissions: readonly string[]): Areas {
@@ -26,10 +32,13 @@ export function areasFor(permissions: readonly string[]): Areas {
     myExpenses: has("expenses:submit"),
     closeMonths: has("months:close"),
     reopenMonths: has("months:reopen"),
+    requests: has("requests:submit") || has("requests:read_own") || has("requests:read_all"),
+    manageRequests: has("requests:read_all") || has("requests:manage"),
+    myRequests: has("requests:submit"),
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;
@@ -43,5 +52,6 @@ export function areaHref(area: PainelArea, params: { period?: string; tab?: "min
 export function homeArea(areas: Areas): PainelArea {
   if (areas.resumo) return "resumo";
   if (areas.myExpenses || areas.manageExpenses) return "despesas";
+  if (areas.requests) return "solicitacoes";
   return "resumo";
 }

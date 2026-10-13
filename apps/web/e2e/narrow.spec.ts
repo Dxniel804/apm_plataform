@@ -24,6 +24,7 @@ const painelRoutes = [
   "/painel?tipo=reembolsos",
   "/painel?tipo=devolucoes",
   "/painel/despesas",
+  "/painel/solicitacoes",
   "/painel/fechamento",
   "/painel/conta",
 ];
@@ -94,9 +95,9 @@ for (const width of [320, 360]) {
             fits: el.getBoundingClientRect().right <= document.documentElement.clientWidth,
           })),
       );
-      // gestao: Dashboard, Lancamento do mes (com os 4 tipos), Despesas e Fechamento
+      // gestao: Dashboard, Lancamento do mes (com os 4 tipos), Despesas, Solicitacoes e Fechamento
       const names = labels.map((l) => l.text);
-      expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamento do mês", "Despesas", "Fechamento"]));
+      expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamento do mês", "Despesas", "Solicitações", "Fechamento"]));
       for (const label of labels) {
         expect(label.truncated, `${label.text} truncado`).toBe(false);
         expect(label.fits, `${label.text} fora da tela`).toBe(true);

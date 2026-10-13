@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type Ref, type SelectHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { ChevronExpandIcon, InfoIcon } from "./icons";
 
 /**
@@ -106,6 +106,41 @@ export function TextField({
           {...rest}
         />
       )}
+      {hint && (
+        <p id={hintId} className="mt-1.5 text-foot text-ink-2">
+          {hint}
+        </p>
+      )}
+      <FieldError id={errorId} error={error} />
+    </div>
+  );
+}
+
+interface TextAreaFieldProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id"> {
+  label: string;
+  optional?: boolean;
+  hint?: string;
+  error?: string;
+  variant?: FieldVariant;
+}
+
+/** Texto de varias linhas no mesmo molde dos campos (descricao de uma solicitacao, resposta da gestao). */
+export function TextAreaField({ label, optional, hint, error, variant = "outline", className = "", rows = 4, ...rest }: TextAreaFieldProps) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
+  return (
+    <div className={className}>
+      <Label htmlFor={id} label={label} optional={optional} variant={variant} />
+      <textarea
+        id={id}
+        rows={rows}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={`block w-full resize-y rounded-ctl border px-4 py-3.5 text-[1rem] text-ink placeholder:text-ink-3 transition-colors focus:border-brand-600 ${skin[variant]} ${borderFor(variant, error)}`}
+        {...rest}
+      />
       {hint && (
         <p id={hintId} className="mt-1.5 text-foot text-ink-2">
           {hint}
