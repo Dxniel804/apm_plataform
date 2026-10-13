@@ -329,6 +329,18 @@ export interface ExpenseInput {
 
 export type ExpenseUpdate = Partial<Omit<ExpenseInput, "paidBy">>;
 
+/** Leitura de uma foto de nota (docs/ocr.md): uma SUGESTAO para o formulario, campo a campo e com a certeza de cada um (0 a 1). */
+export interface OcrSuggestion {
+  amountCents: number | null;
+  /** YYYY-MM-DD */
+  occurredOn: string | null;
+  vendor: string | null;
+  documentNumber: string | null;
+  confidence: { amount: number; date: number; vendor: number; document: number };
+  model: string;
+  elapsedMs: number;
+}
+
 // ---------------------------------------------------------------- REAL: solicitacoes (docs/staff-requests.md)
 
 export type RequestCategory = "SUPPLIES" | "MAINTENANCE" | "EVENT" | "FINANCE" | "OTHER";

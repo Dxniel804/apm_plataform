@@ -41,6 +41,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
   const [creating, setCreating] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [ocrEnabled, setOcrEnabled] = useState(false);
   const [extra, setExtra] = useState<{ key: string; items: ExpenseSummary[]; next: string | null } | null>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const [moreError, setMoreError] = useState<string | null>(null);
@@ -64,10 +65,16 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
     void api.expenses.categories(schoolId).then((r) => {
       if (!cancelled && r.ok) setCategories(r.data);
     });
+    // A leitura da nota e opcional: se a consulta falhar, o formulario segue so com o preenchimento manual.
+    if (scope === "mine") {
+      void api.expenses.ocrStatus(schoolId).then((r) => {
+        if (!cancelled) setOcrEnabled(r.ok && r.data);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [schoolId, canSubmit]);
+  }, [schoolId, canSubmit, scope]);
 
   const res = loaded?.key === key ? loaded.res : null;
   const more = extra?.key === key ? extra : null;
@@ -122,6 +129,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
         <ExpenseForm
           schoolId={schoolId}
           categories={categories}
+          ocrEnabled={ocrEnabled}
           onCancel={() => setCreating(false)}
           onSaved={(id, note) => {
             setCreating(false);

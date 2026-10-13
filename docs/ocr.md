@@ -51,6 +51,8 @@ docker compose --profile ocr up -d --build api ocr
 
 `ocr` is **not started by `docker compose up`** (it is heavy). It is on the private network `ocr_net` (`internal: true`: containers on it reach each other and nothing else), publishes no port, runs as a user with no privileges (uid 10001) on a read-only filesystem with all capabilities dropped, and reads models only from the read-only volume `ocr_models`. Tested: from inside the container `https://example.com` is unreachable and the API reaches `http://ocr:8080/health`.
 
+The browser test (`apps/web/e2e/ocr.spec.ts`) runs the whole chain (browser, API, OCR service) with `OCR_ENGINE=demo`, against a throwaway database: it checks that the photo goes out, the form fills as a suggestion, a field loses its mark when the person edits it, and that the same photo is attached on save. It is **skipped** when the server has the reading off. It says nothing about the accuracy of a model.
+
 ### Putting a real model in (the part that depends on the chosen model)
 
 1. Pick the model with real photos: about 30 receipts of the school (no personal data), a few candidates, the fields each one gets right. The parser is shared, so the comparison is only about the text each model reads. Which model, and whether the server has a GPU, is the decision of this spike.

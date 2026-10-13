@@ -11,8 +11,8 @@ import { acceptInvitation, changePassword, getMe, login, logout, switchContext }
 import { getReadiness } from "./health";
 import { listClosings, createClosing, verifyClosing, reopenClosing, downloadClosingPdf } from "./closings";
 import {
-  approveExpense, cancelExpense, createExpense, downloadAttachment, getExpense, listCategories, listExpenses, payExpense,
-  reimburseExpense, rejectExpense, requestCorrection, submitExpense, updateExpense, uploadAttachment,
+  approveExpense, cancelExpense, createExpense, downloadAttachment, getExpense, getOcrStatus, listCategories, listExpenses, payExpense,
+  readReceipt, reimburseExpense, rejectExpense, requestCorrection, submitExpense, updateExpense, uploadAttachment,
 } from "./expenses";
 import {
   cancelStaffRequest, createStaffRequest, downloadRequestPhoto, getStaffRequest, listStaffRequests, resolveStaffRequest, startStaffRequest,
@@ -46,6 +46,8 @@ export const api: {
     requestCorrection: typeof requestCorrection;
     reimburse: typeof reimburseExpense;
     pay: typeof payExpense;
+    ocrStatus: typeof getOcrStatus;
+    readReceipt: typeof readReceipt;
   };
   requests: {
     list: typeof listStaffRequests;
@@ -104,6 +106,8 @@ export const api: {
     requestCorrection,
     reimburse: reimburseExpense,
     pay: payExpense,
+    ocrStatus: getOcrStatus,
+    readReceipt,
   },
   requests: {
     list: listStaffRequests,

@@ -1,20 +1,32 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button, chipClass } from "@/components/ui/Button";
+import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
-import type { ExpenseCategory, ExpenseDetail, PaidBy, PaymentMethod } from "@/lib/api/types";
+import type { ExpenseCategory, ExpenseDetail, OcrSuggestion, PaidBy, PaymentMethod } from "@/lib/api/types";
 import { describeExpenseError } from "@/lib/expense-labels";
 import { PAYMENT_METHOD_LABELS } from "@/lib/expense-labels";
 import { centsFromDigits, formatBRLNumber } from "@/lib/money";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const SCHOOL_TZ = "America/Sao_Paulo";
+/** Abaixo disto a leitura de um campo e tratada como duvidosa e a pessoa e avisada. */
+const LOW_CONFIDENCE = 0.6;
+
+/** Campos que a leitura da nota preencheu e que a pessoa ainda nao mexeu: "ok" ou "low" (leitura incerta). */
+type Suggested = Partial<Record<"amount" | "date" | "vendor" | "description", "ok" | "low">>;
 
 /** YYYY-MM-DD de hoje (ou de um instante) no fuso da escola, para o campo de data. */
 export function dayInSchoolZone(instant: Date | string = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: SCHOOL_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(instant));
+}
+
+function suggestionHint(mark: "ok" | "low" | undefined): string | undefined {
+  if (mark === "low") return "Leitura incerta: confira com atenção.";
+  if (mark === "ok") return "Sugerido pela leitura da nota. Confira.";
+  return undefined;
 }
 
 interface ExpenseFormProps {
@@ -22,6 +34,8 @@ interface ExpenseFormProps {
   categories: ExpenseCategory[];
   /** Presente = editar este rascunho/correcao. Ausente = nova despesa. */
   expense?: ExpenseDetail;
+  /** O servidor tem a leitura automatica de notas ligada? So vale para uma despesa nova. */
+  ocrEnabled?: boolean;
   /** Chamado com o id da despesa depois de salvar (e de anexar/enviar, se pedido). */
   onSaved: (expenseId: string, note?: string) => void;
   onCancel: () => void;
@@ -32,7 +46,7 @@ interface ExpenseFormProps {
  * O arquivo (nota ou recibo) vai por multipart para a API; o conteudo nao fica em estado, URL, log nem
  * storage do navegador: so o objeto File do campo, ate o envio.
  */
-export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }: ExpenseFormProps) {
+export function ExpenseForm({ schoolId, categories, expense, ocrEnabled = false, onSaved, onCancel }: ExpenseFormProps) {
   const editing = Boolean(expense);
   const [cents, setCents] = useState(expense?.amountCents ?? 0);
   const [day, setDay] = useState(expense ? dayInSchoolZone(expense.occurredAt) : dayInSchoolZone());
@@ -49,16 +63,88 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
   const [pending, setPending] = useState<"draft" | "send" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  // Leitura da nota (docs/ocr.md): a foto fica so na memoria; o resultado e uma SUGESTAO que a pessoa confere.
+  const ocr = ocrEnabled && !editing;
+  const [mode, setMode] = useState<"manual" | "ocr">("manual");
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const [suggested, setSuggested] = useState<Suggested>({});
+  const reader = ocr && mode === "ocr";
+  const busy = pending !== null || reading;
+  const unmark = (field: keyof Suggested) => setSuggested((p) => (p[field] ? { ...p, [field]: undefined } : p));
+
+  function chooseMode(next: "manual" | "ocr") {
+    if (next === mode) return;
+    setMode(next);
+    setPhotos([]);
+    setReadNote(null);
+    setErrors((p) => ({ ...p, file: "" }));
+  }
+
+  function changePhotos(next: File[]) {
+    setPhotos(next);
+    setReadNote(null);
+    setErrors((p) => ({ ...p, file: "" }));
+  }
+
+  function applySuggestion(s: OcrSuggestion) {
+    const marks: Suggested = {};
+    const level = (confidence: number) => (confidence < LOW_CONFIDENCE ? "low" : "ok");
+    if (s.amountCents !== null && s.amountCents > 0) {
+      setCents(s.amountCents);
+      marks.amount = level(s.confidence.amount);
+    }
+    // Data de depois de hoje nao e aceita pelo campo (max): se a leitura veio assim, fica a que ja estava.
+    if (s.occurredOn && s.occurredOn <= dayInSchoolZone()) {
+      setDay(s.occurredOn);
+      marks.date = level(s.confidence.date);
+    }
+    if (s.vendor) {
+      setVendor(s.vendor);
+      marks.vendor = level(s.confidence.vendor);
+      if (!description.trim()) {
+        setDescription(`Compra em ${s.vendor}`.slice(0, 500));
+        marks.description = marks.vendor;
+      }
+    }
+    setSuggested(marks);
+    // O que a leitura acabou de preencher nao deve continuar com o erro de "informe o valor" de antes.
+    setErrors((p) => ({ ...p, ...(marks.amount && { amount_cents: "" }), ...(marks.date && { occurred_at: "" }), ...(marks.description && { description: "" }) }));
+    const found = Object.keys(marks).length;
+    if (found === 0) {
+      setReadNote({ tone: "warn", text: "Não consegui ler dados desta nota. Tente uma foto mais nítida e de frente, ou preencha os campos à mão: a foto continua anexada." });
+    } else if (Object.values(marks).includes("low")) {
+      setReadNote({ tone: "warn", text: "Li parte da nota, mas com pouca certeza em alguns campos. Confira os campos marcados antes de salvar." });
+    } else {
+      setReadNote({ tone: "ok", text: "Leitura concluída. Confira os campos preenchidos antes de salvar." });
+    }
+  }
+
+  async function readReceipt() {
+    const photo = photos[0];
+    if (!photo || busy) return;
+    setReading(true);
+    setReadNote(null);
+    setGeneral(null);
+    const result = await api.expenses.readReceipt(schoolId, photo);
+    setReading(false);
+    if (!result.ok) {
+      setReadNote({ tone: "warn", text: describeExpenseError(result.error).general ?? "Não foi possível ler a nota. Preencha os campos à mão: a foto continua anexada." });
+      return;
+    }
+    applySuggestion(result.data);
+  }
 
   async function save(sendAfter: boolean) {
-    if (pending) return;
+    if (pending || reading) return;
     setGeneral(null);
     const problems: Record<string, string> = {};
     if (cents <= 0) problems.amount_cents = "Informe o valor.";
     if (!day) problems.occurred_at = "Informe a data da despesa.";
     if (!categoryId) problems.category_id = "Escolha uma categoria.";
     if (!description.trim()) problems.description = "Descreva a despesa.";
-    const file = fileRef.current?.files?.[0];
+    const file = reader ? photos[0] : fileRef.current?.files?.[0];
     if (file && file.size > MAX_FILE_BYTES) problems.file = "O arquivo é grande demais. O limite é de 10 MB.";
     if (sendAfter) {
       if (purchaseReason.trim().length < 3) problems.purchase_reason = "Informe o motivo da compra (pelo menos 3 letras).";
@@ -141,6 +227,37 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
         Quem envia é você, pela sua conta: não pedimos o seu nome. A gestão só vê a despesa depois que você enviar.
       </p>
 
+      {ocr && (
+        <div role="group" aria-label="Como preencher a despesa" className="flex flex-wrap gap-2.5">
+          <button type="button" aria-pressed={mode === "manual"} disabled={busy} onClick={() => chooseMode("manual")} className={chipClass(mode === "manual")}>
+            Preencher manualmente
+          </button>
+          <button type="button" aria-pressed={mode === "ocr"} disabled={busy} onClick={() => chooseMode("ocr")} className={chipClass(mode === "ocr")}>
+            Ler a nota (OCR)
+          </button>
+        </div>
+      )}
+
+      {reader && (
+        <div className="space-y-4 rounded-[var(--r-md)] bg-info-soft/40 p-4 sm:p-5">
+          <p className="max-w-[60ch] text-sub text-ink-2">
+            Tire uma foto da nota ou escolha uma da galeria. Os campos abaixo são preenchidos com o que for lido, mas quem confere e salva é você.
+          </p>
+          <PhotoPicker photos={photos} onChange={changePhotos} max={1} label="Foto da nota" note="(uma foto, PNG, JPEG ou WebP)" disabled={busy} error={errors.file || null} />
+          <Button variant="secondary" onClick={() => void readReceipt()} disabled={busy || photos.length === 0} aria-busy={reading} className="rounded-full!">
+            {reading ? "Lendo a nota…" : "Ler a nota"}
+          </Button>
+          <div aria-live="polite">
+            {reading && <p role="status" className="text-sub text-ink-2">Lendo a nota. Isso pode levar alguns segundos.</p>}
+            {readNote && (
+              <p role="status" className={`rounded-[var(--r-md)] px-4 py-3 text-sub font-medium ${readNote.tone === "ok" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
+                {readNote.text}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           label="Valor"
@@ -150,10 +267,12 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
           autoComplete="off"
           placeholder="0,00"
           inputRef={amountRef}
+          hint={suggestionHint(suggested.amount)}
           value={cents === 0 ? "" : formatBRLNumber(cents)}
           onChange={(e) => {
             setCents(centsFromDigits(e.target.value));
             setErrors((p) => ({ ...p, amount_cents: "" }));
+            unmark("amount");
           }}
           error={errors.amount_cents || undefined}
         />
@@ -162,10 +281,12 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
           name="expense-date"
           type="date"
           max={dayInSchoolZone()}
+          hint={suggestionHint(suggested.date)}
           value={day}
           onChange={(e) => {
             setDay(e.target.value);
             setErrors((p) => ({ ...p, occurred_at: "" }));
+            unmark("date");
           }}
           error={errors.occurred_at || undefined}
         />
@@ -190,14 +311,28 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
         name="expense-description"
         autoComplete="off"
         maxLength={500}
+        hint={suggestionHint(suggested.description)}
         value={description}
         onChange={(e) => {
           setDescription(e.target.value);
           setErrors((p) => ({ ...p, description: "" }));
+          unmark("description");
         }}
         error={errors.description || undefined}
       />
-      <TextField label="Fornecedor" optional name="expense-vendor" autoComplete="off" maxLength={200} value={vendor} onChange={(e) => setVendor(e.target.value)} />
+      <TextField
+        label="Fornecedor"
+        optional
+        name="expense-vendor"
+        autoComplete="off"
+        maxLength={200}
+        hint={suggestionHint(suggested.vendor)}
+        value={vendor}
+        onChange={(e) => {
+          setVendor(e.target.value);
+          unmark("vendor");
+        }}
+      />
       <TextField
         label="Motivo da compra"
         name="expense-reason"
@@ -242,6 +377,7 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
         )}
       </div>
 
+      {!reader && (
       <div>
         <label htmlFor="expense-file" className="mb-2 block text-sub font-bold text-brand-800">
           Nota ou recibo (PNG, JPEG, WebP ou PDF, até 10 MB)
@@ -256,6 +392,7 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
         />
         {errors.file && <p role="alert" className="mt-1.5 text-sub font-medium text-bad">{errors.file}</p>}
       </div>
+      )}
 
       <div aria-live="polite">
         {general && (
@@ -266,13 +403,13 @@ export function ExpenseForm({ schoolId, categories, expense, onSaved, onCancel }
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" variant="secondary" disabled={pending !== null} aria-busy={pending === "draft"} className="rounded-full!">
+        <Button type="submit" variant="secondary" disabled={busy} aria-busy={pending === "draft"} className="rounded-full!">
           {pending === "draft" ? "Salvando…" : "Salvar rascunho"}
         </Button>
-        <Button onClick={() => void save(true)} disabled={pending !== null} aria-busy={pending === "send"} className="rounded-full!">
+        <Button onClick={() => void save(true)} disabled={busy} aria-busy={pending === "send"} className="rounded-full!">
           {pending === "send" ? "Enviando…" : "Salvar e enviar para análise"}
         </Button>
-        <Button variant="plain" onClick={onCancel} disabled={pending !== null} className="rounded-full!">
+        <Button variant="plain" onClick={onCancel} disabled={busy} className="rounded-full!">
           Fechar
         </Button>
       </div>

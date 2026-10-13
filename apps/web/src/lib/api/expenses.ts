@@ -9,6 +9,7 @@ import type {
   ExpenseStatus,
   ExpenseSummary,
   ExpenseUpdate,
+  OcrSuggestion,
   Page,
   PaidBy,
   PaymentMethod,
@@ -266,3 +267,41 @@ export const rejectExpense = (schoolId: string, expenseId: string, reason: strin
 export const requestCorrection = (schoolId: string, expenseId: string, reason: string, options?: SendOptions) => action(schoolId, expenseId, "request-correction", { reason }, options);
 export const reimburseExpense = (schoolId: string, expenseId: string, paymentReference: string, options?: SendOptions) =>
   action(schoolId, expenseId, "reimburse", { payment_reference: paymentReference }, options);
+
+const unit = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : null);
+
+function parseSuggestion(v: unknown): OcrSuggestion | null {
+  if (!isRecord(v) || !isRecord(v.confidence)) return null;
+  const amountCents = v.amount_cents === null ? null : int(v.amount_cents);
+  const occurredOn = v.occurred_on === null ? null : typeof v.occurred_on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.occurred_on) ? v.occurred_on : undefined;
+  const vendor = optStr(v.vendor);
+  const documentNumber = optStr(v.document_number);
+  const amount = unit(v.confidence.amount);
+  const date = unit(v.confidence.date);
+  const vendorConfidence = unit(v.confidence.vendor);
+  const document = unit(v.confidence.document);
+  const model = typeof v.model === "string" ? v.model : null;
+  const elapsedMs = int(v.elapsed_ms);
+  if (
+    (v.amount_cents !== null && amountCents === null) || occurredOn === undefined || vendor === undefined || documentNumber === undefined ||
+    amount === null || date === null || vendorConfidence === null || document === null || model === null || elapsedMs === null
+  ) {
+    return null;
+  }
+  return { amountCents, occurredOn, vendor, documentNumber, confidence: { amount, date, vendor: vendorConfidence, document }, model, elapsedMs };
+}
+
+/** GET .../expenses/ocr: a leitura automatica de notas esta ligada neste servidor? */
+export function getOcrStatus(schoolId: string, options?: RequestOptions): Promise<ApiResult<boolean>> {
+  return apiGet(`${base(schoolId)}/expenses/ocr`, (body, status) => (status === 200 && isRecord(body) && typeof body.enabled === "boolean" ? body.enabled : null), options);
+}
+
+/**
+ * POST .../expenses/ocr (multipart): le UMA foto de nota e devolve uma SUGESTAO. Nada e guardado nem criado: a
+ * pessoa confere os campos e anexa a mesma foto a despesa pelo envio de sempre.
+ */
+export function readReceipt(schoolId: string, photo: File, options?: SendOptions): Promise<ApiResult<OcrSuggestion>> {
+  const form = new FormData();
+  form.append("file", photo, photo.name);
+  return apiUpload(`${base(schoolId)}/expenses/ocr`, form, (body, status) => (status === 200 ? parseSuggestion(body) : null), options);
+}

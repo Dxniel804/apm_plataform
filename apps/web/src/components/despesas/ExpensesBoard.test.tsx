@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
@@ -20,6 +20,7 @@ afterEach(() => vi.restoreAllMocks());
 
 function stubCategories() {
   vi.spyOn(api.expenses, "categories").mockResolvedValue({ ok: true, data: [CATEGORY] });
+  vi.spyOn(api.expenses, "ocrStatus").mockResolvedValue({ ok: true, data: false });
 }
 
 describe("Minhas despesas (funcionário)", () => {
@@ -121,6 +122,43 @@ describe("Fila da gestao", () => {
     render(<ExpensesBoard schoolId={SCHOOL_ID} userId={MANAGER_ID} permissions={TREASURER} scope="queue" />);
     await userEvent.setup().click(await screen.findByRole("button", { name: /Abrir detalhes/ }));
     expect(await screen.findByRole("button", { name: "Aprovar" })).toBeInTheDocument();
+  });
+});
+
+describe("Nova despesa: leitura da nota (OCR)", () => {
+  async function openNewExpense(enabled: boolean | "falha") {
+    vi.spyOn(api.expenses, "categories").mockResolvedValue({ ok: true, data: [CATEGORY] });
+    const status = vi.spyOn(api.expenses, "ocrStatus").mockResolvedValue(enabled === "falha" ? { ok: false, error: { kind: "network" } } : { ok: true, data: enabled });
+    vi.spyOn(api.expenses, "list").mockResolvedValue(ok([]));
+    const user = userEvent.setup();
+    render(<ExpensesBoard schoolId={SCHOOL_ID} userId={AUTHOR_ID} permissions={STAFF} scope="mine" />);
+    await waitFor(() => expect(status).toHaveBeenCalledWith(SCHOOL_ID));
+    await user.click(await screen.findByRole("button", { name: "Nova despesa" }));
+    await screen.findByRole("heading", { name: "Nova despesa" });
+  }
+
+  it("servidor com OCR: o formulario oferece as duas entradas", async () => {
+    await openNewExpense(true);
+    expect(await screen.findByRole("button", { name: "Ler a nota (OCR)" })).toBeInTheDocument();
+  });
+
+  it("servidor sem OCR, ou a consulta falhou: so o preenchimento manual", async () => {
+    await openNewExpense(false);
+    expect(screen.queryByRole("button", { name: "Ler a nota (OCR)" })).not.toBeInTheDocument();
+    cleanup();
+    vi.restoreAllMocks();
+    await openNewExpense("falha");
+    expect(screen.queryByRole("button", { name: "Ler a nota (OCR)" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Nota ou recibo/)).toBeInTheDocument();
+  });
+
+  it("a fila da gestao nem consulta o OCR (so quem cria despesa usa)", async () => {
+    vi.spyOn(api.expenses, "categories").mockResolvedValue({ ok: true, data: [CATEGORY] });
+    const status = vi.spyOn(api.expenses, "ocrStatus");
+    vi.spyOn(api.expenses, "list").mockResolvedValue(ok([]));
+    render(<ExpensesBoard schoolId={SCHOOL_ID} userId={MANAGER_ID} permissions={SCHOOL_ADMIN} scope="queue" />);
+    await screen.findByRole("group", { name: "Filtrar por situação" });
+    expect(status).not.toHaveBeenCalled();
   });
 });
 

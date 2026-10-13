@@ -120,6 +120,12 @@ export function describeExpenseError(error: ApiError): ProblemText {
       return { ...none, general: "O arquivo é grande demais. O limite é de 10 MB." };
     case "attachment_unavailable":
       return { ...none, general: "O arquivo não está disponível agora. Avise a gestão." };
+    case "ocr_unavailable":
+      return { ...none, general: "A leitura automática da nota não está disponível agora. Preencha os campos à mão: a foto continua anexada." };
+    case "ocr_busy":
+      return { ...none, general: "A leitura da nota está ocupada com outras fotos. Tente de novo em instantes, ou preencha à mão." };
+    case "ocr_timeout":
+      return { ...none, general: "A leitura da nota demorou demais. Tente de novo, ou preencha os campos à mão: a foto continua anexada." };
     case "partial_approval_not_allowed":
       return { ...none, general: "Só dá para aprovar um valor menor quando um colaborador pagou do próprio bolso. Aprove pelo valor pedido." };
     case "reimbursement_not_applicable":

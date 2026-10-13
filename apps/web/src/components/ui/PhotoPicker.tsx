@@ -16,6 +16,8 @@ interface PhotoPickerProps {
   max?: number;
   disabled?: boolean;
   label?: string;
+  /** O que aparece depois do rotulo. Por padrao, "(opcional, ate N)". */
+  note?: string;
   /** Erro de quem usa o seletor (ex.: uma foto que o servidor recusou). */
   error?: string | null;
 }
@@ -51,7 +53,7 @@ function Thumb({ file, index, onRemove, disabled }: { file: File; index: number;
  * fotos ficam so na memoria do navegador, reduzidas para caber no limite; quem usa o seletor envia pelo formulario.
  * Aceita PNG, JPEG e WebP (o servidor confere o tipo pelos bytes de novo).
  */
-export function PhotoPicker({ photos, onChange, max = MAX_PHOTOS, disabled = false, label = "Fotos", error = null }: PhotoPickerProps) {
+export function PhotoPicker({ photos, onChange, max = MAX_PHOTOS, disabled = false, label = "Fotos", note, error = null }: PhotoPickerProps) {
   const gallery = useRef<HTMLInputElement>(null);
   const capture = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -67,7 +69,7 @@ export function PhotoPicker({ photos, onChange, max = MAX_PHOTOS, disabled = fal
     setBusy(true);
     for (const file of files) {
       if (photos.length + accepted.length >= max) {
-        problems.push(`Cabem no máximo ${max} fotos.`);
+        problems.push(max === 1 ? "Cabe só uma foto. Remova a atual para escolher outra." : `Cabem no máximo ${max} fotos.`);
         break;
       }
       if (!isPhotoFile(file)) {
@@ -92,7 +94,7 @@ export function PhotoPicker({ photos, onChange, max = MAX_PHOTOS, disabled = fal
     <div>
       <p className="mb-2 text-sub font-bold text-brand-800">
         {label}
-        <span className="font-medium text-ink-3"> (opcional, até {max})</span>
+        <span className="font-medium text-ink-3"> {note ?? `(opcional, até ${max})`}</span>
       </p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
@@ -116,7 +118,7 @@ export function PhotoPicker({ photos, onChange, max = MAX_PHOTOS, disabled = fal
         ref={gallery}
         type="file"
         accept="image/png,image/jpeg,image/webp"
-        multiple
+        multiple={max > 1}
         hidden
         aria-label="Escolher fotos da galeria"
         onChange={(event) => {
