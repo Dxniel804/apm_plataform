@@ -1,0 +1,39 @@
+[project]
+name = "apm-ocr"
+version = "0.1.0"
+description = "APM Digital: the service that reads the photo of a receipt (runs a local model)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "pillow>=11.0",
+    "uvicorn>=0.32",
+]
+
+[project.optional-dependencies]
+# Only the image that runs a Hugging Face model installs these (see the Dockerfile).
+huggingface = [
+    "transformers>=4.46",
+    "torch>=2.4",
+]
+dev = [
+    "httpx2>=2.0",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[tool.setuptools]
+packages = ["ocr_service"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "S", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]

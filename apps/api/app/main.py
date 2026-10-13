@@ -13,6 +13,7 @@ from app.core.middleware import OriginCheckMiddleware, RequestIdMiddleware
 from app.db.posture import PostureError, assert_posture
 from app.db.session import build_engine, build_session_factory
 from app.expenses.router import router as expenses_router
+from app.ocr.router import router as ocr_router
 from app.reports.routes import router as reports_router
 from app.routers.api import api_router
 from app.staff_requests.router import router as staff_requests_router
@@ -59,6 +60,8 @@ def create_app(
     app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.allowed_origins)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(api_router)
+    # The OCR routes come BEFORE the expenses ones, so `/expenses/ocr` is never read as an id.
+    app.include_router(ocr_router, prefix="/api/v1")  # reading a receipt (suggestion only)
     app.include_router(expenses_router, prefix="/api/v1")  # TASK-007: expenses
     app.include_router(staff_requests_router, prefix="/api/v1")  # staff requests (0012)
     app.include_router(statement_router)

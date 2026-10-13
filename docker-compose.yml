@@ -58,12 +58,21 @@ services:
       # Expense attachments (TASK-007): files on a volume, never in the database or the repository.
       ATTACHMENTS_DIR: /attachments
       ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-10485760}
+      # Reading a receipt photo (docs/ocr.md): off unless OCR_ENABLED=true; then the `ocr` service
+      # (profile `ocr`) answers on the private network `ocr_net`, with the secret both sides share.
+      OCR_ENABLED: ${OCR_ENABLED:-false}
+      OCR_URL: ${OCR_URL:-http://ocr:8080}
+      OCR_TOKEN: ${OCR_TOKEN:-}
+      OCR_TIMEOUT_SECONDS: ${OCR_TIMEOUT_SECONDS:-30}
       # Which peers uvicorn believes about X-Forwarded-For: only the reverse proxy's address. With
       # no proxy in front keep the default (nothing forwarded is trusted).
       FORWARDED_ALLOW_IPS: ${TRUSTED_PROXY_IPS:-127.0.0.1}
     volumes:
       - outbox:/outbox
       - attachments:/attachments
+    networks:
+      - default
+      - ocr_net
     ports:
       - "127.0.0.1:${API_HOST_PORT:-8001}:8000"
     depends_on:
@@ -134,9 +143,60 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # The service that reads a receipt photo with a LOCAL model (docs/ocr.md). Not started by `up`
+  # (heavy): `docker compose --profile ocr up -d ocr`. It is on a private network with no way out,
+  # publishes no port, runs as a user with no privileges on a read-only filesystem, and loads its
+  # model only from the read-only volume `ocr_models` (download it beforehand, pinned by revision).
+  ocr:
+    profiles: ["ocr"]
+    build:
+      context: ./apps/ocr
+      target: run
+      args:
+        INSTALL_HF: ${OCR_INSTALL_HF:-0}
+    environment:
+      # The service refuses to start without a secret of 24+ characters (openssl rand -hex 32).
+      OCR_TOKEN: ${OCR_TOKEN:-}
+      ENV: ${ENV:-development}
+      OCR_ENGINE: ${OCR_ENGINE:-stub}
+      OCR_MODEL_ID: ${OCR_MODEL_ID:-}
+      OCR_MODEL_REVISION: ${OCR_MODEL_REVISION:-}
+    volumes:
+      - ocr_models:/models:ro
+    networks:
+      - ocr_net
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${OCR_MEMORY_LIMIT:-4g}
+    cpus: ${OCR_CPUS:-2}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
+networks:
+  default: {}
+  # internal: containers on it reach each other and nothing else (no internet, no host).
+  ocr_net:
+    internal: true
+
 volumes:
   db_data:
   # Development e-mail outbox (invitation links, password notices), files with mode 0600.
   outbox:
   # The files attached to expenses (receipts), mode 0700, owned by the API user.
   attachments:
+  # The weights of the OCR model, downloaded beforehand and mounted read-only (docs/ocr.md).
+  ocr_models:

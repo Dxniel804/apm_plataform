@@ -24,6 +24,7 @@ All under `/api/v1/schools/{school_id}`. `school_id` is **checked against the se
 | `POST /expenses/{id}/reimburse` | `reimbursements:register` | APPROVED, paid by a collaborator: creates the REIMBURSEMENT for the approved amount, records `payment_reference` and who paid, and the expense goes to PAID. Body: `payment_reference` |
 | `POST /expenses/{id}/pay` | `reimbursements:register` | APPROVED, paid by the APM: records the payment, the expense goes to PAID. Not by the author (`403 self_payment_forbidden`) |
 | `POST /expenses/{id}/cancel` | `expenses:submit` or `expenses:approve` | CANCELLED (final). The author, a DRAFT or CORRECTION_REQUESTED; an approver, an APPROVED one |
+| `GET /expenses/ocr`, `POST /expenses/ocr` | `expenses:submit` | Whether the reading of receipts is on, and the reading of ONE photo into a suggestion for the form (nothing is stored or created): see [ocr.md](ocr.md) |
 
 Every action answers `200` with the full expense. Money is integer cents (`_cents`), instants are ISO 8601, the states are the database's (`DRAFT`, `SUBMITTED`, ...), with no translation. `occurred_at` is an instant with its UTC offset **or** a plain day, which means noon of that day in the school's time zone.
 
