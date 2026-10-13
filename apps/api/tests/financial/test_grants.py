@@ -49,6 +49,7 @@ INSERTABLE: dict[str, set[str]] = {
         "receipt_token_hash",
         "receipt_expires_at",
         "idempotency_key",
+        "campaign_id",  # the campaign an order belongs to (0013), written once with the row
     },
     "expenses": {
         "transaction_id",

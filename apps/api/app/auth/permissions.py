@@ -37,6 +37,8 @@ class Permission(StrEnum):
     REQUESTS_READ_OWN = "requests:read_own"
     REQUESTS_READ_ALL = "requests:read_all"
     REQUESTS_MANAGE = "requests:manage"
+    # The campaigns the management sells to the families (migration 0013).
+    CAMPAIGNS_MANAGE = "campaigns:manage"
 
 
 ALL_PERMISSIONS = frozenset(Permission)
@@ -59,6 +61,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             # The management answers the requests of the staff.
             Permission.REQUESTS_READ_ALL,
             Permission.REQUESTS_MANAGE,
+            # The management writes the campaigns and their products.
+            Permission.CAMPAIGNS_MANAGE,
         }
     ),
     # Staff (funcionario): submit and see their OWN expenses, and ask the management for things.
@@ -116,6 +120,17 @@ PUBLIC_ROUTES: dict[tuple[str, str], str] = {
     "token is the credential; a new charge only when the previous one expired",
     ("GET", "/api/v1/public/schools/{slug}/contributions/{token}/receipt"): "the receipt token "
     "is the credential; 200 only when PAID",
+    # The campaigns on sale (migration 0013): the page, the cart and the pictures of a school.
+    ("GET", "/api/v1/public/schools/{slug}/campaigns"): "the campaigns on sale at a school",
+    ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}"): "one campaign on sale, "
+    "with its products",
+    ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/cover"): "the cover of a "
+    "campaign on sale",
+    ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/items/{item_id}/image"): "the "
+    "picture of a product of a campaign on sale",
+    ("POST", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/orders"): "a family orders "
+    "products; the total is recomputed from the prices of the server, rate limited per address, "
+    "Origin checked, Idempotency-Key",
     ("POST", "/api/v1/webhooks/pix/sandbox"): "authenticated by X-Webhook-Secret (a hash is "
     "compared); no browser Origin; idempotent by event id; the provider is asked again",
     ("POST", "/api/v1/webhooks/pix/bb"): "authenticated by X-Webhook-Secret (a hash is compared); "

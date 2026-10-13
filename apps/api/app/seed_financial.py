@@ -36,6 +36,9 @@ DEFAULT_CATEGORIES: tuple[tuple[str, str, str, str], ...] = (
     ("other_authorized", "Outras despesas autorizadas", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("bank_fees", "Tarifas bancárias", "OUT", "BANK_FEES"),
     ("refund", "Devolução", "IN", "REFUNDS"),
+    # The revenue of a campaign (0013): its own line of the closing report, apart from the
+    # contributions of the parents.
+    ("campaign_sales", "Vendas de campanha", "IN", "OTHER_INCOME"),
 )
 
 # The categories whose expenses need no approver (the bank fees: the bank already took the money).

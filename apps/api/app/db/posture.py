@@ -34,8 +34,11 @@ FINANCIAL_TABLES = (
 )
 # The staff requests (0012): a school table like the others, outside the ledger.
 REQUEST_TABLES = ("staff_requests", "staff_request_attachments")
+# The campaigns the management sells (0013) and the copy of what an order bought: school tables
+# like the others, next to the ledger (the amount of an order is the sum of its items).
+CAMPAIGN_TABLES = ("campaigns", "campaign_items", "contribution_items")
 # Every table with row level security: the tenant tables, the authentication tables, the financial
-# ones and the requests.
+# ones, the requests and the campaigns.
 RLS_TABLES = (
     *TENANT_TABLES,
     "sessions",
@@ -43,6 +46,7 @@ RLS_TABLES = (
     "invitations",
     *FINANCIAL_TABLES,
     *REQUEST_TABLES,
+    *CAMPAIGN_TABLES,
 )
 DEFINER_ROLE = "apm_definer"
 
@@ -119,6 +123,16 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("staff_requests", "staff_requests_update", "UPDATE", "public"),
         ("staff_request_attachments", "staff_request_attachments_select", "SELECT", "public"),
         ("staff_request_attachments", "staff_request_attachments_insert", "INSERT", "public"),
+        # 0013: a SELECT and an INSERT policy on the three campaign tables, and an UPDATE one on
+        # the campaigns and their products (what an order bought is insert-only).
+        ("campaigns", "campaigns_select", "SELECT", "public"),
+        ("campaigns", "campaigns_insert", "INSERT", "public"),
+        ("campaigns", "campaigns_update", "UPDATE", "public"),
+        ("campaign_items", "campaign_items_select", "SELECT", "public"),
+        ("campaign_items", "campaign_items_insert", "INSERT", "public"),
+        ("campaign_items", "campaign_items_update", "UPDATE", "public"),
+        ("contribution_items", "contribution_items_select", "SELECT", "public"),
+        ("contribution_items", "contribution_items_insert", "INSERT", "public"),
     }
 )
 

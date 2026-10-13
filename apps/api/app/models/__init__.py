@@ -1,4 +1,5 @@
 from app.models.auth import Invitation, LoginAttempt, UserSession
+from app.models.campaigns import Campaign, CampaignItem, ContributionItem
 from app.models.financial import (
     Contribution,
     Expense,
@@ -24,8 +25,11 @@ from app.models.user import User
 
 __all__ = [
     "AuditLog",
+    "Campaign",
+    "CampaignItem",
     "Category",
     "Contribution",
+    "ContributionItem",
     "Expense",
     "ExpenseAttachment",
     "FinancialTransaction",

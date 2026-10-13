@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auth.emailer import build_sender
+from app.campaigns.router import router as campaigns_router
 from app.closing.routes import router as closing_router
 from app.core.config import ApiSettings, get_api_settings
 from app.core.errors import install_error_handlers
@@ -64,6 +65,7 @@ def create_app(
     app.include_router(ocr_router, prefix="/api/v1")  # reading a receipt (suggestion only)
     app.include_router(expenses_router, prefix="/api/v1")  # TASK-007: expenses
     app.include_router(staff_requests_router, prefix="/api/v1")  # staff requests (0012)
+    app.include_router(campaigns_router, prefix="/api/v1")  # campaigns of the management (0013)
     app.include_router(statement_router)
     app.include_router(closing_router)
     app.include_router(reports_router)

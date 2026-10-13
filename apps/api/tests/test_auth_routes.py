@@ -271,6 +271,12 @@ def test_the_public_routes_are_the_ones_listed_and_nothing_else_works_anonymousl
         ("GET", "/api/v1/public/schools/{slug}/contributions/{token}/charge"),
         ("POST", "/api/v1/public/schools/{slug}/contributions/{token}/charges"),
         ("GET", "/api/v1/public/schools/{slug}/contributions/{token}/receipt"),
+        # the campaigns on sale (0013): the page, the pictures and the order of a family
+        ("GET", "/api/v1/public/schools/{slug}/campaigns"),
+        ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}"),
+        ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/cover"),
+        ("GET", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/items/{item_id}/image"),
+        ("POST", "/api/v1/public/schools/{slug}/campaigns/{campaign_id}/orders"),
         ("POST", "/api/v1/webhooks/pix/sandbox"),
         ("POST", "/api/v1/webhooks/pix/bb"),
         ("POST", "/api/v1/dev/sandbox/pix/{txid}/pay"),

@@ -317,6 +317,20 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `staff_request_attachments_20_state` | BEFORE INSERT | `staff_request_attachments_check_state`: only on an OPEN or IN_PROGRESS request |
 | | `staff_request_attachments_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `staff_request_attachments_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the file name or the key) |
+| `campaigns` (0013, see [campaigns.md](campaigns.md)) | `campaigns_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: scope, author and creation time never change |
+| | `campaigns_06_freeze` | BEFORE UPDATE | `freeze_when_final`: an ENDED campaign changes in no column |
+| | `campaigns_07_change` | BEFORE UPDATE | `campaigns_check_change`: DRAFT to ACTIVE or ENDED, ACTIVE to ENDED; going on sale needs an active product |
+| | `campaigns_10_set_once` | BEFORE UPDATE | `assert_set_once_columns`: when it ended |
+| | `campaigns_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `campaigns_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the title, the text or the key of the cover) |
+| `campaign_items` | `campaign_items_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: scope and campaign never change |
+| | `campaign_items_20_state` | BEFORE INSERT OR UPDATE | `campaign_items_check_state`: the products of an ended campaign do not change |
+| | `campaign_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name, the text or the key of the picture) |
+| `contribution_items` (what an order bought, a COPY) | `contribution_items_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
+| | `contribution_items_20_item` | BEFORE INSERT | `contribution_items_check_item`: the product is on sale now (campaign ACTIVE and inside its dates, product active, quantity within its limit) and the copy is its CURRENT name and price |
+| | `contribution_items_90_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: the amount of the contribution is the sum of its items |
+| | `contribution_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name of the product) |
+| `contributions` (0013) | `contributions_90_campaign_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: a contribution of a campaign has items; one without a campaign has none |
 | `categories` | `categories_05_immutable`, `categories_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns` (key, direction, report group and `requires_approval` never change), `audit_row_change` |
 | `school_settings` | `school_settings_05_immutable`, `school_settings_10_timezone`, `school_settings_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns`, `school_settings_lock_timezone`, `audit_row_change` |
 | `payment_accounts` | `payment_accounts_05_immutable`, `payment_accounts_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns` (id, scope, provider), `audit_row_change` (never the account, the reference or the hash) |

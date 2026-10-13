@@ -24,7 +24,7 @@ from app.contributions.expiry import expire_charges, expire_contribution
 from app.core.config import ApiSettings
 from app.core.errors import ProblemError
 from app.pix.provider import ChargeTarget, get_provider
-from app.public.schemas import ContributionIn
+from app.public.schemas import ContributionIn, Identification
 
 FIELD_NAMES = (
     "guardian_name",
@@ -189,14 +189,11 @@ def field_problem(name: str, value: str) -> str | None:
     return None if 1 <= len(value) <= 120 else "invalid"
 
 
-def clean_input(school: PublicSchool, data: ContributionIn) -> dict[str, str]:
-    """The identification to store: only what the school asks for, trimmed, and valid. Raises the
-    422 with a code per field when the amount or a required field is wrong."""
-    errors: list[dict[str, str]] = []
-    if not school.min_amount_cents <= data.amount_cents <= school.max_amount_cents:
-        errors.append({"field": "amount_cents", "code": "out_of_range"})
-    elif not school.allow_custom_amount and data.amount_cents not in school.suggested_amounts_cents:
-        errors.append({"field": "amount_cents", "code": "not_suggested"})
+def identification_values(
+    school: PublicSchool, data: Identification, errors: list[dict[str, str]]
+) -> dict[str, str]:
+    """The identification to store: only what the school asks for, trimmed, and valid. A required
+    field that is missing, or one that is malformed, is added to `errors` (a code per field)."""
     allowed = set(school.required_fields) | set(school.optional_fields)
     values: dict[str, str] = {}
     for name in FIELD_NAMES:
@@ -213,8 +210,25 @@ def clean_input(school: PublicSchool, data: ContributionIn) -> dict[str, str]:
             errors.append({"field": name, "code": problem})
             continue
         values[name] = value
+    return values
+
+
+def refuse(errors: list[dict[str, str]]) -> None:
+    """Answer the 422 with a code per field, when there is any error."""
     if errors:
         raise ProblemError(422, "validation_error", "Invalid request", errors=errors)
+
+
+def clean_input(school: PublicSchool, data: ContributionIn) -> dict[str, str]:
+    """The identification to store: only what the school asks for, trimmed, and valid. Raises the
+    422 with a code per field when the amount or a required field is wrong."""
+    errors: list[dict[str, str]] = []
+    if not school.min_amount_cents <= data.amount_cents <= school.max_amount_cents:
+        errors.append({"field": "amount_cents", "code": "out_of_range"})
+    elif not school.allow_custom_amount and data.amount_cents not in school.suggested_amounts_cents:
+        errors.append({"field": "amount_cents", "code": "not_suggested"})
+    values = identification_values(school, data, errors)
+    refuse(errors)
     return values
 
 
@@ -304,14 +318,14 @@ def create_contribution(
     """The contribution (PENDING_PAYMENT) and its first charge. The same Idempotency-Key answers
     with the same contribution; the same key with another amount is a conflict."""
     token = receipt_token(settings, school.school_id, key)
-    existing = _existing(db, school, key)
+    existing = existing_contribution(db, school, key)
     if existing is None:
         values = clean_input(school, data)
         try:
-            transaction_id = _insert_contribution(db, school, key, token, data, values)
+            transaction_id = insert_contribution(db, school, key, token, data.amount_cents, values)
         except IntegrityError:
             db.rollback()  # lost a race with the same key: answer with the winner
-            existing = _existing(db, school, key)
+            existing = existing_contribution(db, school, key)
             if existing is None:
                 raise
         else:
@@ -325,7 +339,7 @@ def create_contribution(
     return token, state
 
 
-def _existing(db: Session, school: PublicSchool, key: uuid.UUID) -> uuid.UUID | None:
+def existing_contribution(db: Session, school: PublicSchool, key: uuid.UUID) -> uuid.UUID | None:
     found = db.execute(
         text(
             "SELECT transaction_id FROM contributions WHERE school_id = :s AND idempotency_key = :k"
@@ -335,17 +349,22 @@ def _existing(db: Session, school: PublicSchool, key: uuid.UUID) -> uuid.UUID | 
     return None if found is None else uuid.UUID(str(found))
 
 
-def _insert_contribution(
+def insert_contribution(
     db: Session,
     school: PublicSchool,
     key: uuid.UUID,
     token: str,
-    data: ContributionIn,
+    amount_cents: int,
     values: dict[str, str],
+    *,
+    category_key: str = "parent_contribution",
+    campaign_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
+    """The ledger row and the detail of a PENDING_PAYMENT Pix contribution. The order of a
+    campaign is the same thing filed under its own category and tied to its campaign."""
     category = db.execute(
-        text("SELECT id FROM categories WHERE school_id = :s AND key = 'parent_contribution'"),
-        {"s": school.school_id},
+        text("SELECT id FROM categories WHERE school_id = :s AND key = :key"),
+        {"s": school.school_id, "key": category_key},
     ).scalar_one_or_none()
     if category is None:
         raise ProblemError(409, "payment_unavailable", "This school cannot receive contributions")
@@ -359,7 +378,7 @@ def _insert_contribution(
         {
             "org": school.organization_id,
             "school": school.school_id,
-            "amount": data.amount_cents,
+            "amount": amount_cents,
             "category": category,
         },
     ).scalar_one()
@@ -368,10 +387,10 @@ def _insert_contribution(
         text(
             "INSERT INTO contributions (transaction_id, organization_id, school_id, method, "
             "guardian_name, student_name, class_name, contributor_email, contributor_phone, "
-            "receipt_token_hash, receipt_expires_at, idempotency_key) "
+            "receipt_token_hash, receipt_expires_at, idempotency_key, campaign_id) "
             "VALUES (:tx, :org, :school, 'PIX', :guardian_name, :student_name, :class_name, "
             ":contributor_email, :contributor_phone, :hash, "
-            "now() + make_interval(days => :days), :key)"
+            "now() + make_interval(days => :days), :key, :campaign)"
         ),
         {
             **params,
@@ -381,6 +400,7 @@ def _insert_contribution(
             "hash": token_hash(token),
             "days": RECEIPT_DAYS,
             "key": key,
+            "campaign": campaign_id,
         },
     )
     return uuid.UUID(str(transaction_id))
@@ -421,6 +441,22 @@ def read_receipt(db: Session, school: PublicSchool, ref: ContributionRef) -> dic
     ).one()
     if row[0] != "PAID" or row[2] is None:
         raise ProblemError(409, "payment_not_confirmed", "The payment is not confirmed yet")
+    campaign_title = db.execute(
+        text(
+            "SELECT c.title FROM contributions o JOIN campaigns c ON c.id = o.campaign_id "
+            "AND c.school_id = o.school_id WHERE o.transaction_id = :tx AND o.school_id = :s"
+        ),
+        {"tx": ref.transaction_id, "s": school.school_id},
+    ).scalar_one_or_none()
+    lines = db.execute(
+        text(
+            "SELECT i.item_name, i.unit_price_cents, i.quantity FROM contribution_items i "
+            "JOIN campaign_items p ON p.id = i.campaign_item_id AND p.school_id = i.school_id "
+            "WHERE i.transaction_id = :tx AND i.school_id = :s "
+            "ORDER BY p.position, p.created_at, i.id"
+        ),
+        {"tx": ref.transaction_id, "s": school.school_id},
+    ).all()
     return {
         "status": "PAID",
         "reference_code": f"APM-{int(row[3]):06d}",
@@ -428,4 +464,8 @@ def read_receipt(db: Session, school: PublicSchool, ref: ContributionRef) -> dic
         "paid_at": row[2],
         "school_name": school.name,
         "method": row[4],
+        "campaign_title": campaign_title,
+        "items": [
+            {"name": line[0], "unit_price_cents": line[1], "quantity": line[2]} for line in lines
+        ],
     }

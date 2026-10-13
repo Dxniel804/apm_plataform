@@ -279,7 +279,15 @@ class Contribution(ScopeMixin, TimestampMixin, Base):
             "OR length(btrim(review_decision_reason)) BETWEEN 3 AND 500",
             name="review_decision_reason_length",
         ),
+        # The campaign this contribution is an order of (0013); the items are its copy.
+        ForeignKeyConstraint(
+            ["campaign_id", "organization_id", "school_id"],
+            ["campaigns.id", "campaigns.organization_id", "campaigns.school_id"],
+            name="fk_contributions_campaign_id_campaigns",
+            ondelete="RESTRICT",
+        ),
         Index("ix_contributions_school_id", "school_id"),
+        Index("ix_contributions_campaign_id", "campaign_id"),
     )
 
     transaction_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
@@ -305,6 +313,9 @@ class Contribution(ScopeMixin, TimestampMixin, Base):
     # The Idempotency-Key (a uuid chosen by the client) of the public POST that created it; written
     # once with the row. The same key answers with the same contribution, never a second one.
     idempotency_key: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # The campaign it is an order of (0013): written once with the row. Its amount is then the sum
+    # of its `contribution_items`, checked by the database at COMMIT.
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     # Why the management settled a REVIEW_REQUIRED contribution; written once, and first.
     review_decision_reason: Mapped[str | None] = mapped_column(Text)
 

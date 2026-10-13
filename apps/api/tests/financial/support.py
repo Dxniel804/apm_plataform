@@ -41,6 +41,7 @@ DEFAULT_CATEGORIES = (
     ("school_supplies", "Compra de material", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("teacher_reimbursement", "Reembolso de funcionário", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("refund", "Devolução", "IN", "REFUNDS"),
+    ("campaign_sales", "Vendas de campanha", "IN", "OTHER_INCOME"),
 )
 
 

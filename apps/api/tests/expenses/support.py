@@ -83,6 +83,12 @@ class Client:
     def patch(self, tail: str = "", json: Any = None, **kwargs: Any) -> Response:
         return self.request("PATCH", tail, json=json, **kwargs)
 
+    def put(self, tail: str = "", json: Any = None, **kwargs: Any) -> Response:
+        return self.request("PUT", tail, json=json, **kwargs)
+
+    def delete(self, tail: str = "", **kwargs: Any) -> Response:
+        return self.request("DELETE", tail, **kwargs)
+
     def raw_post(self, tail: str, content: Any, content_type: str) -> Response:
         """A POST whose body the test client does not shape (to leave out the Content-Length)."""
         headers = {

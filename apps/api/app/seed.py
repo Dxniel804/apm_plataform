@@ -14,6 +14,7 @@ to run twice: rows that already exist are left alone.
 import os
 import secrets
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -71,6 +72,66 @@ MEMBERSHIPS = [
     ("paula.professora@example.test", "demo-aurora-conta", "demo-aurora", "staff"),
     ("marcos.tesoureiro@example.test", "demo-horizonte-conta", "demo-horizonte", "treasurer"),
 ]
+
+
+# (name, text, price in cents, limit per order): the products of the demonstration campaign.
+DEMO_CAMPAIGN_ITEMS = [
+    ("Cachorro-quente", "Pão, salsicha e molho da casa.", 800, 5),
+    ("Pamonha", "Doce ou salgada, feita na hora.", 650, None),
+    ("Camiseta da festa", "Algodão, do P ao GG.", 4500, 3),
+]
+DEMO_CAMPAIGN_TITLE = "Festa Junina (demo)"
+
+
+def seed_campaigns(connection: Connection, count: Callable[[str, int], None]) -> None:
+    """One campaign on sale at the first school, so the page of the families has something to show.
+    Idempotent: it is skipped when a campaign with that title exists."""
+    school = connection.execute(
+        text(
+            "SELECT s.id, s.organization_id, u.id FROM schools s "
+            "JOIN users u ON lower(u.email) = 'carla.tesoureira@example.test' "
+            "WHERE s.slug = 'demo-aurora'"
+        )
+    ).one_or_none()
+    if school is None:
+        return
+    exists = connection.execute(
+        text("SELECT 1 FROM campaigns WHERE school_id = :school AND title = :title"),
+        {"school": school[0], "title": DEMO_CAMPAIGN_TITLE},
+    ).first()
+    if exists is not None:
+        return
+    campaign_id: Any = connection.execute(
+        text(
+            "INSERT INTO campaigns (organization_id, school_id, created_by_user_id, title, "
+            "description) VALUES (:org, :school, :user, :title, :description) RETURNING id"
+        ),
+        {
+            "org": school[1],
+            "school": school[0],
+            "user": school[2],
+            "title": DEMO_CAMPAIGN_TITLE,
+            "description": "Barraca de comidas e a camiseta da turma. O que for arrecadado "
+            "ajuda a pagar a decoração e as brincadeiras.",
+        },
+    ).scalar_one()
+    count("campaigns", 1)
+    for position, (name, description, price, limit) in enumerate(DEMO_CAMPAIGN_ITEMS):
+        connection.execute(
+            text(
+                "INSERT INTO campaign_items (organization_id, school_id, campaign_id, name, "
+                "description, price_cents, max_per_order, position) VALUES (:org, :school, "
+                ":campaign, :name, :description, :price, :limit, :position)"
+            ),
+            {
+                "org": school[1], "school": school[0], "campaign": campaign_id, "name": name,
+                "description": description, "price": price, "limit": limit, "position": position,
+            },
+        )  # fmt: skip
+        count("campaign_items", 1)
+    connection.execute(
+        text("UPDATE campaigns SET status = 'ACTIVE' WHERE id = :id"), {"id": campaign_id}
+    )
 
 
 @dataclass
@@ -137,6 +198,7 @@ def seed(connection: Connection, password: str | None = None) -> SeedSummary:
         )
         count("memberships", result.rowcount)
     seed_financial(connection, count)  # categories and demonstration movements (ADR-015)
+    seed_campaigns(connection, count)  # a campaign on sale at the first school (0013)
     return summary
 
 

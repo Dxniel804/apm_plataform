@@ -90,6 +90,23 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
     ("staff_request_attachments", "staff_request_attachments_25_member"): _t(
         B, {INS}, "assert_active_member"
     ),
+    ("campaigns", "campaigns_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("campaigns", "campaigns_06_freeze"): _t(B, {UPD}, "freeze_when_final"),
+    ("campaigns", "campaigns_07_change"): _t(B, {UPD}, "campaigns_check_change"),
+    ("campaigns", "campaigns_10_set_once"): _t(B, {UPD}, "assert_set_once_columns"),
+    ("campaigns", "campaigns_25_member"): _t(B, {INS}, "assert_active_member"),
+    ("campaign_items", "campaign_items_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("campaign_items", "campaign_items_20_state"): _t(B, {INS, UPD}, "campaign_items_check_state"),
+    ("contribution_items", "contribution_items_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("contribution_items", "contribution_items_20_item"): _t(
+        B, {INS}, "contribution_items_check_item"
+    ),
+    ("contribution_items", "contribution_items_90_total"): _t(
+        A, {INS}, "contribution_items_check_total"
+    ),
+    ("contributions", "contributions_90_campaign_total"): _t(
+        A, {INS}, "contribution_items_check_total"
+    ),
     ("categories", "categories_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
     ("payment_accounts", "payment_accounts_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
     ("school_settings", "school_settings_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
@@ -133,10 +150,21 @@ AUDITED = [
     # the staff requests (0012) are audited like the rest
     "staff_requests",
     "staff_request_attachments",
+    # the campaigns (0013) too, and what an order bought
+    "campaigns",
+    "campaign_items",
+    "contribution_items",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
-for _table in [*TABLES, "staff_requests", "staff_request_attachments"]:
+for _table in [
+    *TABLES,
+    "staff_requests",
+    "staff_request_attachments",
+    "campaigns",
+    "campaign_items",
+    "contribution_items",
+]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
         B, {TRU}, "forbid_truncate", "STATEMENT"
@@ -164,6 +192,12 @@ EXPECTED_ORDER: dict[tuple[str, str, str], list[str]] = {
         "contributions_15_review",
     ],
     ("contributions", B, INS): ["contributions_20_insert"],
+    ("campaigns", B, UPD): [
+        "campaigns_05_immutable",
+        "campaigns_06_freeze",
+        "campaigns_07_change",
+        "campaigns_10_set_once",
+    ],
     ("expenses", B, INS): [
         "expenses_12_waiver",
         "expenses_15_decision_time",
@@ -209,6 +243,9 @@ EXPECTED_FUNCTIONS = {
     "list_memberships_for_user",
     # the staff requests (0012)
     "staff_requests_check_change", "staff_request_attachments_check_state",
+    # the campaigns (0013)
+    "campaigns_check_change", "campaign_items_check_state", "contribution_items_check_item",
+    "contribution_items_check_total",
     # the public flow (0008, ADR-018) and the expiry job (0009, ADR-019)
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",
@@ -258,6 +295,9 @@ def test_every_expected_trigger_exists_and_nothing_else(admin_engine: Engine) ->
     assert deferred == {
         ("financial_transactions", "ft_90_consistency"),
         ("pix_charges", "pix_charges_90_consistency"),
+        # the amount of an order is the sum of its items, checked at COMMIT (0013)
+        ("contribution_items", "contribution_items_90_total"),
+        ("contributions", "contributions_90_campaign_total"),
     }
 
 
