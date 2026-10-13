@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { CreatedContribution, PublicSchool } from "@/lib/api/types";
+import type { CreatedContribution, PublicCampaignSummary, PublicSchool } from "@/lib/api/types";
 import { describeContributionError } from "@/lib/public-messages";
 import {
   validateAmount,
@@ -13,6 +13,7 @@ import {
   type IdentificationValues,
 } from "@/lib/validation";
 import { AmountStep, CUSTOM_CHOICE, suggestedCents } from "./AmountStep";
+import { CampaignShelf } from "./CampaignShelf";
 import { StepProgress, SummaryCard, type Step } from "./FlowChrome";
 import { IdentificationStep } from "./IdentificationStep";
 import { PixPayment } from "./PixPayment";
@@ -22,7 +23,7 @@ import { ReviewStep } from "./ReviewStep";
  * Fluxo publico de contribuicao (sem login, ADR-010). A validacao aqui e de UX; o backend
  * revalida tudo e e quem confirma o pagamento.
  */
-export function ContributionFlow({ school }: { school: PublicSchool }) {
+export function ContributionFlow({ school, campaigns = [] }: { school: PublicSchool; campaigns?: PublicCampaignSummary[] }) {
   const fields = visibleFields(school.identification);
   const steps: Step[] = fields.length > 0 ? ["amount", "identification", "review", "pix"] : ["amount", "review", "pix"];
 
@@ -145,6 +146,9 @@ export function ContributionFlow({ school }: { school: PublicSchool }) {
       <p className="mb-8 mt-1.5 text-body text-ink-3">
         {school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`}
       </p>
+
+      {/* As campanhas a venda (festa, kit, rifa): a familia que veio por elas as ve primeiro. */}
+      <CampaignShelf slug={school.slug} campaigns={campaigns} />
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-14">
         <div className="min-w-0">

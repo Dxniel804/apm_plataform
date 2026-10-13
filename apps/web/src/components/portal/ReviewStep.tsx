@@ -19,6 +19,10 @@ interface ReviewStepProps {
   onEditIdentification: (() => void) | null;
   onBack: () => void;
   onSubmit: () => void;
+  /** O pedido de uma campanha: uma linha por produto (a soma e o valor). Troca a linha unica "Contribuicao". */
+  lines?: Array<{ name: string; quantity: number; unitPriceCents: number }>;
+  /** Nome acessivel do botao que volta a escolher o valor ou os produtos. */
+  editLabel?: string;
 }
 
 function Row({ label, value, onEdit, editLabel }: { label: string; value: string; onEdit?: (() => void) | null; editLabel?: string }) {
@@ -54,6 +58,8 @@ export function ReviewStep({
   onEditIdentification,
   onBack,
   onSubmit,
+  lines,
+  editLabel = "Alterar o valor",
 }: ReviewStepProps) {
   const filled = IDENTIFICATION_FIELDS.filter((field) => identification[field]);
   return (
@@ -68,8 +74,20 @@ export function ReviewStep({
       <p className="mt-6 text-sub font-bold text-brand-800">Informações</p>
       <ul aria-label="Resumo da contribuição" className="mt-2 space-y-2.5 rounded-[var(--r-lg)] border border-field-border p-3 sm:p-4">
         <Row label="Escola" value={schoolName} />
-        <Row label="Contribuição" value={description} onEdit={onEditAmount} editLabel="Alterar o valor" />
-        <Row label="Valor" value={formatBRL(amountCents)} />
+        {lines ? (
+          lines.map((line, index) => (
+            <Row
+              key={line.name}
+              label={`${line.quantity} × ${formatBRL(line.unitPriceCents)}`}
+              value={line.name}
+              onEdit={index === 0 ? onEditAmount : null}
+              editLabel={editLabel}
+            />
+          ))
+        ) : (
+          <Row label="Contribuição" value={description} onEdit={onEditAmount} editLabel={editLabel} />
+        )}
+        <Row label={lines ? "Total" : "Valor"} value={formatBRL(amountCents)} />
         {filled.map((field) => (
           <Row
             key={field}

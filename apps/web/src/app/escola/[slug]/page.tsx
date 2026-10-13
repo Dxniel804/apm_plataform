@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ContributionFlow } from "@/components/portal/ContributionFlow";
 import { PortalNotice } from "@/components/portal/PortalNotice";
 import { PortalShell } from "@/components/portal/PortalShell";
-import { getPublicSchool } from "@/lib/api/public";
+import { getPublicCampaigns, getPublicSchool } from "@/lib/api/public";
 import { serverFetch } from "@/lib/api/server";
 import { isPlausibleSlug } from "@/lib/api/token";
 import { formatWait } from "@/lib/auth-messages";
@@ -38,9 +38,11 @@ export default async function SchoolPortalPage({ params }: Props) {
       />
     );
   }
+  // As campanhas a venda sao um extra: se a consulta falhar, a pagina da contribuicao segue como sempre.
+  const campaigns = await getPublicCampaigns(slug, { fetchImpl: serverFetch });
   return (
     <PortalShell school={result.data}>
-      <ContributionFlow school={result.data} />
+      <ContributionFlow school={result.data} campaigns={campaigns.ok ? campaigns.data : []} />
     </PortalShell>
   );
 }

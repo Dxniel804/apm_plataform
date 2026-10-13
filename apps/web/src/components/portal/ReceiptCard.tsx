@@ -86,7 +86,7 @@ export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; h
           <header className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <Heading className="text-headline">{receipt.schoolName}</Heading>
-              <p className="mt-0.5 text-foot text-ink-2">Comprovante de contribuição</p>
+              <p className="mt-0.5 text-foot text-ink-2">{receipt.campaignTitle ? `Comprovante de pedido · ${receipt.campaignTitle}` : "Comprovante de contribuição"}</p>
             </div>
             <p className="shrink-0 text-right text-foot text-ink-2">
               Nº
@@ -101,6 +101,19 @@ export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; h
           <p className="mt-1 text-[2.5rem] font-bold leading-none tracking-[-0.04em] text-brand-800">
             {formatBRL(receipt.amountCents)}
           </p>
+
+          {receipt.items.length > 0 && (
+            <ul aria-label="Produtos do pedido" className="mt-5 space-y-2 border-t border-dashed border-line pt-4 text-sub">
+              {receipt.items.map((line) => (
+                <li key={line.name} className="flex items-baseline justify-between gap-4">
+                  <span className="min-w-0 text-ink-2 [overflow-wrap:anywhere]">
+                    {line.quantity} × {line.name}
+                  </span>
+                  <span className="shrink-0 font-medium tabular-nums text-ink">{formatBRL(line.unitPriceCents * line.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <dl className="mt-6 space-y-3 text-sub">
             {rows.map(([label, value]) => (

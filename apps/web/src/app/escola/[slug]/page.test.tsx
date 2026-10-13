@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { json, problem } from "@/test-utils/auth-fixtures";
+import { CAMPAIGN_ID, publicSummaryBody } from "@/test-utils/campaign-fixtures";
 import { SCHOOL_BODY } from "@/test-utils/public-fixtures";
 
 const upstream = vi.hoisted(() => ({ handler: null as null | ((url: string) => Response | Promise<Response>) }));
@@ -27,15 +28,38 @@ describe("/escola/{slug} no servidor", () => {
     const seen: string[] = [];
     upstream.handler = (url) => {
       seen.push(url);
-      return json(SCHOOL_BODY, 200, { "Content-Type": "application/json" });
+      return url.endsWith("/campaigns")
+        ? json({ campaigns: [] }, 200, { "Content-Type": "application/json" })
+        : json(SCHOOL_BODY, 200, { "Content-Type": "application/json" });
     };
     const out = await html();
-    expect(seen).toEqual(["/api/v1/public/schools/demo-aurora"]);
+    expect(seen).toEqual(["/api/v1/public/schools/demo-aurora", "/api/v1/public/schools/demo-aurora/campaigns"]);
     expect(out).toContain("Escola Aurora (demo)");
     expect(out).toContain("Quanto você quer contribuir?");
     expect(out).toMatch(/R\$\s20,00/);
+    expect(out).not.toContain("Campanhas da escola"); // nenhuma a venda: a pagina e a de sempre
     expect(out).not.toContain("Protótipo");
     expect((await generateMetadata({ params: Promise.resolve({ slug: "demo-aurora" }) })).title).toBe("Contribuir · Escola Aurora (demo)");
+  });
+
+  it("as campanhas a venda aparecem no alto, com o link da pagina de cada uma", async () => {
+    upstream.handler = (url) =>
+      url.endsWith("/campaigns")
+        ? json({ campaigns: [publicSummaryBody({ title: "Festa Junina", has_cover: true, cover_version: 2 })] }, 200, { "Content-Type": "application/json" })
+        : json(SCHOOL_BODY, 200, { "Content-Type": "application/json" });
+    const out = await html();
+    expect(out).toContain("Campanhas da escola");
+    expect(out).toContain("Festa Junina");
+    expect(out).toContain(`href="/escola/demo-aurora/campanha/${CAMPAIGN_ID}"`);
+    expect(out).toContain(`/api/v1/public/schools/demo-aurora/campaigns/${CAMPAIGN_ID}/cover?v=2`);
+    expect(out.indexOf("Campanhas da escola")).toBeLessThan(out.indexOf("Quanto você quer contribuir?"));
+  });
+
+  it("se a consulta das campanhas falhar, a pagina da contribuicao segue como sempre", async () => {
+    upstream.handler = (url) => (url.endsWith("/campaigns") ? problem("rate_limited", 429, {}, { "Retry-After": "5" }) : json(SCHOOL_BODY, 200, { "Content-Type": "application/json" }));
+    const out = await html();
+    expect(out).toContain("Quanto você quer contribuir?");
+    expect(out).not.toContain("Campanhas da escola");
   });
 
   it("404 da API: 404 de verdade; slug mal formado: 404 sem chamar a API", async () => {
