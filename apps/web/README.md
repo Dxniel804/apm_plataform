@@ -91,6 +91,13 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   autor lê; o autor cancela enquanto está aberto. O administrador da escola vê as duas abas (`?aba=minhas`). As
   fotos vão em multipart e voltam pela API com a sessão (nunca há URL pública). O menu mostra "Solicitações" a
   quem tem `requests:read_all` e "Minhas solicitações" a quem só abre pedidos.
+- **Personalização (REAL)**, `/painel/personalizacao`, `docs/campaigns.md` (`src/lib/api/campaigns.ts`): a gestão
+  (`campaigns:manage`) cria campanhas de venda às famílias: título, texto, datas, capa e produtos (nome, texto,
+  imagem, preço, limite por pedido), vê "como a família vê", põe à venda e encerra (definitivo). O site nunca decide
+  estado nem preço: mostra o que a API devolve. As imagens sobem por PUT multipart e voltam pela API com a sessão.
+  Na página pública, `/escola/{slug}` lista as campanhas à venda e `/escola/{slug}/campanha/{id}` é o fluxo da
+  contribuição com um carrinho no lugar do valor (`src/components/portal/Campaign*.tsx`): o pedido leva QUAIS
+  produtos e QUANTOS, nunca preço nem total; o comprovante lista o que foi comprado.
 - **Fotos** (`PhotoPicker`, `CameraDialog`, `src/lib/photo.ts`): "Tirar foto" usa a câmera do navegador
   (`getUserMedia`, câmera traseira quando há; sem ela, o campo `capture` do sistema) e "Escolher da galeria" aceita
   PNG, JPEG e WebP. A foto é reduzida no navegador (lado maior de 2400 px, JPEG) para caber nos 10 MB e fica só na

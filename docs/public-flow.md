@@ -72,6 +72,17 @@ charges). With the stack running (`docker compose up -d --wait`):
 3. `POST /api/v1/dev/sandbox/pix/<txid>/pay` (add `{"amount_cents": 99900}` to see the review of a
    different amount), then `GET .../charge` and `GET .../receipt` with the token.
 
+## Campaigns: the same flow with a cart (migration 0013)
+
+A school can put campaigns on sale (a party, a kit): the page of the school lists them and each one
+has a page where the family picks the quantity of each product. The order is created by
+`POST /public/schools/{slug}/campaigns/{campaign_id}/orders` and everything after it (the Pix charge,
+the polling, the renewal of the charge, the receipt, the expiry) is **this flow, unchanged**: an
+order is a contribution with a campaign. What is different is only who decides the amount: the order
+carries which products and how many, **never a price or a total**, the server reads the prices, and
+the database refuses a copy that is not the current name and price of a product on sale and an amount
+that is not the sum of the items. See [campaigns.md](campaigns.md).
+
 ## Not here yet
 
 The real provider (Banco do Brasil, mTLS, the credentials behind `secret_ref`) and the

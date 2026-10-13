@@ -143,10 +143,8 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
                   <CampaignDetailPanel
                     schoolId={schoolId}
                     campaignId={campaign.id}
-                    onChanged={(message) => {
-                      if (message) setBanner(message);
-                      reload();
-                    }}
+                    // O painel mostra o proprio aviso ("Capa salva."): aqui so recarrega as contagens da lista.
+                    onChanged={reload}
                   />
                 )}
               </li>

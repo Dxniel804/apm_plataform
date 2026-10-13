@@ -254,6 +254,39 @@ def test_the_price_of_today_is_the_price_charged(
     assert response.status_code == 201 and response.json()["amount_cents"] == 2000
 
 
+def test_a_price_changed_between_reading_and_writing_is_refused_by_the_database(
+    apis: ApiFactory, school: PublicSchool, admin_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The server read R$ 8,00; before it wrote the copy somebody raised the price. The database
+    refuses a copy that is not the CURRENT price, so nothing is created and the family is told."""
+    from app.public import campaign_service
+
+    seeded = seed_campaign(admin_engine, school.fresh)
+    real = campaign_service._order_lines
+
+    def raised_right_after_reading(*args: Any, **kwargs: Any) -> Any:
+        lines = real(*args, **kwargs)
+        with admin_engine.begin() as conn:
+            conn.execute(
+                text("UPDATE campaign_items SET price_cents = 900 WHERE id = :i"),
+                {"i": seeded.items[0]},
+            )
+        return lines
+
+    monkeypatch.setattr(campaign_service, "_order_lines", raised_right_after_reading)
+
+    response = order(apis.make(), school.slug, seeded.campaign, [(seeded.items[0], 1)])
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "campaign_changed"
+    assert contributions(admin_engine, school) == 0
+    monkeypatch.setattr(campaign_service, "_order_lines", real)
+    again = order(apis.make(), school.slug, seeded.campaign, [(seeded.items[0], 1)])
+    assert (
+        again.status_code == 201 and again.json()["amount_cents"] == 900
+    )  # and the next one pays the new price
+
+
 def _bad_orders() -> list[tuple[str, Any, str, str]]:
     """(id, lines builder, field, code): the lines are made from the items of the seeded campaign."""
     return [
