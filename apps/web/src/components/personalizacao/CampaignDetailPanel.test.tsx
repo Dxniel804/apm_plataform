@@ -14,6 +14,12 @@ const fail = (code: string, status: number, fields?: Array<{ field: string; code
 });
 const png = (name = "capa.png") => new File([new Uint8Array(500)], name, { type: "image/png" });
 
+/** Abre a janela "Editar campanha" (o texto e as datas ficam numa janela, como os outros formularios). */
+async function openTextEditor(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "Editar texto e datas" }));
+  return screen.getByRole("dialog", { name: "Editar campanha" });
+}
+
 function setup(d: CampaignDetail = detail()) {
   vi.spyOn(api.campaigns, "get").mockResolvedValue(ok(d));
   const onChanged = vi.fn();
@@ -31,8 +37,10 @@ describe("editor de uma campanha", () => {
   it("mostra o texto, os produtos com preco e limite, e a previa como a familia ve", async () => {
     setup(detail({ description: "Barracas e jogos", endsOn: "2026-06-30" }));
 
-    expect(await screen.findByLabelText("Título")).toHaveValue("Festa Junina");
-    expect(screen.getByLabelText(/Texto para as famílias/)).toHaveValue("Barracas e jogos");
+    const summary = (await screen.findByRole("heading", { name: "Texto e datas" })).closest("section")!;
+    expect(summary).toHaveTextContent("Festa Junina");
+    expect(summary).toHaveTextContent("Barracas e jogos");
+    expect(summary).toHaveTextContent("até 30 de jun");
     const products = screen.getByRole("list", { name: "Produtos da campanha" });
     expect(within(products).getAllByRole("listitem")).toHaveLength(2);
     expect(products).toHaveTextContent("Cachorro-quente");
@@ -56,7 +64,7 @@ describe("editor de uma campanha", () => {
   it("rascunho: so oferece 'Pôr à venda' depois de confirmar; a API devolve a campanha a venda", async () => {
     const { onChanged, user } = setup();
     const activate = vi.spyOn(api.campaigns, "activate").mockResolvedValue(ok(detail({ status: "ACTIVE" })));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.click(screen.getByRole("button", { name: "Pôr à venda" }));
     const confirm = await screen.findByRole("dialog", { name: "Pôr à venda" });
@@ -73,7 +81,7 @@ describe("editor de uma campanha", () => {
     const { user } = setup(detail({ items: [] }));
     vi.spyOn(api.campaigns, "activate").mockResolvedValue(fail("campaign_needs_a_product", 409));
     vi.spyOn(api.campaigns, "get").mockResolvedValue(ok(detail({ items: [] })));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.click(screen.getByRole("button", { name: "Pôr à venda" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Pôr à venda" })).getByRole("button", { name: "Pôr à venda" }));
@@ -84,7 +92,7 @@ describe("editor de uma campanha", () => {
   it("encerrar e definitivo: pede confirmacao e depois a campanha vira so leitura", async () => {
     const { user } = setup(detail({ status: "ACTIVE" }));
     const end = vi.spyOn(api.campaigns, "end").mockResolvedValue(ok(detail({ status: "ENDED" })));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.click(screen.getByRole("button", { name: "Encerrar campanha" }));
     const confirm = await screen.findByRole("dialog", { name: "Encerrar campanha" });
@@ -93,22 +101,22 @@ describe("editor de uma campanha", () => {
 
     await waitFor(() => expect(end).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID));
     expect(await screen.findByRole("note")).toHaveTextContent("foi encerrada");
-    expect(screen.getByLabelText("Título")).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Salvar texto e datas" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Adicionar produto" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar texto e datas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Novo produto" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Editar o produto/ })).not.toBeInTheDocument();
   });
 
   it("salva o texto e as datas; `null` apaga o que foi esvaziado", async () => {
     const { user, onChanged } = setup(detail({ endsOn: "2026-06-30" }));
     const update = vi.spyOn(api.campaigns, "update").mockResolvedValue(ok(detail({ title: "Festa de São João" })));
-    const title = await screen.findByLabelText("Título");
+    const editor = await openTextEditor(user);
+    const title = within(editor).getByLabelText("Título");
 
     await user.clear(title);
     await user.type(title, "  Festa de São João ");
-    await user.clear(screen.getByLabelText(/Termina em/));
-    await user.clear(screen.getByLabelText(/Texto para as famílias/));
-    await user.click(screen.getByRole("button", { name: "Salvar texto e datas" }));
+    await user.clear(within(editor).getByLabelText(/Termina em/));
+    await user.clear(within(editor).getByLabelText(/Texto para as famílias/));
+    await user.click(within(editor).getByRole("button", { name: "Salvar texto e datas" }));
 
     await waitFor(() => expect(update).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, { title: "Festa de São João", description: null, startsOn: null, endsOn: null }));
     expect(onChanged).toHaveBeenCalledWith("Campanha salva.");
@@ -117,12 +125,12 @@ describe("editor de uma campanha", () => {
   it("titulo vazio e datas trocadas sao avisados sem falar com a API", async () => {
     const { user } = setup(detail({ startsOn: "2026-06-01" }));
     const update = vi.spyOn(api.campaigns, "update");
-    const title = await screen.findByLabelText("Título");
+    const editor = await openTextEditor(user);
 
-    await user.clear(title);
-    await user.clear(screen.getByLabelText(/Termina em/));
-    await user.type(screen.getByLabelText(/Termina em/), "2026-05-01");
-    await user.click(screen.getByRole("button", { name: "Salvar texto e datas" }));
+    await user.clear(within(editor).getByLabelText("Título"));
+    await user.clear(within(editor).getByLabelText(/Termina em/));
+    await user.type(within(editor).getByLabelText(/Termina em/), "2026-05-01");
+    await user.click(within(editor).getByRole("button", { name: "Salvar texto e datas" }));
 
     expect(screen.getByText("Escreva o título da campanha.")).toBeInTheDocument();
     expect(screen.getByText("A data de fim não pode ser antes da data de início.")).toBeInTheDocument();
@@ -133,10 +141,10 @@ describe("editor de uma campanha", () => {
     const { user } = setup();
     const get = vi.spyOn(api.campaigns, "get").mockResolvedValue(ok(detail({ status: "ENDED" })));
     vi.spyOn(api.campaigns, "update").mockResolvedValue(fail("invalid_state", 409));
-    const title = await screen.findByLabelText("Título");
+    const editor = await openTextEditor(user);
 
-    await user.type(title, "!");
-    await user.click(screen.getByRole("button", { name: "Salvar texto e datas" }));
+    await user.type(within(editor).getByLabelText("Título"), "!");
+    await user.click(within(editor).getByRole("button", { name: "Salvar texto e datas" }));
 
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole("note")).toHaveTextContent("foi encerrada");
@@ -147,7 +155,8 @@ describe("produtos", () => {
   it("adiciona um produto: o preco vai em centavos e o limite so quando existe", async () => {
     const { user } = setup();
     const add = vi.spyOn(api.campaigns, "addItem").mockResolvedValue(ok(detail()));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
+    await user.click(screen.getByRole("button", { name: "Novo produto" }));
     const form = screen.getByRole("form", { name: "Adicionar produto" });
 
     await user.type(within(form).getByLabelText("Nome do produto"), "  Camiseta ");
@@ -162,7 +171,8 @@ describe("produtos", () => {
   it("avisa nome vazio, preco fora de R$ 1,00 a R$ 10.000,00 e limite invalido, sem chamar a API", async () => {
     const { user } = setup();
     const add = vi.spyOn(api.campaigns, "addItem");
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
+    await user.click(screen.getByRole("button", { name: "Novo produto" }));
     const form = screen.getByRole("form", { name: "Adicionar produto" });
 
     await user.click(within(form).getByRole("button", { name: "Adicionar produto" }));
@@ -179,7 +189,7 @@ describe("produtos", () => {
   it("edita um produto: o preco novo vale para os proximos pedidos (a tela avisa)", async () => {
     const { user } = setup();
     const updateItem = vi.spyOn(api.campaigns, "updateItem").mockResolvedValue(ok(detail()));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.click(screen.getByRole("button", { name: "Editar o produto Cachorro-quente" }));
     const form = screen.getByRole("form", { name: "Editar o produto Cachorro-quente" });
@@ -200,7 +210,7 @@ describe("produtos", () => {
   it("tira um produto da venda e o traz de volta (nunca o apaga)", async () => {
     const { user } = setup();
     const updateItem = vi.spyOn(api.campaigns, "updateItem").mockResolvedValue(ok(detail({ items: [item({ isActive: false })] })));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.click(screen.getByRole("button", { name: "Tirar da venda o produto Cachorro-quente" }));
 
@@ -216,7 +226,7 @@ describe("imagens", () => {
     vi.spyOn(api.campaigns, "image").mockResolvedValue({ ok: true, data: { blob: new Blob(["x"], { type: "image/png" }), contentType: "image/png" } });
     const setImage = vi.spyOn(api.campaigns, "setImage").mockResolvedValue(ok(detail({ hasCover: true, coverVersion: 2 })));
     const clear = vi.spyOn(api.campaigns, "clearImage").mockResolvedValue(ok(detail()));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.upload(screen.getByLabelText("Arquivo da capa da campanha"), png());
     await waitFor(() => expect(setImage).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, expect.objectContaining({ name: "capa.png" })));
@@ -230,7 +240,7 @@ describe("imagens", () => {
     setup();
     const user = userEvent.setup({ applyAccept: false }); // o seletor de arquivos do navegador ja filtra; aqui ele deixa passar
     const setImage = vi.spyOn(api.campaigns, "setImage");
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.upload(screen.getByLabelText("Arquivo da capa da campanha"), new File(["%PDF"], "nota.pdf", { type: "application/pdf" }));
 
@@ -241,7 +251,7 @@ describe("imagens", () => {
   it("erro da API na imagem aparece junto aos botoes", async () => {
     const { user } = setup();
     vi.spyOn(api.campaigns, "setImage").mockResolvedValue(fail("validation_error", 422, [{ field: "file", code: "image_malformed" }]));
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
 
     await user.upload(screen.getByLabelText("Arquivo da capa da campanha"), png());
 
@@ -261,7 +271,7 @@ describe("falhas de leitura", () => {
     const spies = [vi.spyOn(console, "error"), vi.spyOn(console, "warn"), vi.spyOn(console, "log")];
     const { user } = setup();
     vi.spyOn(api.campaigns, "updateItem").mockResolvedValue({ ok: false, error: { kind: "network" } });
-    await screen.findByLabelText("Título");
+    await screen.findByRole("heading", { name: "Texto e datas" });
     await user.click(screen.getByRole("button", { name: "Tirar da venda o produto Cachorro-quente" }));
     await screen.findByRole("alert");
     expect(setItem).not.toHaveBeenCalled();

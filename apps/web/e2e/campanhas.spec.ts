@@ -56,15 +56,20 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
   await page.getByRole("dialog", { name: "Pôr à venda" }).getByRole("button", { name: "Pôr à venda" }).click();
   await expect(card.getByRole("alert")).toContainText("pelo menos um produto");
 
-  // produtos
-  const add = card.getByRole("form", { name: "Adicionar produto" });
+  // produtos: cada um abre a janela de formulario, no mesmo modelo da contribuicao em dinheiro
+  await card.getByRole("button", { name: "Novo produto" }).click();
+  const add = page.getByRole("dialog", { name: "Adicionar produto" });
+  await expect(add).toBeVisible();
+  expect(await axe(page), "axe com a janela de produto aberta").toEqual([]);
   await add.getByLabel("Nome do produto").fill("Cachorro-quente");
   await add.getByLabel("Preço").fill("800");
   await add.getByLabel(/Limite por pedido/).fill("5");
   await add.getByRole("button", { name: "Adicionar produto" }).click();
+  await expect(add).toHaveCount(0);
   await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("Cachorro-quente");
   await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 8,00");
-  const add2 = card.getByRole("form", { name: "Adicionar produto" });
+  await card.getByRole("button", { name: "Novo produto" }).click();
+  const add2 = page.getByRole("dialog", { name: "Adicionar produto" });
   await add2.getByLabel("Nome do produto").fill("Pamonha");
   await add2.getByLabel("Preço").fill("650");
   await add2.getByRole("button", { name: "Adicionar produto" }).click();
@@ -74,7 +79,7 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
   await card.getByLabel("Arquivo da capa da campanha").setInputFiles({ name: "capa.png", mimeType: "image/png", buffer: PNG_1X1 });
   await expect(page.getByRole("status").filter({ hasText: "Capa salva." })).toBeVisible();
   await card.getByRole("button", { name: "Editar o produto Cachorro-quente" }).click();
-  const itemForm = card.getByRole("form", { name: "Editar o produto Cachorro-quente" });
+  const itemForm = page.getByRole("dialog", { name: "Editar produto" });
   await itemForm.getByLabel("Arquivo da imagem do produto Cachorro-quente").setInputFiles({ name: "hotdog.png", mimeType: "image/png", buffer: PNG_1X1 });
   await expect(page.getByRole("status").filter({ hasText: "Imagem do produto salva." })).toBeVisible();
   await itemForm.getByRole("button", { name: "Cancelar" }).click();
@@ -178,7 +183,7 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
   // o preco muda: o pedido que ja foi feito nao muda e o proximo paga o preco novo
   await card.getByRole("button", { name: `Abrir a campanha ${title}` }).click();
   await card.getByRole("button", { name: "Editar o produto Pamonha" }).click();
-  const form = card.getByRole("form", { name: "Editar o produto Pamonha" });
+  const form = page.getByRole("dialog", { name: "Editar produto" });
   await form.getByLabel("Preço").fill("1000");
   await form.getByRole("button", { name: "Salvar produto" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Produto salvo." })).toBeVisible();
@@ -199,8 +204,8 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
   await confirm.getByRole("button", { name: "Encerrar de vez" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Campanha encerrada." })).toBeVisible();
   await expect(card).toContainText("Encerrada");
-  await expect(card.getByLabel("Título")).toBeDisabled();
-  await expect(card.getByRole("button", { name: "Adicionar produto" })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Editar texto e datas" })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Novo produto" })).toHaveCount(0);
 
   await visitor.goto(SCHOOL);
   await expect(visitor.getByText(title)).toHaveCount(0);

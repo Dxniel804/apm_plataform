@@ -119,8 +119,8 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
 
       {scope === "mine" && canSubmit && (
         <div className="mb-5">
-          <Button variant="chip" size="md" aria-expanded={creating} onClick={() => setCreating((v) => !v)} className="min-h-12 px-7">
-            {creating ? "Fechar o formulário" : "Nova despesa"}
+          <Button variant="chip" size="md" aria-haspopup="dialog" onClick={() => setCreating(true)} className="min-h-12 px-7">
+            Nova despesa
           </Button>
         </div>
       )}

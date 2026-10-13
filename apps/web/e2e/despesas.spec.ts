@@ -72,8 +72,9 @@ test("gestao: aprova PARCIALMENTE e registra o reembolso; o status vem da API", 
   await expect(approved).toContainText("Reembolso pendente");
   await approved.getByRole("button", { name: /Abrir detalhes/ }).click();
   await page.getByRole("button", { name: "Registrar reembolso", exact: true }).click();
-  await page.getByLabel("Referência do pagamento").fill(`PIX ${tag}`);
-  await page.getByRole("button", { name: "Registrar reembolso", exact: true }).click();
+  const window = page.getByRole("dialog", { name: "Registrar reembolso" });
+  await window.getByLabel("Referência do pagamento").fill(`PIX ${tag}`);
+  await window.getByRole("button", { name: "Registrar reembolso", exact: true }).click();
   await expect(page.getByText("Reembolso registrado.")).toBeVisible();
   await page.getByRole("button", { name: "Pagas", exact: true }).click();
   const paid = row(page, tag);
@@ -94,7 +95,7 @@ test("despesa paga pela APM: aprova pelo valor pedido e registra o pagamento (se
   await row(page, apmTag).getByRole("button", { name: /Abrir detalhes/ }).click();
   await page.getByRole("button", { name: "Aprovar", exact: true }).click();
   await expect(page.getByLabel("Um valor menor (aprovação parcial)")).toHaveCount(0);
-  await page.getByRole("button", { name: "Aprovar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Aprovar", exact: true }).click();
   await expect(page.getByText("Despesa aprovada.")).toBeVisible();
   await page.getByRole("button", { name: "Aprovadas (a pagar)" }).click();
   await row(page, apmTag).getByRole("button", { name: /Abrir detalhes/ }).click();
@@ -119,7 +120,7 @@ test("correcao pedida: o funcionario le o motivo da gestao e reenvia", async ({ 
   await row(page, fixTag).getByRole("button", { name: /Abrir detalhes/ }).click();
   await page.getByRole("button", { name: "Pedir correção", exact: true }).click();
   await page.getByLabel("O que precisa ser corrigido").fill("Falta o CNPJ na nota");
-  await page.getByRole("button", { name: "Pedir correção", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Pedir correção", exact: true }).click();
   await expect(page.getByText(/Correção pedida\. A despesa volta/)).toBeVisible();
 
   await page.context().clearCookies();

@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { TextAreaField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import { describeCampaignError } from "@/lib/campaign-labels";
@@ -57,12 +56,15 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={() => !busy && onClose()} label="Nova campanha" initialFocus={titleRef}>
-      <form method="post" noValidate onSubmit={(event) => void submit(event)} className="space-y-5 p-5 sm:p-8">
-        <h2 className="text-title text-brand-800">Nova campanha</h2>
-        <p className="-mt-2 text-body text-ink-2">
-          Uma festa, um kit, uma rifa. Você escreve o texto, põe os produtos com o preço e, quando estiver pronta, coloca à venda.
-        </p>
+    <FormModal
+      open={open}
+      title="Nova campanha"
+      intro="Uma festa, um kit, uma rifa. Você escreve o texto, põe os produtos com o preço e, quando estiver pronta, coloca à venda."
+      onClose={onClose}
+      busy={busy}
+      initialFocus={titleRef}
+    >
+      <form method="post" noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
         <TextField label="Título" name="campaign-title" inputRef={titleRef} autoComplete="off" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} error={errors.title} />
         <TextAreaField label="Texto para as famílias" name="campaign-description" optional maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -76,15 +78,8 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button variant="plain" size="md" onClick={onClose} disabled={busy} className="rounded-full!">
-            Cancelar
-          </Button>
-          <Button type="submit" size="md" disabled={busy} aria-busy={busy} className="rounded-full!">
-            {busy ? "Criando…" : "Criar rascunho"}
-          </Button>
-        </div>
+        <FormButtons onCancel={onClose} submitLabel="Criar rascunho" pendingLabel="Criando…" pending={busy} />
       </form>
-    </Modal>
+    </FormModal>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { Button, chipClass } from "@/components/ui/Button";
+import { FormModal } from "@/components/ui/FormModal";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -212,207 +213,200 @@ export function ExpenseForm({ schoolId, categories, expense, ocrEnabled = false,
   };
 
   return (
-    <form
-      method="post"
-      noValidate
-      onSubmit={submitting}
-      aria-labelledby="expense-form-title"
-      aria-busy={pending !== null}
-      className="mb-8 space-y-5 rounded-[var(--r-lg)] border border-line p-5 sm:p-7"
+    <FormModal
+      title={editing ? `Editar despesa nº ${expense!.referenceCode}` : "Nova despesa"}
+      intro="Quem envia é você, pela sua conta: não pedimos o seu nome. A gestão só vê a despesa depois que você enviar."
+      onClose={onCancel}
+      busy={busy}
     >
-      <h2 id="expense-form-title" className="text-heading">
-        {editing ? `Editar despesa nº ${expense!.referenceCode}` : "Nova despesa"}
-      </h2>
-      <p className="max-w-[60ch] text-sub text-ink-2">
-        Quem envia é você, pela sua conta: não pedimos o seu nome. A gestão só vê a despesa depois que você enviar.
-      </p>
-
-      {ocr && (
-        <div role="group" aria-label="Como preencher a despesa" className="flex flex-wrap gap-2.5">
-          <button type="button" aria-pressed={mode === "manual"} disabled={busy} onClick={() => chooseMode("manual")} className={chipClass(mode === "manual")}>
-            Preencher manualmente
-          </button>
-          <button type="button" aria-pressed={mode === "ocr"} disabled={busy} onClick={() => chooseMode("ocr")} className={chipClass(mode === "ocr")}>
-            Ler a nota (OCR)
-          </button>
-        </div>
-      )}
-
-      {reader && (
-        <div className="space-y-4 rounded-[var(--r-md)] bg-info-soft/40 p-4 sm:p-5">
-          <p className="max-w-[60ch] text-sub text-ink-2">
-            Tire uma foto da nota ou escolha uma da galeria. Os campos abaixo são preenchidos com o que for lido, mas quem confere e salva é você.
-          </p>
-          <PhotoPicker photos={photos} onChange={changePhotos} max={1} label="Foto da nota" note="(uma foto, PNG, JPEG ou WebP)" disabled={busy} error={errors.file || null} />
-          <Button variant="secondary" onClick={() => void readReceipt()} disabled={busy || photos.length === 0} aria-busy={reading} className="rounded-full!">
-            {reading ? "Lendo a nota…" : "Ler a nota"}
-          </Button>
-          <div aria-live="polite">
-            {reading && <p role="status" className="text-sub text-ink-2">Lendo a nota. Isso pode levar alguns segundos.</p>}
-            {readNote && (
-              <p role="status" className={`rounded-[var(--r-md)] px-4 py-3 text-sub font-medium ${readNote.tone === "ok" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
-                {readNote.text}
-              </p>
-            )}
+      <form method="post" noValidate onSubmit={submitting} aria-busy={pending !== null} className="space-y-5">
+        {ocr && (
+          <div role="group" aria-label="Como preencher a despesa" className="flex flex-wrap gap-2.5">
+            <button type="button" aria-pressed={mode === "manual"} disabled={busy} onClick={() => chooseMode("manual")} className={chipClass(mode === "manual")}>
+              Preencher manualmente
+            </button>
+            <button type="button" aria-pressed={mode === "ocr"} disabled={busy} onClick={() => chooseMode("ocr")} className={chipClass(mode === "ocr")}>
+              Ler a nota (OCR)
+            </button>
           </div>
+        )}
+
+        {reader && (
+          <div className="space-y-4 rounded-[var(--r-md)] bg-info-soft/40 p-4 sm:p-5">
+            <p className="max-w-[60ch] text-sub text-ink-2">
+              Tire uma foto da nota ou escolha uma da galeria. Os campos abaixo são preenchidos com o que for lido, mas quem confere e salva é você.
+            </p>
+            <PhotoPicker photos={photos} onChange={changePhotos} max={1} label="Foto da nota" note="(uma foto, PNG, JPEG ou WebP)" disabled={busy} error={errors.file || null} />
+            <Button variant="secondary" onClick={() => void readReceipt()} disabled={busy || photos.length === 0} aria-busy={reading} className="rounded-full!">
+              {reading ? "Lendo a nota…" : "Ler a nota"}
+            </Button>
+            <div aria-live="polite">
+              {reading && <p role="status" className="text-sub text-ink-2">Lendo a nota. Isso pode levar alguns segundos.</p>}
+              {readNote && (
+                <p role="status" className={`rounded-[var(--r-md)] px-4 py-3 text-sub font-medium ${readNote.tone === "ok" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
+                  {readNote.text}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Valor"
+            name="expense-amount"
+            prefix="R$"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="0,00"
+            inputRef={amountRef}
+            hint={suggestionHint(suggested.amount)}
+            value={cents === 0 ? "" : formatBRLNumber(cents)}
+            onChange={(e) => {
+              setCents(centsFromDigits(e.target.value));
+              setErrors((p) => ({ ...p, amount_cents: "" }));
+              unmark("amount");
+            }}
+            error={errors.amount_cents || undefined}
+          />
+          <TextField
+            label="Data da despesa"
+            name="expense-date"
+            type="date"
+            max={dayInSchoolZone()}
+            hint={suggestionHint(suggested.date)}
+            value={day}
+            onChange={(e) => {
+              setDay(e.target.value);
+              setErrors((p) => ({ ...p, occurred_at: "" }));
+              unmark("date");
+            }}
+            error={errors.occurred_at || undefined}
+          />
         </div>
-      )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Valor"
-          name="expense-amount"
-          prefix="R$"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="0,00"
-          inputRef={amountRef}
-          hint={suggestionHint(suggested.amount)}
-          value={cents === 0 ? "" : formatBRLNumber(cents)}
-          onChange={(e) => {
-            setCents(centsFromDigits(e.target.value));
-            setErrors((p) => ({ ...p, amount_cents: "" }));
-            unmark("amount");
-          }}
-          error={errors.amount_cents || undefined}
-        />
-        <TextField
-          label="Data da despesa"
-          name="expense-date"
-          type="date"
-          max={dayInSchoolZone()}
-          hint={suggestionHint(suggested.date)}
-          value={day}
-          onChange={(e) => {
-            setDay(e.target.value);
-            setErrors((p) => ({ ...p, occurred_at: "" }));
-            unmark("date");
-          }}
-          error={errors.occurred_at || undefined}
-        />
-      </div>
-
-      <SelectField
-        id="expense-category"
-        label="Categoria"
-        value={categoryId}
-        onChange={(e) => setChosenCategory(e.target.value)}
-        error={errors.category_id || undefined}
-      >
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </SelectField>
-
-      <TextField
-        label="Descrição"
-        name="expense-description"
-        autoComplete="off"
-        maxLength={500}
-        hint={suggestionHint(suggested.description)}
-        value={description}
-        onChange={(e) => {
-          setDescription(e.target.value);
-          setErrors((p) => ({ ...p, description: "" }));
-          unmark("description");
-        }}
-        error={errors.description || undefined}
-      />
-      <TextField
-        label="Fornecedor"
-        optional
-        name="expense-vendor"
-        autoComplete="off"
-        maxLength={200}
-        hint={suggestionHint(suggested.vendor)}
-        value={vendor}
-        onChange={(e) => {
-          setVendor(e.target.value);
-          unmark("vendor");
-        }}
-      />
-      <TextField
-        label="Motivo da compra"
-        name="expense-reason"
-        autoComplete="off"
-        maxLength={500}
-        hint="Obrigatório para enviar à gestão."
-        value={purchaseReason}
-        onChange={(e) => {
-          setPurchaseReason(e.target.value);
-          setErrors((p) => ({ ...p, purchase_reason: "" }));
-        }}
-        error={errors.purchase_reason || undefined}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
-          id="expense-method"
-          label="Forma de pagamento"
-          value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | "")}
-          error={errors.payment_method || undefined}
+          id="expense-category"
+          label="Categoria"
+          value={categoryId}
+          onChange={(e) => setChosenCategory(e.target.value)}
+          error={errors.category_id || undefined}
         >
-          <option value="">Escolha…</option>
-          {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
-            <option key={m} value={m}>
-              {PAYMENT_METHOD_LABELS[m]}
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </SelectField>
-        {!editing && (
-          <fieldset>
-            <legend className="mb-2 block text-sub font-bold text-brand-800">Quem pagou</legend>
-            <label className="flex min-h-11 items-center gap-2 text-body text-ink">
-              <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "COLLABORATOR"} onChange={() => setPaidBy("COLLABORATOR")} />
-              Eu paguei do meu bolso (reembolso)
-            </label>
-            <label className="flex min-h-11 items-center gap-2 text-body text-ink">
-              <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "APM"} onChange={() => setPaidBy("APM")} />
-              Foi paga pela APM
-            </label>
-          </fieldset>
-        )}
-      </div>
 
-      {!reader && (
-      <div>
-        <label htmlFor="expense-file" className="mb-2 block text-sub font-bold text-brand-800">
-          Nota ou recibo (PNG, JPEG, WebP ou PDF, até 10 MB)
-        </label>
-        <input
-          id="expense-file"
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf"
-          onChange={() => setErrors((p) => ({ ...p, file: "" }))}
-          className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-full file:border-0 file:bg-info-soft file:px-5 file:font-semibold file:text-brand-800"
+        <TextField
+          label="Descrição"
+          name="expense-description"
+          autoComplete="off"
+          maxLength={500}
+          hint={suggestionHint(suggested.description)}
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            setErrors((p) => ({ ...p, description: "" }));
+            unmark("description");
+          }}
+          error={errors.description || undefined}
         />
-        {errors.file && <p role="alert" className="mt-1.5 text-sub font-medium text-bad">{errors.file}</p>}
-      </div>
-      )}
+        <TextField
+          label="Fornecedor"
+          optional
+          name="expense-vendor"
+          autoComplete="off"
+          maxLength={200}
+          hint={suggestionHint(suggested.vendor)}
+          value={vendor}
+          onChange={(e) => {
+            setVendor(e.target.value);
+            unmark("vendor");
+          }}
+        />
+        <TextField
+          label="Motivo da compra"
+          name="expense-reason"
+          autoComplete="off"
+          maxLength={500}
+          hint="Obrigatório para enviar à gestão."
+          value={purchaseReason}
+          onChange={(e) => {
+            setPurchaseReason(e.target.value);
+            setErrors((p) => ({ ...p, purchase_reason: "" }));
+          }}
+          error={errors.purchase_reason || undefined}
+        />
 
-      <div aria-live="polite">
-        {general && (
-          <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
-            {general}
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            id="expense-method"
+            label="Forma de pagamento"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | "")}
+            error={errors.payment_method || undefined}
+          >
+            <option value="">Escolha…</option>
+            {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+              <option key={m} value={m}>
+                {PAYMENT_METHOD_LABELS[m]}
+              </option>
+            ))}
+          </SelectField>
+          {!editing && (
+            <fieldset>
+              <legend className="mb-2 block text-sub font-bold text-brand-800">Quem pagou</legend>
+              <label className="flex min-h-11 items-center gap-2 text-body text-ink">
+                <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "COLLABORATOR"} onChange={() => setPaidBy("COLLABORATOR")} />
+                Eu paguei do meu bolso (reembolso)
+              </label>
+              <label className="flex min-h-11 items-center gap-2 text-body text-ink">
+                <input type="radio" name="expense-paid-by" className="size-5 accent-[var(--color-brand-800)]" checked={paidBy === "APM"} onChange={() => setPaidBy("APM")} />
+                Foi paga pela APM
+              </label>
+            </fieldset>
+          )}
+        </div>
+
+        {!reader && (
+        <div>
+          <label htmlFor="expense-file" className="mb-2 block text-sub font-bold text-brand-800">
+            Nota ou recibo (PNG, JPEG, WebP ou PDF, até 10 MB)
+          </label>
+          <input
+            id="expense-file"
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            onChange={() => setErrors((p) => ({ ...p, file: "" }))}
+            className="block w-full text-body text-ink file:mr-3 file:min-h-11 file:rounded-full file:border-0 file:bg-info-soft file:px-5 file:font-semibold file:text-brand-800"
+          />
+          {errors.file && <p role="alert" className="mt-1.5 text-sub font-medium text-bad">{errors.file}</p>}
+        </div>
         )}
-      </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" variant="secondary" disabled={busy} aria-busy={pending === "draft"} className="rounded-full!">
-          {pending === "draft" ? "Salvando…" : "Salvar rascunho"}
-        </Button>
-        <Button onClick={() => void save(true)} disabled={busy} aria-busy={pending === "send"} className="rounded-full!">
-          {pending === "send" ? "Enviando…" : "Salvar e enviar para análise"}
-        </Button>
-        <Button variant="plain" onClick={onCancel} disabled={busy} className="rounded-full!">
-          Fechar
-        </Button>
-      </div>
-    </form>
+        <div aria-live="polite">
+          {general && (
+            <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
+              {general}
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3 pt-3 sm:grid-cols-3">
+          <Button variant="secondary" onClick={onCancel} disabled={busy} className="rounded-full! order-last sm:order-1">
+            Fechar
+          </Button>
+          <Button type="submit" variant="secondary" disabled={busy} aria-busy={pending === "draft"} className="rounded-full! order-2">
+            {pending === "draft" ? "Salvando…" : "Salvar rascunho"}
+          </Button>
+          <Button onClick={() => void save(true)} disabled={busy} aria-busy={pending === "send"} className="rounded-full! order-1 sm:order-3">
+            {pending === "send" ? "Enviando…" : "Salvar e enviar para análise"}
+          </Button>
+        </div>
+      </form>
+    </FormModal>
   );
 }

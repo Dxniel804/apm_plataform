@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { Modal } from "@/components/ui/Modal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextAreaField, TextField } from "@/components/ui/TextField";
@@ -237,12 +238,14 @@ interface SharedProps {
 }
 
 function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale }: SharedProps & { detail: CampaignDetail; disabled: boolean }) {
+  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(detail.title);
   const [description, setDescription] = useState(detail.description ?? "");
   const [startsOn, setStartsOn] = useState(detail.startsOn ?? "");
   const [endsOn, setEndsOn] = useState(detail.endsOn ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const period = describePeriod(detail.startsOn, detail.endsOn);
 
   async function save() {
     if (busy) return;
@@ -268,35 +271,55 @@ function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale
   }
 
   return (
-    <form
-      method="post"
-      noValidate
-      aria-labelledby={`text-${detail.id}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save();
-      }}
-      className="space-y-4"
-    >
+    <section aria-labelledby={`text-${detail.id}`}>
       <h2 id={`text-${detail.id}`} className="text-heading">
         Texto e datas
       </h2>
-      <TextField label="Título" name="campaign-title" autoComplete="off" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} disabled={disabled} error={errors.title} />
-      <TextAreaField label="Texto para as famílias" name="campaign-description" optional rows={4} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} disabled={disabled} error={errors.description} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label="Começa em" optional name="campaign-starts" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} disabled={disabled} error={errors.starts_on} />
-        <TextField label="Termina em" optional name="campaign-ends" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} disabled={disabled} hint="Depois desta data a campanha sai da página da escola." error={errors.ends_on} />
-      </div>
+      <dl className="mt-3 space-y-2 text-sub">
+        <div>
+          <dt className="text-ink-2">Título</dt>
+          <dd className="text-[1.0625rem] font-semibold text-brand-800 [overflow-wrap:anywhere]">{detail.title}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-2">Texto para as famílias</dt>
+          <dd className="whitespace-pre-line text-ink [overflow-wrap:anywhere]">{detail.description ?? "Sem texto."}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-2">À venda</dt>
+          <dd className="text-ink">{period ?? "Sem datas: vale até a campanha ser encerrada."}</dd>
+        </div>
+      </dl>
       {!disabled && (
-        <Button type="submit" size="md" disabled={busy} aria-busy={busy} className="rounded-full!">
-          {busy ? "Salvando…" : "Salvar texto e datas"}
+        <Button variant="secondary" size="md" onClick={() => setOpen(true)} className="mt-4 rounded-full!">
+          Editar texto e datas
         </Button>
       )}
-    </form>
+      <FormModal open={open && !disabled} title="Editar campanha" intro="O texto e as datas que as famílias veem na página da campanha." onClose={() => setOpen(false)} busy={busy}>
+        <form
+          method="post"
+          noValidate
+          aria-label="Texto e datas da campanha"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+          className="space-y-5"
+        >
+          <TextField label="Título" name="campaign-title" autoComplete="off" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} error={errors.title} />
+          <TextAreaField label="Texto para as famílias" name="campaign-description" optional rows={4} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField label="Começa em" optional name="campaign-starts" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} error={errors.starts_on} />
+            <TextField label="Termina em" optional name="campaign-ends" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} hint="Depois desta data a campanha sai da página da escola." error={errors.ends_on} />
+          </div>
+          <FormButtons onCancel={() => setOpen(false)} submitLabel="Salvar texto e datas" pendingLabel="Salvando…" pending={busy} />
+        </form>
+      </FormModal>
+    </section>
   );
 }
 
 function AddItem({ schoolId, campaignId, onDetail, onProblem, onStale }: SharedProps & { campaignId: string }) {
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [cents, setCents] = useState(0);
@@ -325,37 +348,40 @@ function AddItem({ schoolId, campaignId, onDetail, onProblem, onStale }: SharedP
   }
 
   return (
-    <form
-      method="post"
-      noValidate
-      aria-label="Adicionar produto"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void add();
-      }}
-      className="mt-5 space-y-4 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
-    >
-      <p className="text-[1.0625rem] font-semibold text-brand-800">Adicionar produto</p>
-      <TextField label="Nome do produto" name="new-item-name" autoComplete="off" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
-      <TextAreaField label="Descrição" name="new-item-description" optional rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Preço"
-          name="new-item-price"
-          prefix="R$"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="0,00"
-          value={cents === 0 ? "" : formatBRLNumber(cents)}
-          onChange={(e) => setCents(centsFromDigits(e.target.value))}
-          error={errors.price_cents}
-        />
-        <TextField label="Limite por pedido" optional name="new-item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
-      </div>
-      <p className="text-foot text-ink-2">Depois de adicionar, edite o produto para colocar uma imagem.</p>
-      <Button type="submit" size="md" disabled={busy} aria-busy={busy} className="rounded-full!">
-        {busy ? "Adicionando…" : "Adicionar produto"}
+    <div className="mt-5">
+      <Button variant="secondary" size="md" onClick={() => setOpen(true)} className="rounded-full!">
+        Novo produto
       </Button>
-    </form>
+      <FormModal open={open} title="Adicionar produto" intro="Nome, preço e, se quiser, um limite por pedido. A imagem você coloca depois, ao editar o produto." onClose={() => setOpen(false)} busy={busy}>
+        <form
+          method="post"
+          noValidate
+          aria-label="Adicionar produto"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void add();
+          }}
+          className="space-y-5"
+        >
+          <TextField label="Nome do produto" name="new-item-name" autoComplete="off" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
+          <TextAreaField label="Descrição" name="new-item-description" optional rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="Preço"
+              name="new-item-price"
+              prefix="R$"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="0,00"
+              value={cents === 0 ? "" : formatBRLNumber(cents)}
+              onChange={(e) => setCents(centsFromDigits(e.target.value))}
+              error={errors.price_cents}
+            />
+            <TextField label="Limite por pedido" optional name="new-item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
+          </div>
+          <FormButtons onCancel={() => setOpen(false)} submitLabel="Adicionar produto" pendingLabel="Adicionando…" pending={busy} />
+        </form>
+      </FormModal>
+    </div>
   );
 }

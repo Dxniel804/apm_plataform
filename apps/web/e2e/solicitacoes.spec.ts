@@ -105,8 +105,9 @@ test("gestao: ve o pedido na caixa de entrada, inicia o atendimento e resolve co
   await expect(doing).toContainText("Em andamento");
   await doing.getByRole("button", { name: /Abrir detalhes da solicitação/ }).click();
   await doing.getByRole("button", { name: "Marcar como resolvida" }).click();
-  await doing.getByLabel(/Resposta para quem pediu/).fill("Encanador chamado, conserto na quarta.");
-  await doing.getByRole("button", { name: "Marcar como resolvida" }).last().click();
+  const answer = page.getByRole("dialog", { name: "Marcar como resolvida" });
+  await answer.getByLabel(/Resposta para quem pediu/).fill("Encanador chamado, conserto na quarta.");
+  await answer.getByRole("button", { name: "Marcar como resolvida" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Solicitação resolvida." })).toBeVisible();
 
   await page.getByRole("button", { name: "Resolvidas" }).click();

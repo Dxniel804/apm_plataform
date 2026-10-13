@@ -22,15 +22,17 @@ test("gestao: fecha o mes, ve os dois saldos, verifica, baixa o PDF e a ordem do
   await page.goto("/painel/fechamento");
   await expect(page.getByRole("heading", { level: 1, name: "Fechamento" })).toBeVisible();
   // gestao: fecha mes, mas nao reabre
-  await expect(page.getByRole("heading", { name: "Fechar mês" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fechar um mês" })).toBeVisible();
 
   // espera a lista chegar: so entao se sabe se ja ha fechamento ativo (e o formulario ja esta no mes sugerido)
   await expect(page.getByRole("list", { name: "Fechamentos mensais" }).or(page.getByRole("heading", { name: "Nenhum mês fechado ainda" }))).toBeVisible();
   const hasActive = await page.locator('li[data-status="closed"]').count();
   if (hasActive === 0) {
-    await page.getByLabel("Mês a fechar").selectOption("2026-01");
-    await page.getByLabel(/Saldo informado pelo banco/).fill("0");
-    await page.getByRole("button", { name: "Fechar mês", exact: true }).click();
+    await page.getByRole("button", { name: "Fechar um mês" }).click();
+    const window = page.getByRole("dialog", { name: "Fechar mês" });
+    await window.getByLabel("Mês a fechar").selectOption("2026-01");
+    await window.getByLabel(/Saldo informado pelo banco/).fill("0");
+    await window.getByRole("button", { name: "Fechar mês", exact: true }).click();
     await expect(page.getByText(`Mês fechado: ${JAN}.`)).toBeVisible();
   }
 
@@ -53,9 +55,11 @@ test("gestao: fecha o mes, ve os dois saldos, verifica, baixa o PDF e a ordem do
   expect(bytes.subarray(0, 4).toString()).toBe("%PDF");
 
   // meses fecham em ordem: pular para um mes distante mostra o proximo mes que a API nomeou
-  await page.getByLabel("Mês a fechar").selectOption("2026-08");
-  await page.getByRole("button", { name: "Fechar mês", exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: /Os meses são fechados em ordem\. O próximo mês a fechar é .+ de \d{4}\./ })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar um mês" }).click();
+  const outOfOrder = page.getByRole("dialog", { name: "Fechar mês" });
+  await outOfOrder.getByLabel("Mês a fechar").selectOption("2026-08");
+  await outOfOrder.getByRole("button", { name: "Fechar mês", exact: true }).click();
+  await expect(outOfOrder.getByRole("alert").filter({ hasText: /Os meses são fechados em ordem\. O próximo mês a fechar é .+ de \d{4}\./ })).toBeVisible();
 });
 
 test("administrador da escola reabre pela API: o fechamento reaberto aparece sem PDF e sem verificar", async ({ page, playwright, baseURL }) => {
@@ -90,7 +94,7 @@ test("viewer: so le o fechamento (sem fechar, sem reabrir) e nao ve despesas", a
   await page.goto("/painel/fechamento");
   await expect(page.getByRole("heading", { level: 1, name: "Fechamento" })).toBeVisible();
   await expect(page.getByRole("note")).toContainText("Fechar o mês é da gestão e da direção");
-  await expect(page.getByRole("button", { name: "Fechar mês" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Fechar (um )?mês/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Reabrir mês" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Despesas" })).toHaveCount(0);
 });

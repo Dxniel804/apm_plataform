@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextAreaField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -110,7 +111,7 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
         </div>
       </div>
 
-      {editable && !editing && (
+      {editable && (
         <div className="mt-4 flex flex-wrap gap-3">
           <Button variant="secondary" size="md" onClick={startEditing} aria-label={`Editar o produto ${item.name}`} className="rounded-full!">
             Editar
@@ -121,53 +122,47 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
         </div>
       )}
 
-      {editable && editing && (
-        <form
-          method="post"
-          noValidate
-          aria-label={`Editar o produto ${item.name}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save();
-          }}
-          className="mt-5 space-y-4 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
-        >
-          <TextField label="Nome do produto" name="item-name" autoComplete="off" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
-          <TextAreaField label="Descrição" name="item-description" optional rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField
-              label="Preço"
-              name="item-price"
-              prefix="R$"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="0,00"
-              value={cents === 0 ? "" : formatBRLNumber(cents)}
-              onChange={(e) => setCents(centsFromDigits(e.target.value))}
-              hint="Um preço novo vale para os próximos pedidos. Os que já foram feitos não mudam."
-              error={errors.price_cents}
-            />
-            <TextField label="Limite por pedido" optional name="item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
-          </div>
-          <ImageButtons
-            what={`imagem do produto ${item.name}`}
-            hasImage={item.hasImage}
-            disabled={busy}
-            onUpload={(file) => run(() => api.campaigns.setImage(schoolId, campaignId, file, item.id), "Imagem do produto salva.")}
-            onRemove={async () => {
-              await run(() => api.campaigns.clearImage(schoolId, campaignId, item.id), "Imagem removida.");
+      {editable && (
+        <FormModal open={editing} title="Editar produto" intro={`${item.name} · ${campaignTitle}`} onClose={() => setEditing(false)} busy={busy}>
+          <form
+            method="post"
+            noValidate
+            aria-label={`Editar o produto ${item.name}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
             }}
-          />
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="submit" size="md" disabled={busy} aria-busy={busy} className="rounded-full!">
-              {busy ? "Salvando…" : "Salvar produto"}
-            </Button>
-            <Button variant="plain" size="md" onClick={() => setEditing(false)} disabled={busy} className="rounded-full!">
-              Cancelar
-            </Button>
-          </div>
-          <p className="sr-only">Produto da campanha {campaignTitle}</p>
-        </form>
+            className="space-y-5"
+          >
+            <TextField label="Nome do produto" name="item-name" autoComplete="off" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
+            <TextAreaField label="Descrição" name="item-description" optional rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                label="Preço"
+                name="item-price"
+                prefix="R$"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="0,00"
+                value={cents === 0 ? "" : formatBRLNumber(cents)}
+                onChange={(e) => setCents(centsFromDigits(e.target.value))}
+                hint="Um preço novo vale para os próximos pedidos. Os que já foram feitos não mudam."
+                error={errors.price_cents}
+              />
+              <TextField label="Limite por pedido" optional name="item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
+            </div>
+            <ImageButtons
+              what={`imagem do produto ${item.name}`}
+              hasImage={item.hasImage}
+              disabled={busy}
+              onUpload={(file) => run(() => api.campaigns.setImage(schoolId, campaignId, file, item.id), "Imagem do produto salva.")}
+              onRemove={async () => {
+                await run(() => api.campaigns.clearImage(schoolId, campaignId, item.id), "Imagem removida.");
+              }}
+            />
+            <FormButtons onCancel={() => setEditing(false)} submitLabel="Salvar produto" pendingLabel="Salvando…" pending={busy} />
+          </form>
+        </FormModal>
       )}
     </li>
   );

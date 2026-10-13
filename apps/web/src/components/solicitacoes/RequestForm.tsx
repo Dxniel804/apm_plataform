@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -72,11 +71,8 @@ export function RequestForm({ schoolId, open, onClose, onSaved }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={() => !busy && onClose()} label="Nova solicitação" initialFocus={titleRef}>
-      <form method="post" noValidate onSubmit={(event) => void submit(event)} className="space-y-5 p-5 sm:p-8">
-        <h2 className="text-title text-brand-800">Nova solicitação</h2>
-        <p className="-mt-2 text-body text-ink-2">Peça algo para a gestão da escola. Dá para anexar fotos.</p>
-
+    <FormModal open={open} title="Nova solicitação" intro="Peça algo para a gestão da escola. Dá para anexar fotos." onClose={onClose} busy={busy} initialFocus={titleRef}>
+      <form method="post" noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
         <SelectField id="request-category" label="Categoria" value={category} onChange={(e) => setCategory(e.target.value as RequestCategory | "")} error={errors.category}>
           <option value="">Escolha…</option>
           {CATEGORY_ORDER.map((key) => (
@@ -96,15 +92,8 @@ export function RequestForm({ schoolId, open, onClose, onSaved }: Props) {
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <Button variant="plain" size="md" onClick={onClose} disabled={busy} className="rounded-full!">
-            Cancelar
-          </Button>
-          <Button type="submit" size="md" disabled={busy} aria-busy={busy} className="rounded-full!">
-            {busy ? "Enviando…" : "Enviar solicitação"}
-          </Button>
-        </div>
+        <FormButtons onCancel={onClose} submitLabel="Enviar solicitação" pendingLabel="Enviando…" pending={busy} />
       </form>
-    </Modal>
+    </FormModal>
   );
 }

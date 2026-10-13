@@ -98,6 +98,14 @@ no comando: `npm run start -- -H 0.0.0.0 -p 3000`. O último `-H` vence.
   Na página pública, `/escola/{slug}` lista as campanhas à venda e `/escola/{slug}/campanha/{id}` é o fluxo da
   contribuição com um carrinho no lugar do valor (`src/components/portal/Campaign*.tsx`): o pedido leva QUAIS
   produtos e QUANTOS, nunca preço nem total; o comprovante lista o que foi comprado.
+- **Formulários do painel (uma janela só)**: todo formulário que se abre por um botão (nova despesa, editar a despesa,
+  aprovar, recusar, pedir correção, registrar o reembolso, nova solicitação, marcar como resolvida, nova campanha,
+  editar o texto e as datas, novo produto, editar o produto, fechar um mês, reabrir um mês e a contribuição em
+  dinheiro) usa o mesmo modelo, `src/components/ui/FormModal.tsx`: a janela com o halftone da marca no pé, o título
+  grande, o X no canto, uma frase de apoio e, embaixo, "Cancelar" e o botão principal lado a lado (empilhados no
+  celular). `FormModal` junta o `Modal` (foco preso, Esc, rolagem travada) e a `FormWindow`; `FormButtons` é o rodapé.
+  Quem cria um formulário novo usa esses três e não escreve a moldura de novo. As telas inteiras (alterar a senha, os
+  passos da família, o login) continuam telas.
 - **Fotos** (`PhotoPicker`, `CameraDialog`, `src/lib/photo.ts`): "Tirar foto" usa a câmera do navegador
   (`getUserMedia`, câmera traseira quando há; sem ela, o campo `capture` do sistema) e "Escolher da galeria" aceita
   PNG, JPEG e WebP. A foto é reduzida no navegador (lado maior de 2400 px, JPEG) para caber nos 10 MB e fica só na

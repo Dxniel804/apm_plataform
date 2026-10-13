@@ -109,7 +109,7 @@ describe("Fila da gestao", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Abrir detalhes/ }));
     await user.click(await screen.findByRole("button", { name: "Aprovar" }));
-    await user.click(screen.getByRole("button", { name: "Aprovar" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Aprovar" }));
     expect(await screen.findByText("Despesa aprovada.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("Vai sair da fila")).not.toBeInTheDocument());
     expect(screen.getByText("Despesa aprovada.")).toBeInTheDocument();

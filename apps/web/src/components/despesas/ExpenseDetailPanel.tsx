@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Amount } from "@/components/ui/Amount";
 import { Button } from "@/components/ui/Button";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { CashCoinIcon, ImageIcon } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
@@ -31,32 +32,27 @@ interface Props {
 
 const REASON_RANGE = "O motivo precisa ter de 3 a 500 caracteres.";
 
-function ReasonForm({ label, submit, busy, error, onSubmit, onCancel }: { label: string; submit: string; busy: boolean; error: string | null; onSubmit: (reason: string) => void; onCancel: () => void }) {
+function ReasonForm({ title, intro, label, submit, busy, error, onSubmit, onCancel }: { title: string; intro: string; label: string; submit: string; busy: boolean; error: string | null; onSubmit: (reason: string) => void; onCancel: () => void }) {
   const [reason, setReason] = useState("");
   const [local, setLocal] = useState<string | null>(null);
   return (
-    <form
-      method="post"
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        const text = reason.trim();
-        if (text.length < 3 || text.length > 500) return setLocal(REASON_RANGE);
-        setLocal(null);
-        onSubmit(text);
-      }}
-      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
-    >
-      <TextField label={label} name="reason" autoComplete="off" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} error={local ?? error ?? undefined} />
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
-          {busy ? "Enviando…" : submit}
-        </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
-          Voltar
-        </Button>
-      </div>
-    </form>
+    <FormModal title={title} intro={intro} onClose={onCancel} busy={busy}>
+      <form
+        method="post"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          const text = reason.trim();
+          if (text.length < 3 || text.length > 500) return setLocal(REASON_RANGE);
+          setLocal(null);
+          onSubmit(text);
+        }}
+        className="space-y-5"
+      >
+        <TextField label={label} name="reason" autoComplete="off" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} error={local ?? error ?? undefined} />
+        <FormButtons onCancel={onCancel} cancelLabel="Voltar" submitLabel={submit} pendingLabel="Enviando…" pending={busy} />
+      </form>
+    </FormModal>
   );
 }
 
@@ -67,6 +63,7 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
   const [reason, setReason] = useState("");
   const [local, setLocal] = useState<Record<string, string>>({});
   return (
+    <FormModal title="Aprovar despesa" intro="Confira o valor antes de aprovar. Depois de aprovada, a despesa segue para o pagamento ou o reembolso." onClose={onCancel} busy={busy}>
     <form
       method="post"
       noValidate
@@ -79,7 +76,7 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
         setLocal(problems);
         if (Object.keys(problems).length === 0) onSubmit({ approvedAmountCents: cents, reason: reason.trim() });
       }}
-      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
+      className="space-y-5"
     >
       <fieldset>
         <legend className="mb-1 text-sub font-semibold text-ink">Valor a aprovar</legend>
@@ -111,15 +108,9 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
         </>
       )}
       {error && <p role="alert" className="text-sub font-medium text-bad">{error}</p>}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
-          {busy ? "Aprovando…" : partial ? "Aprovar valor menor" : "Aprovar"}
-        </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
-          Voltar
-        </Button>
-      </div>
+      <FormButtons onCancel={onCancel} cancelLabel="Voltar" submitLabel={partial ? "Aprovar valor menor" : "Aprovar"} pendingLabel="Aprovando…" pending={busy} />
     </form>
+    </FormModal>
   );
 }
 
@@ -127,6 +118,7 @@ function ReimburseForm({ expense, busy, error, onSubmit, onCancel }: { expense: 
   const [ref, setRef] = useState("");
   const [local, setLocal] = useState<string | null>(null);
   return (
+    <FormModal title="Registrar reembolso" intro={<>Registre o reembolso de <strong className="tabular-nums text-ink">{formatBRL(expense.approvedAmountCents ?? expense.amountCents)}</strong> que a APM já pagou no banco. O site não move dinheiro.</>} onClose={onCancel} busy={busy}>
     <form
       method="post"
       noValidate
@@ -136,21 +128,12 @@ function ReimburseForm({ expense, busy, error, onSubmit, onCancel }: { expense: 
         setLocal(null);
         onSubmit(ref.trim());
       }}
-      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
+      className="space-y-5"
     >
-      <p className="text-sub text-ink-2">
-        Registre o reembolso de <strong className="tabular-nums text-ink">{formatBRL(expense.approvedAmountCents ?? expense.amountCents)}</strong> que a APM já pagou no banco. O site não move dinheiro.
-      </p>
       <TextField label="Referência do pagamento" name="payment-reference" autoComplete="off" maxLength={200} value={ref} onChange={(e) => setRef(e.target.value)} error={local ?? error ?? undefined} />
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
-          {busy ? "Registrando…" : "Registrar reembolso"}
-        </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
-          Voltar
-        </Button>
-      </div>
+      <FormButtons onCancel={onCancel} cancelLabel="Voltar" submitLabel="Registrar reembolso" pendingLabel="Registrando…" pending={busy} />
     </form>
+    </FormModal>
   );
 }
 
@@ -259,7 +242,7 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
 
   return (
     <div className="border-t border-line px-5 py-6 sm:px-8 sm:py-8" data-testid="expense-detail">
-      {mode === "edit" ? (
+      {mode === "edit" && (
         <ExpenseForm
           schoolId={schoolId}
           categories={categories}
@@ -272,7 +255,8 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             onChanged("Despesa atualizada.");
           }}
         />
-      ) : (
+      )}
+      {(
         <>
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill tone={status.tone}>{status.label}</StatusPill>
@@ -389,7 +373,7 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             {error && <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}
           </div>
 
-          {mode === null && (
+          {(
             <div className="mt-6 flex flex-wrap gap-3">
               {canEditOwn && (
                 <>
@@ -431,10 +415,10 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             <ApproveForm expense={d} busy={busy === "approve"} error={fieldError ?? null} onCancel={() => setMode(null)} onSubmit={(input) => void run("approve", () => api.expenses.approve(schoolId, d.id, input), "Despesa aprovada.")} />
           )}
           {mode === "reject" && (
-            <ReasonForm label="Motivo da recusa" submit="Recusar despesa" busy={busy === "reject"} error={fieldError} onCancel={() => setMode(null)} onSubmit={(reason) => void run("reject", () => api.expenses.reject(schoolId, d.id, reason), "Despesa recusada.")} />
+            <ReasonForm title="Recusar despesa" intro="Quem enviou lê o motivo. A recusa encerra a despesa." label="Motivo da recusa" submit="Recusar despesa" busy={busy === "reject"} error={fieldError} onCancel={() => setMode(null)} onSubmit={(reason) => void run("reject", () => api.expenses.reject(schoolId, d.id, reason), "Despesa recusada.")} />
           )}
           {mode === "correct" && (
-            <ReasonForm label="O que precisa ser corrigido" submit="Pedir correção" busy={busy === "correct"} error={fieldError} onCancel={() => setMode(null)} onSubmit={(reason) => void run("correct", () => api.expenses.requestCorrection(schoolId, d.id, reason), "Correção pedida. A despesa volta para quem enviou.")} />
+            <ReasonForm title="Pedir correção" intro="A despesa volta para quem enviou, com o que precisa ser corrigido." label="O que precisa ser corrigido" submit="Pedir correção" busy={busy === "correct"} error={fieldError} onCancel={() => setMode(null)} onSubmit={(reason) => void run("correct", () => api.expenses.requestCorrection(schoolId, d.id, reason), "Correção pedida. A despesa volta para quem enviou.")} />
           )}
           {mode === "reimburse" && (
             <ReimburseForm expense={d} busy={busy === "reimburse"} error={fieldError} onCancel={() => setMode(null)} onSubmit={(ref) => void run("reimburse", () => api.expenses.reimburse(schoolId, d.id, ref), "Reembolso registrado.")} />

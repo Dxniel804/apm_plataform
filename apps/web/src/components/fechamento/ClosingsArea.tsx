@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -136,7 +137,7 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
           )}
 
           <div aria-live="polite">
-            {error && <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}
+            {error && !reopening && <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}
             {notice && <p role="status" className="mt-4 rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">{notice}</p>}
           </div>
 
@@ -158,7 +159,13 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
             )}
           </div>
 
-          {reopening && !reopened && areas.reopenMonths && (
+          <FormModal
+            open={reopening && !reopened && areas.reopenMonths}
+            title="Reabrir mês"
+            intro="Reabrir só vale para o último fechamento e fica registrado com o seu nome e o motivo."
+            onClose={() => setReopening(false)}
+            busy={busy === "reopen"}
+          >
             <form
               method="post"
               noValidate
@@ -166,20 +173,13 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
                 e.preventDefault();
                 void reopen();
               }}
-              className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
+              className="space-y-5"
             >
-              <p className="text-sub text-ink-2">Reabrir só vale para o último fechamento e fica registrado com o seu nome e o motivo.</p>
               <TextField label="Motivo da reabertura" name="reopen-reason" autoComplete="off" maxLength={500} hint="De 10 a 500 caracteres." value={reason} onChange={(e) => setReason(e.target.value)} error={reasonError ?? undefined} />
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button type="submit" size="md" disabled={busy !== null} className="rounded-full!">
-                  {busy === "reopen" ? "Reabrindo…" : "Reabrir o fechamento"}
-                </Button>
-                <Button variant="plain" size="md" onClick={() => setReopening(false)} disabled={busy !== null} className="rounded-full!">
-                  Voltar
-                </Button>
-              </div>
+              <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
+              <FormButtons onCancel={() => setReopening(false)} cancelLabel="Voltar" submitLabel="Reabrir o fechamento" pendingLabel="Reabrindo…" pending={busy === "reopen"} />
             </form>
-          )}
+          </FormModal>
         </div>
       )}
     </li>
@@ -191,6 +191,7 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
   // Meses que ja acabaram: do anterior ao atual para tras. A API decide a ordem e se o mes terminou.
   const options = recentPeriods(previousMonth(latest), 36);
   const [period, setPeriod] = useState(options.includes(suggestion) ? suggestion : options[0]!);
+  const [open, setOpen] = useState(false);
   const [cents, setCents] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -203,52 +204,60 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
     setBusy(false);
     if (!r.ok) return setError(describeClosingError(r.error));
     setCents(0);
+    setOpen(false);
     onClosed(r.data);
   }
 
   return (
-    <form
-      method="post"
-      noValidate
-      aria-labelledby="close-title"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void close();
-      }}
-      className="mb-8 space-y-5 rounded-[var(--r-lg)] border border-line p-5 sm:p-7"
-    >
-      <h2 id="close-title" className="text-heading">
-        Fechar mês
-      </h2>
-      <p className="max-w-[60ch] text-sub text-ink-2">
+    <div className="mb-8">
+      <Button variant="chip" size="md" onClick={() => setOpen(true)} className="min-h-12 px-7">
+        Fechar um mês
+      </Button>
+      <p className="mt-2 max-w-[60ch] text-sub text-ink-2">
         Os meses são fechados em ordem e só depois que terminam. O fechamento congela os números do mês e gera o código de verificação.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField id="close-period" label="Mês a fechar" value={period} onChange={(e) => setPeriod(e.target.value)}>
-          {options.map((p) => (
-            <option key={p} value={p}>
-              {periodLabel(p)}
-            </option>
-          ))}
-        </SelectField>
-        <TextField
-          label="Saldo informado pelo banco"
-          optional
-          name="bank-balance"
-          prefix="R$"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="0,00"
-          hint="Para conferir com o caixa. A diferença aparece no fechamento."
-          value={cents === 0 ? "" : formatBRLNumber(cents)}
-          onChange={(e) => setCents(centsFromDigits(e.target.value))}
-        />
-      </div>
-      <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
-      <Button type="submit" disabled={busy} aria-busy={busy} className="rounded-full!">
-        {busy ? "Fechando…" : "Fechar mês"}
-      </Button>
-    </form>
+      <FormModal
+        open={open}
+        title="Fechar mês"
+        intro="O fechamento congela os números do mês e gera o código de verificação. Os meses são fechados em ordem e só depois que terminam."
+        onClose={() => setOpen(false)}
+        busy={busy}
+      >
+        <form
+          method="post"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void close();
+          }}
+          className="space-y-5"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SelectField id="close-period" label="Mês a fechar" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              {options.map((p) => (
+                <option key={p} value={p}>
+                  {periodLabel(p)}
+                </option>
+              ))}
+            </SelectField>
+            <TextField
+              label="Saldo informado pelo banco"
+              optional
+              name="bank-balance"
+              prefix="R$"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="0,00"
+              hint="Para conferir com o caixa. A diferença aparece no fechamento."
+              value={cents === 0 ? "" : formatBRLNumber(cents)}
+              onChange={(e) => setCents(centsFromDigits(e.target.value))}
+            />
+          </div>
+          <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
+          <FormButtons onCancel={() => setOpen(false)} submitLabel="Fechar mês" pendingLabel="Fechando…" pending={busy} />
+        </form>
+      </FormModal>
+    </div>
   );
 }
 

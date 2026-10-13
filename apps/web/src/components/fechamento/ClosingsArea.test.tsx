@@ -117,6 +117,7 @@ describe("fechar mes", () => {
     const create = vi.spyOn(api.closings, "create").mockResolvedValue({ ok: true, data: closing({ id: "novo", period: "2026-02" }) });
     const user = setup(TREASURER, []);
     await screen.findByRole("heading", { name: "Nenhum mês fechado ainda" });
+    await user.click(screen.getByRole("button", { name: "Fechar um mês" }));
     await user.selectOptions(screen.getByLabelText("Mês a fechar"), "2026-02");
     await user.type(screen.getByLabelText(/Saldo informado pelo banco/), "35000");
     await user.click(screen.getByRole("button", { name: "Fechar mês" }));
@@ -127,20 +128,22 @@ describe("fechar mes", () => {
   it("saldo do banco e opcional: sem ele, so o mes", async () => {
     const create = vi.spyOn(api.closings, "create").mockResolvedValue({ ok: true, data: closing() });
     const user = setup(TREASURER, []);
+    await user.click(await screen.findByRole("button", { name: "Fechar um mês" }));
     await screen.findByLabelText("Mês a fechar");
     await user.click(screen.getByRole("button", { name: "Fechar mês" }));
     expect(create).toHaveBeenCalledWith(SCHOOL_ID, { period: expect.stringMatching(/^\d{4}-\d{2}$/) });
   });
 
   it("o formulario sugere o mes seguinte ao ultimo fechamento ativo", async () => {
-    setup(TREASURER, [JAN]);
-    await screen.findByLabelText("Mês a fechar");
-    expect(screen.getByLabelText("Mês a fechar")).toHaveValue("2026-02");
+    const user = setup(TREASURER, [JAN]);
+    await user.click(await screen.findByRole("button", { name: "Fechar um mês" }));
+    expect(await screen.findByLabelText("Mês a fechar")).toHaveValue("2026-02");
   });
 
   it("fora de ordem (409): mostra o proximo mes; mes que nao terminou; erro nao quebra a tela", async () => {
     const create = vi.spyOn(api.closings, "create").mockResolvedValueOnce(problem(409, "closing_out_of_sequence", { detailPeriod: "2026-02" }));
     const user = setup(TREASURER, []);
+    await user.click(await screen.findByRole("button", { name: "Fechar um mês" }));
     await user.click(await screen.findByRole("button", { name: "Fechar mês" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("O próximo mês a fechar é fevereiro de 2026.");
     create.mockResolvedValueOnce(problem(409, "period_not_ended"));
@@ -190,7 +193,7 @@ describe("viewer (so leitura)", () => {
   it("ve a lista e baixa o PDF, mas nao fecha, nao reabre e nao verifica", async () => {
     const user = setup(VIEWER, [JAN]);
     expect(await screen.findByRole("note")).toHaveTextContent("Fechar o mês é da gestão e da direção");
-    expect(screen.queryByRole("button", { name: "Fechar mês" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Fechar (um )?mês/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Abrir o fechamento de janeiro de 2026" }));
     expect(screen.getByRole("button", { name: "Baixar PDF do extrato mensal" })).toBeInTheDocument();
     for (const name of ["Verificar", "Reabrir mês"]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { PhotoPicker } from "@/components/ui/PhotoPicker";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextAreaField } from "@/components/ui/TextField";
@@ -25,28 +26,23 @@ function ResolveForm({ busy, error, onSubmit, onCancel }: { busy: boolean; error
   const [note, setNote] = useState("");
   const [local, setLocal] = useState<string | null>(null);
   return (
-    <form
-      method="post"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        const text = note.trim();
-        if (text.length > 1000) return setLocal("A resposta pode ter até 1000 caracteres.");
-        setLocal(null);
-        onSubmit(text);
-      }}
-      className="mt-5 space-y-3 rounded-[var(--r-md)] border border-line bg-[#f7f7f7] p-4 sm:p-5"
-    >
-      <TextAreaField label="Resposta para quem pediu" name="resolution-note" optional rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} error={local ?? error ?? undefined} />
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button type="submit" size="md" disabled={busy} className="rounded-full!">
-          {busy ? "Salvando…" : "Marcar como resolvida"}
-        </Button>
-        <Button variant="plain" size="md" onClick={onCancel} disabled={busy} className="rounded-full!">
-          Voltar
-        </Button>
-      </div>
-    </form>
+    <FormModal title="Marcar como resolvida" intro="Quem abriu o pedido lê a sua resposta. Ela é opcional, mas ajuda a saber o que foi feito." onClose={onCancel} busy={busy}>
+      <form
+        method="post"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          const text = note.trim();
+          if (text.length > 1000) return setLocal("A resposta pode ter até 1000 caracteres.");
+          setLocal(null);
+          onSubmit(text);
+        }}
+        className="space-y-5"
+      >
+        <TextAreaField label="Resposta para quem pediu" name="resolution-note" optional rows={4} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} error={local ?? error ?? undefined} />
+        <FormButtons onCancel={onCancel} cancelLabel="Voltar" submitLabel="Marcar como resolvida" pendingLabel="Salvando…" pending={busy} />
+      </form>
+    </FormModal>
   );
 }
 
@@ -186,7 +182,7 @@ export function RequestDetailPanel({ schoolId, requestId, userId, permissions, o
         {error && <p role="alert" className="mt-4 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}
       </div>
 
-      {!resolving && (canStart || canResolve || canCancel) && (
+      {(canStart || canResolve || canCancel) && (
         <div className="mt-6 flex flex-wrap gap-3">
           {canStart && (
             <Button size="md" variant="secondary" className="min-h-12 rounded-full! px-7" onClick={() => void run("start", () => api.requests.start(schoolId, d.id), "Atendimento iniciado.")} disabled={busy !== null} aria-busy={busy === "start"}>

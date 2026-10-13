@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
@@ -25,6 +25,9 @@ function setup(expense: ExpenseDetail, userId: string, permissions: string[]) {
 }
 
 // O anexo agora e um "chip" com nome de arquivo e legenda: o que importa aqui e o nome acessivel do botao.
+/** O botao DENTRO da janela aberta (a tela de tras tem botoes de mesmo nome: "Aprovar", "Registrar reembolso"). */
+const inDialog = (name: string) => within(screen.getByRole("dialog")).getByRole("button", { name });
+
 const buttons = () => screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent);
 
 beforeEach(() => saveBlob.mockReset());
@@ -119,7 +122,7 @@ describe("gestao", () => {
     const approve = vi.spyOn(api.expenses, "approve").mockResolvedValue(ok(detail({ status: "APPROVED" })));
     const { user, onChanged } = setup(detail({ status: "SUBMITTED" }), MANAGER_ID, TREASURER);
     await user.click(await screen.findByRole("button", { name: "Aprovar" }));
-    await user.click(screen.getByRole("button", { name: "Aprovar" }));
+    await user.click(inDialog("Aprovar"));
     expect(approve).toHaveBeenCalledWith(SCHOOL_ID, expect.any(String), {});
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("Despesa aprovada."));
     expect(screen.getByText("Reembolso pendente")).toBeInTheDocument();
@@ -152,10 +155,10 @@ describe("gestao", () => {
     const approve = vi.spyOn(api.expenses, "approve").mockResolvedValueOnce(fail(403, "self_approval_forbidden"));
     const { user } = setup(detail({ status: "SUBMITTED" }), MANAGER_ID, TREASURER);
     await user.click(await screen.findByRole("button", { name: "Aprovar" }));
-    await user.click(screen.getByRole("button", { name: "Aprovar" }));
+    await user.click(inDialog("Aprovar"));
     expect(await screen.findByRole("alert")).toHaveTextContent("própria despesa");
     approve.mockResolvedValueOnce(fail(422, "partial_approval_not_allowed"));
-    await user.click(screen.getByRole("button", { name: "Aprovar" }));
+    await user.click(inDialog("Aprovar"));
     expect(await screen.findByRole("alert")).toHaveTextContent("colaborador pagou");
   });
 
@@ -178,7 +181,7 @@ describe("gestao", () => {
     const { user } = setup(detail({ status: "SUBMITTED" }), MANAGER_ID, TREASURER);
     await user.click(await screen.findByRole("button", { name: "Pedir correção" }));
     await user.type(screen.getByLabelText("O que precisa ser corrigido"), "Falta o CNPJ");
-    await user.click(screen.getByRole("button", { name: "Pedir correção" }));
+    await user.click(inDialog("Pedir correção"));
     expect(correct).toHaveBeenCalledWith(SCHOOL_ID, expect.any(String), "Falta o CNPJ");
   });
 
@@ -186,10 +189,10 @@ describe("gestao", () => {
     const reimburse = vi.spyOn(api.expenses, "reimburse").mockResolvedValue(ok(detail({ status: "PAID" })));
     const first = setup(detail({ status: "APPROVED", paidBy: "COLLABORATOR", approvedAmountCents: 17500 }), MANAGER_ID, TREASURER);
     await first.user.click(await screen.findByRole("button", { name: "Registrar reembolso" }));
-    await first.user.click(screen.getByRole("button", { name: "Registrar reembolso" }));
+    await first.user.click(inDialog("Registrar reembolso"));
     expect(screen.getByText(/Informe a referência do pagamento/)).toBeInTheDocument();
     await first.user.type(screen.getByLabelText("Referência do pagamento"), "PIX E2E123");
-    await first.user.click(screen.getByRole("button", { name: "Registrar reembolso" }));
+    await first.user.click(inDialog("Registrar reembolso"));
     expect(reimburse).toHaveBeenCalledWith(SCHOOL_ID, expect.any(String), "PIX E2E123");
     await waitFor(() => expect(first.onChanged).toHaveBeenCalledWith("Reembolso registrado."));
     expect(await screen.findByText("Paga")).toBeInTheDocument();
@@ -216,7 +219,7 @@ describe("gestao", () => {
     const { user } = setup(detail({ status: "APPROVED", paidBy: "COLLABORATOR" }), MANAGER_ID, TREASURER);
     await user.click(await screen.findByRole("button", { name: "Registrar reembolso" }));
     await user.type(screen.getByLabelText("Referência do pagamento"), "REF");
-    await user.click(screen.getByRole("button", { name: "Registrar reembolso" }));
+    await user.click(inDialog("Registrar reembolso"));
     expect(await screen.findByText(/não pode registrar o seu próprio reembolso/)).toBeInTheDocument();
   });
 
