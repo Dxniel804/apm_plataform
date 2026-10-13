@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/components/status/ApiStatusChip", () => ({ ApiStatusChip: () => null }));
 vi.mock("@/components/despesas/ExpensesArea", () => ({ ExpensesArea: () => <div data-testid="expenses-area" /> }));
 vi.mock("@/components/solicitacoes/RequestsArea", () => ({ RequestsArea: () => <div data-testid="requests-area" /> }));
+vi.mock("@/components/personalizacao/CampaignsArea", () => ({ CampaignsArea: (p: { schoolId: string }) => <div data-testid="campaigns-area">{p.schoolId}</div> }));
 vi.mock("./PainelData", () => ({
   PainelData: (p: { schoolId: string; section: string; period?: string; permissions: string[] }) => (
     <div data-testid="data">{`${p.schoolId}|${p.section}|${p.period ?? ""}|${p.permissions.join(",")}`}</div>
@@ -25,7 +26,7 @@ const problem = (code: string, status: number): ApiResult<never> => ({
   error: { kind: "problem", status, code } as ApiError,
 });
 
-function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "solicitacoes" | "fechamento"; period?: string } = {}) {
+function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "solicitacoes" | "personalizacao" | "fechamento"; period?: string } = {}) {
   return render(<PainelShell session={s} area={props.area ?? "resumo"} period={props.period} />);
 }
 
@@ -65,9 +66,10 @@ describe("PainelShell com sessao real", () => {
     expect(screen.queryByRole("link", { name: "Fechamento" })).not.toBeInTheDocument();
     unmount();
 
-    const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage"] } });
+    const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage", "campaigns:manage"] } });
     const t = renderShell(treasurer);
-    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Fechamento"]));
+    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Personalização", "Fechamento"]));
+    expect(screen.getAllByRole("link", { name: "Personalização" })[0]).toHaveAttribute("href", "/painel/personalizacao");
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Minhas solicitações" })).not.toBeInTheDocument();
     t.unmount();
@@ -78,6 +80,14 @@ describe("PainelShell com sessao real", () => {
     expect(screen.queryByRole("link", { name: "Despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Contribuições" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Solicitações/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Personalização" })).not.toBeInTheDocument();
+  });
+
+  it("a area Personalizacao tem o proprio titulo e recebe a escola do vinculo ativo", () => {
+    const manager = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "campaigns:manage"] } });
+    renderShell(manager, { area: "personalizacao" });
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Personalização");
+    expect(screen.getByTestId("campaigns-area")).toHaveTextContent(SCHOOL_MEMBERSHIP.school.id);
   });
 
   it("a area Solicitacoes mostra o titulo certo para cada perfil e a lista do perfil", () => {

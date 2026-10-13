@@ -5,8 +5,9 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ExpensesArea } from "@/components/despesas/ExpensesArea";
 import { PasswordForm } from "@/components/conta/PasswordForm";
 import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
+import { CampaignsArea } from "@/components/personalizacao/CampaignsArea";
 import { RequestsArea } from "@/components/solicitacoes/RequestsArea";
-import { BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, KeyIcon } from "@/components/ui/icons";
+import { BagIcon, BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, KeyIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
@@ -194,6 +195,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <ExpensesArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
           ) : area === "solicitacoes" ? (
             <RequestsArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
+          ) : area === "personalizacao" ? (
+            <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : area === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : (
@@ -223,6 +226,7 @@ function titleFor(area: PainelArea, section: PainelSection, manageExpenses: bool
   if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={26} /> };
   if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={26} /> };
   if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={26} /> };
+  if (area === "personalizacao") return { title: "Personalização", icon: <BagIcon size={26} /> };
   if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={26} /> };
   if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={26} /> };
   return { title: KIND_META[section].plural, icon: KIND_META[section].icon };

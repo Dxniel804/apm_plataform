@@ -28,7 +28,7 @@ for (const route of routes) {
 // O painel exige sessao: precisa da API real e da senha de demonstracao (veja e2e/auth-helpers.ts).
 test.describe("painel (logado)", () => {
   test.skip(!demoPassword(), "sem E2E_DEMO_PASSWORD_FILE/E2E_DEMO_PASSWORD");
-  for (const route of ["/painel", "/painel/despesas", "/painel/solicitacoes", "/painel/fechamento", "/painel/conta"]) {
+  for (const route of ["/painel", "/painel/despesas", "/painel/solicitacoes", "/painel/personalizacao", "/painel/fechamento", "/painel/conta"]) {
     test(`axe sem violacoes em ${route}`, async ({ page }) => {
       await loginAs(page);
       await page.goto(route);

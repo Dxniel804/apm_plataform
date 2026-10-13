@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   BarChartIcon,
+  BagIcon,
   CalendarCheckIcon,
   CashCoinIcon,
   Cart4Icon,
@@ -39,7 +40,7 @@ const KIND_NAV: Array<{ kind: MovementKind; label: string; icon: ReactNode }> = 
 /**
  * Menu por perfil, a partir das permissoes da sessao (nunca de um papel fixo no cliente):
  * funcionario = "Minhas despesas" e "Minhas solicitacoes"; gestao = Dashboard, Lancamento do mes, Despesas,
- * Solicitacoes e Fechamento;
+ * Solicitacoes, Personalizacao (campanhas) e Fechamento;
  * viewer = Dashboard e Fechamento (leitura, sem o extrato).
  */
 export function navFor(areas: Areas, period?: string, options: { statement?: boolean } = {}): NavItem[] {
@@ -69,6 +70,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       label: areas.manageRequests ? "Solicitações" : "Minhas solicitações",
       href: areaHref("solicitacoes"),
       icon: <ChatLeftTextIcon size={22} />,
+    });
+  }
+  if (areas.manageCampaigns) {
+    items.push({
+      area: "personalizacao",
+      label: "Personalização",
+      href: areaHref("personalizacao"),
+      icon: <BagIcon size={22} />,
     });
   }
   if (areas.fechamento) {

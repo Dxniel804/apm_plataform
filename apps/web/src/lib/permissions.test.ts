@@ -3,18 +3,18 @@ import { areaHref, areasFor, homeArea } from "./permissions";
 
 // Permissoes REAIS de cada papel (docs/auth.md e GET /auth/me).
 const STAFF = ["expenses:read_own", "expenses:submit", "requests:read_own", "requests:submit"];
-const TREASURER = ["contributions:record_cash", "expenses:approve", "expenses:read_all", "months:close", "refunds:register", "reimbursements:register", "reports:read", "requests:manage", "requests:read_all", "statement:read"];
+const TREASURER = ["campaigns:manage", "contributions:record_cash", "expenses:approve", "expenses:read_all", "months:close", "refunds:register", "reimbursements:register", "reports:read", "requests:manage", "requests:read_all", "statement:read"];
 const SCHOOL_ADMIN = [...TREASURER, "expenses:read_own", "expenses:submit", "invitations:create", "memberships:manage", "months:reopen", "organization:update", "reports:read_aggregate", "requests:read_own", "requests:submit", "school:update"];
 const VIEWER = ["reports:read_aggregate"];
 
 describe("areasFor", () => {
   it("funcionário (staff): so 'Minhas despesas'", () => {
-    expect(areasFor(STAFF)).toEqual({ resumo: false, fechamento: false, manageExpenses: false, myExpenses: true, closeMonths: false, reopenMonths: false, requests: true, manageRequests: false, myRequests: true });
+    expect(areasFor(STAFF)).toEqual({ resumo: false, fechamento: false, manageExpenses: false, myExpenses: true, closeMonths: false, reopenMonths: false, requests: true, manageRequests: false, myRequests: true, manageCampaigns: false });
     expect(homeArea(areasFor(STAFF))).toBe("despesas");
   });
 
   it("gestão (treasurer): resumo, fila de analise e fechamento; fecha mes mas nao reabre; nao envia despesa propria", () => {
-    expect(areasFor(TREASURER)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: false, requests: true, manageRequests: true, myRequests: false });
+    expect(areasFor(TREASURER)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: false, requests: true, manageRequests: true, myRequests: false, manageCampaigns: true });
   });
 
   it("administrador da escola (school_admin): tudo, inclusive reabrir mes; envia e analisa", () => {
@@ -29,13 +29,22 @@ describe("areasFor", () => {
     expect(areasFor([])).toMatchObject({ requests: false });
   });
 
+  it("personalizacao (campanhas): so quem tem campaigns:manage, ou seja, a gestao e o administrador; funcionario e leitor nao", () => {
+    expect(areasFor(TREASURER).manageCampaigns).toBe(true);
+    expect(areasFor(SCHOOL_ADMIN).manageCampaigns).toBe(true);
+    expect(areasFor(STAFF).manageCampaigns).toBe(false);
+    expect(areasFor(VIEWER).manageCampaigns).toBe(false);
+    // quem so tem campanhas cai nelas (nao no resumo, que nao pode ver)
+    expect(homeArea(areasFor(["campaigns:manage"]))).toBe("personalizacao");
+  });
+
   it("reabrir mes so com months:reopen (ADR-020: so o administrador da escola)", () => {
     expect(areasFor(SCHOOL_ADMIN.filter((p) => p !== "months:reopen")).reopenMonths).toBe(false);
     expect(areasFor(TREASURER).reopenMonths).toBe(false);
   });
 
   it("viewer: resumo e fechamento so de leitura, sem despesas e sem fechar", () => {
-    expect(areasFor(VIEWER)).toEqual({ resumo: true, fechamento: true, manageExpenses: false, myExpenses: false, closeMonths: false, reopenMonths: false, requests: false, manageRequests: false, myRequests: false });
+    expect(areasFor(VIEWER)).toEqual({ resumo: true, fechamento: true, manageExpenses: false, myExpenses: false, closeMonths: false, reopenMonths: false, requests: false, manageRequests: false, myRequests: false, manageCampaigns: false });
     expect(homeArea(areasFor(VIEWER))).toBe("resumo");
     // quem so tem solicitacoes cai nelas (nao no resumo, que nao pode ver)
     expect(homeArea(areasFor(["requests:submit", "requests:read_own"]))).toBe("solicitacoes");
@@ -53,6 +62,7 @@ describe("areaHref", () => {
     expect(areaHref("despesas", { tab: "minhas" })).toBe("/painel/despesas?aba=minhas");
     expect(areaHref("solicitacoes")).toBe("/painel/solicitacoes");
     expect(areaHref("solicitacoes", { tab: "minhas" })).toBe("/painel/solicitacoes?aba=minhas");
+    expect(areaHref("personalizacao")).toBe("/painel/personalizacao");
     expect(areaHref("fechamento", { period: "2026-09" })).toBe("/painel/fechamento?mes=2026-09");
     expect(areaHref("fechamento", { period: "2026-13" })).toBe("/painel/fechamento");
   });

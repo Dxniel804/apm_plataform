@@ -72,6 +72,8 @@ export const RECEIPT: Receipt = {
   paidAt: "2026-10-06T13:44:41Z",
   schoolName: "Escola Aurora (demo)",
   method: "PIX",
+  campaignTitle: null,
+  items: [],
 };
 
 export const RECEIPT_BODY = {
@@ -81,4 +83,6 @@ export const RECEIPT_BODY = {
   paid_at: "2026-10-06T13:44:41.431609Z",
   school_name: "Escola Aurora (demo)",
   method: "PIX",
+  campaign_title: null,
+  items: [],
 };

@@ -10,10 +10,15 @@ import type {
   ApiResult,
   ContributionState,
   CreateContributionInput,
+  CreateOrderInput,
   CreatedContribution,
   PixCharge,
+  PublicCampaign,
+  PublicCampaignItem,
+  PublicCampaignSummary,
   PublicSchool,
   Receipt,
+  ReceiptItem,
 } from "./types";
 
 /**
@@ -120,10 +125,82 @@ function parseReceipt(body: unknown, status: number): Receipt | null {
   const schoolName = str(body.school_name);
   const method = str(body.method);
   if (!referenceCode || amountCents === null || !paidAt || !schoolName || !method) return null;
-  return { status: "PAID", referenceCode, amountCents, paidAt, schoolName, method };
+  // Um comprovante de uma contribuicao comum nao tem campanha nem itens (a API manda null e []).
+  const campaignTitle = body.campaign_title === null || body.campaign_title === undefined ? null : str(body.campaign_title);
+  if (body.campaign_title !== null && body.campaign_title !== undefined && campaignTitle === null) return null;
+  const items: ReceiptItem[] = [];
+  if (body.items !== undefined) {
+    if (!Array.isArray(body.items)) return null;
+    for (const raw of body.items) {
+      if (!isRecord(raw)) return null;
+      const name = str(raw.name);
+      const unitPriceCents = cents(raw.unit_price_cents);
+      const quantity = typeof raw.quantity === "number" && Number.isSafeInteger(raw.quantity) && raw.quantity > 0 ? raw.quantity : null;
+      if (!name || unitPriceCents === null || quantity === null) return null;
+      items.push({ name, unitPriceCents, quantity });
+    }
+  }
+  return { status: "PAID", referenceCode, amountCents, paidAt, schoolName, method, campaignTitle, items };
+}
+
+// --- as campanhas a venda (docs/campaigns.md) ---------------------------------------------------------
+
+function parseCampaignItem(value: unknown): PublicCampaignItem | null {
+  if (!isRecord(value)) return null;
+  const id = str(value.id);
+  const name = str(value.name);
+  const priceCents = cents(value.price_cents);
+  const imageVersion = cents(value.image_version);
+  const description = value.description === null || value.description === undefined ? null : str(value.description);
+  const maxPerOrder = value.max_per_order === null || value.max_per_order === undefined ? null : cents(value.max_per_order);
+  if (!id || !name || priceCents === null || priceCents === 0 || imageVersion === null || typeof value.has_image !== "boolean") return null;
+  if ((value.description !== null && value.description !== undefined && description === null) || (value.max_per_order != null && maxPerOrder === null)) return null;
+  return { id, name, description, priceCents, maxPerOrder, hasImage: value.has_image, imageVersion };
+}
+
+function parseCampaignSummary(value: unknown): PublicCampaignSummary | null {
+  if (!isRecord(value)) return null;
+  const id = str(value.id);
+  const title = str(value.title);
+  const itemsCount = cents(value.items_count);
+  const coverVersion = cents(value.cover_version);
+  const description = value.description === null || value.description === undefined ? null : str(value.description);
+  const endsOn = value.ends_on === null || value.ends_on === undefined ? null : str(value.ends_on);
+  if (!id || !title || itemsCount === null || coverVersion === null || typeof value.has_cover !== "boolean") return null;
+  if ((value.description != null && description === null) || (value.ends_on != null && endsOn === null)) return null;
+  return { id, title, description, endsOn, hasCover: value.has_cover, coverVersion, itemsCount };
+}
+
+export function parsePublicCampaign(body: unknown): PublicCampaign | null {
+  const summary = parseCampaignSummary(body);
+  if (!summary || !isRecord(body) || !Array.isArray(body.items)) return null;
+  const items: PublicCampaignItem[] = [];
+  for (const raw of body.items) {
+    const item = parseCampaignItem(raw);
+    if (!item) return null;
+    items.push(item);
+  }
+  return { ...summary, items };
+}
+
+function parseCampaignList(body: unknown, status: number): PublicCampaignSummary[] | null {
+  if (status !== 200 || !isRecord(body) || !Array.isArray(body.campaigns)) return null;
+  const campaigns: PublicCampaignSummary[] = [];
+  for (const raw of body.campaigns) {
+    const campaign = parseCampaignSummary(raw);
+    if (!campaign) return null;
+    campaigns.push(campaign);
+  }
+  return campaigns;
 }
 
 const enc = encodeURIComponent;
+
+/** Enderecos das imagens publicas de uma campanha a venda: o `v` so serve para trocar a imagem em cache. */
+export const campaignCoverUrl = (slug: string, campaignId: string, version: number) =>
+  `${BASE}/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignId)}/cover?v=${version}`;
+export const campaignItemImageUrl = (slug: string, campaignId: string, itemId: string, version: number) =>
+  `${BASE}/${encodeURIComponent(slug)}/campaigns/${encodeURIComponent(campaignId)}/items/${encodeURIComponent(itemId)}/image?v=${version}`;
 
 /** GET /public/schools/{slug}. */
 export function getPublicSchool(slug: string, options?: RequestOptions): Promise<ApiResult<PublicSchool>> {
@@ -151,6 +228,43 @@ export function createContribution(
   options: SendOptions = {},
 ): Promise<ApiResult<CreatedContribution>> {
   return apiSend("POST", `${BASE}/${enc(slug)}/contributions`, contributionBody(input), parseCreated, {
+    ...options,
+    headers: { ...options.headers, "Idempotency-Key": idempotencyKey },
+  });
+}
+
+/** GET .../campaigns: as campanhas a venda na escola (pode ser uma lista vazia). */
+export function getPublicCampaigns(slug: string, options?: RequestOptions): Promise<ApiResult<PublicCampaignSummary[]>> {
+  return apiGet(`${BASE}/${enc(slug)}/campaigns`, parseCampaignList, options);
+}
+
+/** GET .../campaigns/{id}: uma campanha a venda, com os produtos e os precos de hoje. 404 unico para qualquer outra. */
+export function getPublicCampaign(slug: string, campaignId: string, options?: RequestOptions): Promise<ApiResult<PublicCampaign>> {
+  return apiGet(`${BASE}/${enc(slug)}/campaigns/${enc(campaignId)}`, (body, status) => (status === 200 ? parsePublicCampaign(body) : null), options);
+}
+
+/** Corpo do pedido: QUAIS produtos e QUANTOS, mais a identificacao. Nunca um preco nem um total. */
+export function orderBody(input: CreateOrderInput): Record<string, unknown> {
+  const body: Record<string, unknown> = { lines: input.lines.map((line) => ({ item_id: line.itemId, quantity: line.quantity })) };
+  for (const field of IDENTIFICATION_FIELDS) {
+    const value = input.identification[field];
+    if (value) body[API_FIELD[field]] = value;
+  }
+  return body;
+}
+
+/**
+ * POST .../campaigns/{id}/orders: cria o pedido e o Pix. A `Idempotency-Key` e uma por tentativa (como na
+ * contribuicao): repetir o POST com o mesmo carrinho devolve o mesmo pedido.
+ */
+export function createOrder(
+  slug: string,
+  campaignId: string,
+  input: CreateOrderInput,
+  idempotencyKey: string,
+  options: SendOptions = {},
+): Promise<ApiResult<CreatedContribution>> {
+  return apiSend("POST", `${BASE}/${enc(slug)}/campaigns/${enc(campaignId)}/orders`, orderBody(input), parseCreated, {
     ...options,
     headers: { ...options.headers, "Idempotency-Key": idempotencyKey },
   });

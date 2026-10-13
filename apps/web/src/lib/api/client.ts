@@ -170,14 +170,14 @@ export function apiSend<T>(
 
 const UPLOAD_TIMEOUT_MS = 60_000;
 
-/** POST multipart (upload de anexo). O conteudo do arquivo so vai no corpo: nunca em URL, log ou storage. */
+/** POST (ou PUT) multipart (upload de anexo ou de imagem). O conteudo do arquivo so vai no corpo: nunca em URL, log ou storage. */
 export function apiUpload<T>(
   path: string,
   form: FormData,
   parse: (body: unknown, status: number) => T | null,
-  options: SendOptions = {},
+  options: SendOptions & { method?: "POST" | "PUT" } = {},
 ): Promise<ApiResult<T>> {
-  return request(path, { method: "POST", form, csrf: true }, parse, options, UPLOAD_TIMEOUT_MS);
+  return request(path, { method: options.method ?? "POST", form, csrf: true }, parse, options, UPLOAD_TIMEOUT_MS);
 }
 
 /** GET de um arquivo (PDF, anexo) pela API, com o cookie de sessao. Nunca ha URL publica do arquivo. */

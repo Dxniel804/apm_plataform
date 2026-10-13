@@ -19,7 +19,13 @@ import {
   uploadRequestPhoto,
 } from "./staff-requests";
 import { getPending, getStatement, getSummary, recordCashContribution } from "./statement";
-import { createContribution, getContribution, getPublicSchool, getReceipt, renewCharge, sandboxPay } from "./public";
+import {
+  activateCampaign, addCampaignItem, clearCampaignImage, createCampaign, downloadCampaignImage, endCampaign, getCampaign, listCampaigns,
+  setCampaignImage, updateCampaign, updateCampaignItem,
+} from "./campaigns";
+import {
+  createContribution, createOrder, getContribution, getPublicCampaign, getPublicCampaigns, getPublicSchool, getReceipt, renewCharge, sandboxPay,
+} from "./public";
 
 export const api: {
   health: { ready: typeof getReadiness };
@@ -30,6 +36,22 @@ export const api: {
     renewCharge: typeof renewCharge;
     receipt: typeof getReceipt;
     sandboxPay: typeof sandboxPay;
+    campaigns: typeof getPublicCampaigns;
+    campaign: typeof getPublicCampaign;
+    createOrder: typeof createOrder;
+  };
+  campaigns: {
+    list: typeof listCampaigns;
+    get: typeof getCampaign;
+    create: typeof createCampaign;
+    update: typeof updateCampaign;
+    activate: typeof activateCampaign;
+    end: typeof endCampaign;
+    addItem: typeof addCampaignItem;
+    updateItem: typeof updateCampaignItem;
+    setImage: typeof setCampaignImage;
+    clearImage: typeof clearCampaignImage;
+    image: typeof downloadCampaignImage;
   };
   expenses: {
     categories: typeof listCategories;
@@ -89,6 +111,22 @@ export const api: {
     renewCharge,
     receipt: getReceipt,
     sandboxPay,
+    campaigns: getPublicCampaigns,
+    campaign: getPublicCampaign,
+    createOrder,
+  },
+  campaigns: {
+    list: listCampaigns,
+    get: getCampaign,
+    create: createCampaign,
+    update: updateCampaign,
+    activate: activateCampaign,
+    end: endCampaign,
+    addItem: addCampaignItem,
+    updateItem: updateCampaignItem,
+    setImage: setCampaignImage,
+    clearImage: clearCampaignImage,
+    image: downloadCampaignImage,
   },
   auth: { login, logout, me: getMe, switchContext, changePassword, acceptInvitation },
   expenses: {

@@ -153,6 +153,13 @@ export interface CreateContributionInput {
   identification: IdentificationValues;
 }
 
+/** Uma linha do que um pedido de campanha comprou, como foi comprado (nome e preco do dia). */
+export interface ReceiptItem {
+  name: string;
+  unitPriceCents: Cents;
+  quantity: number;
+}
+
 export interface Receipt {
   /** O comprovante so existe pago (a API responde 409 antes disso). */
   status: "PAID";
@@ -162,6 +169,9 @@ export interface Receipt {
   schoolName: string;
   /** Forma de pagamento como a API manda (PIX, CASH, TRANSFER, OTHER). */
   method: string;
+  /** So no pedido de uma campanha: o titulo e o que ele comprou (a soma e `amountCents`). */
+  campaignTitle: string | null;
+  items: ReceiptItem[];
 }
 
 // ---------------------------------------------------------------- REAL: extrato do painel (docs/statement.md)
@@ -382,6 +392,96 @@ export interface StaffRequestInput {
   category: RequestCategory;
   title: string;
   description?: string;
+}
+
+// ---------------------------------------------------------------- REAL: campanhas (docs/campaigns.md)
+
+export type CampaignStatus = "DRAFT" | "ACTIVE" | "ENDED";
+
+/** Um produto de uma campanha, como a gestao o ve. O preco e da API: o site nunca decide um total. */
+export interface CampaignItem {
+  id: string;
+  name: string;
+  description: string | null;
+  priceCents: Cents;
+  maxPerOrder: number | null;
+  position: number;
+  isActive: boolean;
+  hasImage: boolean;
+  imageVersion: number;
+}
+
+export interface CampaignSummary {
+  id: string;
+  title: string;
+  status: CampaignStatus;
+  startsOn: string | null;
+  endsOn: string | null;
+  hasCover: boolean;
+  itemsCount: number;
+  activeItemsCount: number;
+  /** O que os pedidos ja pagos trouxeram: quantos e quanto (o dinheiro esta no caixa). */
+  paidOrdersCount: number;
+  paidCents: Cents;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignDetail extends CampaignSummary {
+  description: string | null;
+  coverVersion: number;
+  items: CampaignItem[];
+}
+
+export interface CampaignInput {
+  title: string;
+  description?: string | null;
+  startsOn?: string | null;
+  endsOn?: string | null;
+}
+
+export interface CampaignItemInput {
+  name: string;
+  description?: string | null;
+  priceCents: Cents;
+  maxPerOrder?: number | null;
+  position?: number;
+}
+
+/** O que a familia ve (docs/campaigns.md): so produtos ativos, com o preco de hoje. */
+export interface PublicCampaignItem {
+  id: string;
+  name: string;
+  description: string | null;
+  priceCents: Cents;
+  maxPerOrder: number | null;
+  hasImage: boolean;
+  imageVersion: number;
+}
+
+export interface PublicCampaignSummary {
+  id: string;
+  title: string;
+  description: string | null;
+  endsOn: string | null;
+  hasCover: boolean;
+  coverVersion: number;
+  itemsCount: number;
+}
+
+export interface PublicCampaign extends PublicCampaignSummary {
+  items: PublicCampaignItem[];
+}
+
+/** O carrinho: QUAIS produtos e QUANTOS. Nunca um preco nem um total: o servidor le os precos. */
+export interface OrderLine {
+  itemId: string;
+  quantity: number;
+}
+
+export interface CreateOrderInput {
+  lines: OrderLine[];
+  identification: IdentificationValues;
 }
 
 // ---------------------------------------------------------------- REAL: fechamento mensal (docs/statement.md)

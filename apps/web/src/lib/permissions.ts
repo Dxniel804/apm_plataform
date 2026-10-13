@@ -20,6 +20,8 @@ export interface Areas {
   manageRequests: boolean;
   /** "Minhas solicitacoes": quem pode abrir pedidos. */
   myRequests: boolean;
+  /** "Personalizacao": as campanhas (produtos e carrinho) que a gestao vende as familias. */
+  manageCampaigns: boolean;
 }
 
 export function areasFor(permissions: readonly string[]): Areas {
@@ -35,10 +37,11 @@ export function areasFor(permissions: readonly string[]): Areas {
     requests: has("requests:submit") || has("requests:read_own") || has("requests:read_all"),
     manageRequests: has("requests:read_all") || has("requests:manage"),
     myRequests: has("requests:submit"),
+    manageCampaigns: has("campaigns:manage"),
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "personalizacao" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;
@@ -53,5 +56,6 @@ export function homeArea(areas: Areas): PainelArea {
   if (areas.resumo) return "resumo";
   if (areas.myExpenses || areas.manageExpenses) return "despesas";
   if (areas.requests) return "solicitacoes";
+  if (areas.manageCampaigns) return "personalizacao";
   return "resumo";
 }

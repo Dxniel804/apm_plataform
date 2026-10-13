@@ -106,3 +106,60 @@ export function describeCashError(error: ApiError): ContributionProblems {
   }
   return { ...none, general: "Não foi possível registrar agora. Tente de novo em instantes. Nada foi registrado." };
 }
+
+/** Erro do POST do pedido de uma campanha: geral e, por linha do carrinho, o que nao serve mais. */
+export interface OrderProblems {
+  general: string | null;
+  /** Por indice da linha do carrinho (`lines[2].quantity` -> 2): o que o servidor recusou nela. */
+  lines: Record<number, string>;
+  fields: IdentificationErrors;
+}
+
+const LINE_PATTERN = /^lines\[(\d+)\]\.(item_id|quantity)$/;
+
+export function describeOrderError(error: ApiError): OrderProblems {
+  const none: OrderProblems = { general: null, lines: {}, fields: {} };
+  if (error.kind === "network" || error.kind === "timeout") return { ...none, general: NETWORK };
+  if (error.status === 501) return { ...none, general: UNAVAILABLE };
+  if (error.kind !== "problem") return { ...none, general: GENERIC };
+
+  switch (error.code) {
+    case "rate_limited":
+      return { ...none, general: rateLimited(error) };
+    case "not_found":
+      return { ...none, general: "Esta campanha não está mais à venda. Volte à página da escola para ver o que está disponível." };
+    case "campaign_changed":
+      return { ...none, general: "A campanha mudou enquanto você montava o pedido. Confira os produtos e os preços e tente de novo." };
+    case "idempotency_key_reused":
+      return { ...none, general: "Algo mudou entre uma tentativa e outra. Confira o carrinho e tente de novo." };
+    case "payment_unavailable":
+      return { ...none, general: "Esta escola ainda não pode receber pelo Pix. Fale com a gestão da APM." };
+    case "validation_error": {
+      const out: OrderProblems = { general: null, lines: {}, fields: {} };
+      for (const item of error.fields ?? []) {
+        const line = LINE_PATTERN.exec(item.field);
+        if (line) {
+          out.lines[Number(line[1])] =
+            item.code === "over_limit"
+              ? "Passa do limite por pedido deste produto."
+              : item.code === "duplicate"
+                ? "Este produto aparece duas vezes."
+                : "Este produto não está mais à venda.";
+        } else if (item.field === "lines") {
+          out.general = "O total do pedido passa do limite de R$ 50.000,00. Tire alguns itens.";
+        } else if (item.field in FIELD_FROM_API) {
+          const field = FIELD_FROM_API[item.field]!;
+          out.fields[field] = item.code === "required" ? MISSING_MESSAGES[field] : "Confira este campo.";
+        } else {
+          out.general = "Não foi possível enviar o pedido. Recarregue a página e tente de novo.";
+        }
+      }
+      if (!out.general && Object.keys(out.lines).length === 0 && Object.keys(out.fields).length === 0) {
+        out.general = "Algum dado do pedido não foi aceito. Volte e confira o carrinho.";
+      }
+      return out;
+    }
+    default:
+      return { ...none, general: GENERIC };
+  }
+}
