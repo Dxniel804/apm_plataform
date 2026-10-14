@@ -327,9 +327,14 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `campaign_items_20_state` | BEFORE INSERT OR UPDATE | `campaign_items_check_state`: the products of an ended campaign do not change |
 | | `campaign_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name, the text or the key of the picture) |
 | `contribution_items` (what an order bought, a COPY) | `contribution_items_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
+| | `contribution_items_15_copy_cost` | BEFORE INSERT | `contribution_items_copy_cost` (0014): fills the COPY of the cost of the product from the product itself, whatever the caller sent (the application has no INSERT grant on the column) |
 | | `contribution_items_20_item` | BEFORE INSERT | `contribution_items_check_item`: the product is on sale now (campaign ACTIVE and inside its dates, product active, quantity within its limit) and the copy is its CURRENT name and price |
 | | `contribution_items_90_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: the amount of the contribution is the sum of its items |
 | | `contribution_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name of the product) |
+| `campaign_deliveries` (0014, the delivery of an order) | `campaign_deliveries_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: the order, the scope and the creation never change |
+| | `campaign_deliveries_20_check` | BEFORE INSERT OR UPDATE | `campaign_deliveries_check`: DELIVERED only for a PAID order of a campaign |
+| | `campaign_deliveries_25_member` | BEFORE INSERT OR UPDATE | `assert_active_member` (who marked it) |
+| | `campaign_deliveries_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
 | `contributions` (0013) | `contributions_90_campaign_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: a contribution of a campaign has items; one without a campaign has none |
 | `categories` | `categories_05_immutable`, `categories_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns` (key, direction, report group and `requires_approval` never change), `audit_row_change` |
 | `school_settings` | `school_settings_05_immutable`, `school_settings_10_timezone`, `school_settings_95_audit` | BEFORE UPDATE, AFTER | `assert_immutable_columns`, `school_settings_lock_timezone`, `audit_row_change` |

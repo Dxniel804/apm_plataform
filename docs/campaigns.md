@@ -1,6 +1,6 @@
-# Campaigns (Personalização: produtos e carrinho)
+# Campaigns (produtos, carrinho, custo, pedidos e entrega)
 
-Code: `apps/api/app/campaigns/` (what the management writes: router, service, repository, schemas), `apps/api/app/public/campaigns.py` and `campaign_service.py` (what the families see and the order), `apps/api/app/storage/image_clean.py` (the pictures), migration `0013_campaigns.py`, models in `app/models/campaigns.py`.
+Code: `apps/api/app/campaigns/` (what the management writes: router, service, repository, schemas), `apps/api/app/public/campaigns.py` and `campaign_service.py` (what the families see and the order), `apps/api/app/storage/image_clean.py` (the pictures), migrations `0013_campaigns.py` and `0014_campaign_costs_deliveries.py`, `app/campaigns/orders.py` and `report.py` (the dashboard, the orders, the delivery and the PDF), models in `app/models/campaigns.py`.
 
 The management creates a **campaign** (a party, a kit): a title, a text, a cover and **products** with a name, a text, a picture, a price and an optional limit per order. The family picks quantities on the public page of the school, sees the total and pays by Pix. The revenue goes to the ledger under its own category, **Vendas de campanha** (`campaign_sales`, report group `OTHER_INCOME`), so the closing report shows it as its own line, apart from the contributions of the parents.
 
@@ -24,18 +24,48 @@ Limits: a product costs R$ 1,00 to R$ 10.000,00; at most 99 of a product per lin
 
 | Method and path | What it does |
 | --- | --- |
-| `POST /campaigns` | Creates a campaign, always a **DRAFT** (nothing is on sale): `title`, optional `description`, `starts_on`, `ends_on` |
+| `POST /campaigns` | Creates a campaign, always a **DRAFT** (nothing is on sale): `title`, optional `description`, `starts_on`, `ends_on`, `ask_student_class` (default `true`) |
 | `GET /campaigns` | The campaigns of the school, the ones on sale first, with the counts of products and what the paid orders brought in. `?status=` |
 | `GET /campaigns/{id}` | One campaign with its products |
 | `PATCH /campaigns/{id}` | Text and dates, while it has not ended (`null` clears an optional field) |
 | `POST /campaigns/{id}/activate` | DRAFT to ACTIVE: needs an active product, and an end date that is not past |
 | `POST /campaigns/{id}/end` | DRAFT or ACTIVE to ENDED: **final**. Nothing more is sold; the orders already made stay |
-| `POST /campaigns/{id}/items` | Adds a product: `name`, optional `description`, `price_cents`, optional `max_per_order`, `position` |
+| `POST /campaigns/{id}/items` | Adds a product: `name`, optional `description`, `price_cents`, optional `unit_cost_cents` (what one unit costs the APM), optional `max_per_order`, `position` |
 | `PATCH /campaigns/{id}/items/{item_id}` | Changes a product (a new price never touches an order already made). `is_active: false` takes it off the shelf: a product is never removed, because it may have been sold |
 | `PUT /campaigns/{id}/image`, `PUT /campaigns/{id}/items/{item_id}/image` | The cover and the picture of a product (multipart `file`: PNG, JPEG or WebP, up to 5 MiB). `DELETE` removes it |
 | `GET /campaigns/{id}/image`, `GET /campaigns/{id}/items/{item_id}/image` | The picture, for the management to see (a draft too), `private, no-store` |
 
 The answer to every write is the whole campaign with its products, so the site updates in one go.
+
+## Following a campaign (0014)
+
+Page of the panel: `/painel/campanhas/{id}`, with three tabs: **Resumo**, **Pedidos** and **Produtos** (the editor). Everything the first two show is read from the ledger and from the copy each order kept; the browser computes nothing.
+
+| Method and path | What it does |
+| --- | --- |
+| `GET /campaigns/{id}/dashboard` | `collected_cents` (what the PAID orders brought in, the same figure the ledger holds), orders by payment (`paid`, `pending`, `cancelled`), `units_sold`, `cost_cents`, `cost_complete`, `profit_cents`, `delivered_orders_count`, `to_deliver_orders_count` and, per product (the ones that sold nothing too), units, revenue and cost |
+| `GET /campaigns/{id}/orders` | The orders: number (`APM-000042`), who (guardian, student, class), the lines, the amount, `payment_status` and `delivery_status`. Filters `payment` (`PENDING`, `PAID`, `CANCELLED`), `delivery` (`PENDING` = paid and to deliver, `DELIVERED`), `search` (guardian, student, class or the number) and `limit` (up to 100) / `offset` |
+| `POST /campaigns/{id}/orders/delivery` | `{order_ids: [up to 100], delivered: true/false}`: marks or unmarks the delivery. The answer counts `changed`, `unchanged` and `skipped` |
+| `GET /campaigns/{id}/report.pdf` | The PDF of the campaign: totals, products and every order (the most recent 5000), `private, no-store` |
+
+The **payment** an order shows is `PAID` (approved), `PENDING` (the Pix is open, or in review) or `CANCELLED` (cancelled, expired). An unpaid order has no delivery state.
+
+### Cost, profit and what is not in the ledger
+
+* The **cost** of a product (`unit_cost_cents`, R$ 0,00 to R$ 10.000,00, optional) is a **management metric**: it is NOT a ledger entry. The real outflow is still the expense the treasurer registers.
+* The order keeps a **copy of the cost** at the moment of the purchase, like the name and the price. The application never sends it: the trigger `contribution_items_15_copy_cost` fills it from the product, so a cost changed later never touches an order already made.
+* The **profit** is the collected amount minus the costs, and it is shown **only when every unit sold has a cost** (`cost_complete`). Otherwise the answer says `profit_cents: null` and the page says "custo não informado". R$ 0,00 is a cost (a gift); empty is "not informed".
+
+### Delivery
+
+* The state lives in its own table, `campaign_deliveries` (one row per order, created the first time the order is marked), outside the ledger on purpose. The database accepts `DELIVERED` **only for a PAID order of a campaign** (`campaign_deliveries_check`), whatever the code does.
+* It is **reversible** and **audited**: every change is a row in `audit_logs` (who, when, the new state) and the service adds `campaign.delivery_marked` / `campaign.delivery_undone` with the number of orders.
+* An id that is not a paid order of this campaign is **skipped**, never an error: the answer is the same for an order of another school.
+* A campaign that has ended still allows delivering what was sold.
+
+### Student and class
+
+`campaigns.ask_student_class` (on by default): the order of that campaign **requires** the student's name and the class, whatever the school asks on the monthly contribution. They are stored in the columns that already exist in `contributions` (`student_name`, `class_name`) and shown only to the management. The public page of the campaign says whether it asks (`ask_student_class`), and the site then makes both fields required.
 
 ## What the families see: `/api/v1/public/schools/{slug}`
 

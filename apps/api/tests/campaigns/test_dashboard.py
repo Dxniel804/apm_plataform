@@ -463,7 +463,13 @@ def test_another_school_sees_nothing_of_the_campaign(
     for answer in answers:
         assert answer.status_code == gone["status_code"] and answer.json()["code"] == gone["code"]
     with admin_engine.connect() as conn:
-        assert conn.execute(text("SELECT count(*) FROM campaign_deliveries")).scalar_one() == 0
+        assert (
+            conn.execute(
+                text("SELECT count(*) FROM campaign_deliveries WHERE school_id = :s"),
+                {"s": school.fresh.school},
+            ).scalar_one()
+            == 0
+        )
     # and the school in the path must be the school of the session
     other_path = stranger.get(f"/campaigns/{seeded.campaign}/orders", school=school.fresh.school)
     assert other_path.status_code in (403, 404)

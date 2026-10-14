@@ -421,29 +421,22 @@ def audit_event(
 
 
 # --- the dashboard, the orders and their delivery (0014) -------------------------------------
-
-# The state of the payment of an order as the panel shows it: waiting (the Pix is open, or in
-# review), paid, or cancelled (cancelled, expired). One expression for every statement below.
-_PAYMENT = (
-    "CASE f.status WHEN 'PAID' THEN 'PAID' WHEN 'PENDING_PAYMENT' THEN 'PENDING' "
-    "WHEN 'REVIEW_REQUIRED' THEN 'PENDING' ELSE 'CANCELLED' END"
-)
-# An order of the campaign with its ledger row and, when it was ever marked, its delivery row.
-_ORDERS_FROM = (
-    "FROM contributions o "
-    "JOIN financial_transactions f ON f.id = o.transaction_id AND f.school_id = o.school_id "
-    "LEFT JOIN campaign_deliveries d ON d.transaction_id = o.transaction_id "
-    "AND d.school_id = o.school_id "
-    "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
-)
+# Every statement is ONE constant string (docs/tenancy.md: nothing is built from pieces). The same
+# fragments therefore repeat on purpose:
+#   * the payment of an order as the panel shows it (PAID; PENDING when the Pix is open or in
+#     review; CANCELLED when cancelled or expired) is the CASE on `f.status`;
+#   * an order of the campaign joins its ledger row `f` and, when it was ever marked, its
+#     delivery `d`.
 
 
 def orders_by_payment(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) -> Sequence[Row]:
     return (
         db.execute(
             text(
-                "SELECT " + _PAYMENT + " AS payment_status, count(*) AS orders, "
-                "coalesce(sum(f.amount_cents), 0) AS cents "
+                "SELECT CASE f.status WHEN 'PAID' THEN 'PAID' "
+                "WHEN 'PENDING_PAYMENT' THEN 'PENDING' "
+                "WHEN 'REVIEW_REQUIRED' THEN 'PENDING' ELSE 'CANCELLED' END AS payment_status, "
+                "count(*) AS orders, coalesce(sum(f.amount_cents), 0) AS cents "
                 "FROM contributions o "
                 "JOIN financial_transactions f ON f.id = o.transaction_id "
                 "AND f.school_id = o.school_id "
@@ -460,9 +453,13 @@ def delivered_orders(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) 
     return int(
         db.execute(
             text(
-                "SELECT count(*) "
-                + _ORDERS_FROM
-                + "AND f.status = 'PAID' AND d.status = 'DELIVERED'"
+                "SELECT count(*) FROM contributions o "
+                "JOIN financial_transactions f ON f.id = o.transaction_id "
+                "AND f.school_id = o.school_id "
+                "JOIN campaign_deliveries d ON d.transaction_id = o.transaction_id "
+                "AND d.school_id = o.school_id "
+                "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
+                "AND f.status = 'PAID' AND d.status = 'DELIVERED'"
             ),
             {"campaign_id": campaign_id, "school_id": school_id},
         ).scalar_one()
@@ -508,17 +505,6 @@ def _like(search: str) -> str:
     return f"%{escaped}%"
 
 
-_ORDERS_FILTER = (
-    "AND (CAST(:payment AS text) IS NULL OR " + _PAYMENT + " = :payment) "
-    "AND (CAST(:delivery AS text) IS NULL OR "
-    " (f.status = 'PAID' AND coalesce(d.status, 'PENDING') = :delivery)) "
-    "AND (CAST(:search AS text) IS NULL "
-    " OR o.guardian_name ILIKE :like ESCAPE '\\' OR o.student_name ILIKE :like ESCAPE '\\' "
-    " OR o.class_name ILIKE :like ESCAPE '\\' "
-    " OR CAST(f.reference_code AS text) = :digits) "
-)
-
-
 def _order_params(
     school_id: uuid.UUID,
     campaign_id: uuid.UUID,
@@ -549,7 +535,24 @@ def count_orders(
 ) -> int:
     return int(
         db.execute(
-            text("SELECT count(*) " + _ORDERS_FROM + _ORDERS_FILTER),
+            text(
+                "SELECT count(*) FROM contributions o "
+                "JOIN financial_transactions f ON f.id = o.transaction_id "
+                "AND f.school_id = o.school_id "
+                "LEFT JOIN campaign_deliveries d ON d.transaction_id = o.transaction_id "
+                "AND d.school_id = o.school_id "
+                "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
+                "AND (CAST(:payment AS text) IS NULL OR CASE f.status WHEN 'PAID' THEN 'PAID' "
+                " WHEN 'PENDING_PAYMENT' THEN 'PENDING' WHEN 'REVIEW_REQUIRED' THEN 'PENDING' "
+                " ELSE 'CANCELLED' END = :payment) "
+                "AND (CAST(:delivery AS text) IS NULL OR "
+                " (f.status = 'PAID' AND coalesce(d.status, 'PENDING') = :delivery)) "
+                "AND (CAST(:search AS text) IS NULL "
+                " OR o.guardian_name ILIKE :like ESCAPE '\\' "
+                " OR o.student_name ILIKE :like ESCAPE '\\' "
+                " OR o.class_name ILIKE :like ESCAPE '\\' "
+                " OR CAST(f.reference_code AS text) = :digits)"
+            ),
             _order_params(school_id, campaign_id, payment, delivery, search),
         ).scalar_one()
     )
@@ -571,12 +574,27 @@ def search_orders(
             text(
                 "SELECT o.transaction_id AS order_id, f.reference_code, f.created_at, "
                 "o.guardian_name, o.student_name, o.class_name, f.amount_cents, "
-                f"{_PAYMENT} AS payment_status, "
+                "CASE f.status WHEN 'PAID' THEN 'PAID' WHEN 'PENDING_PAYMENT' THEN 'PENDING' "
+                "WHEN 'REVIEW_REQUIRED' THEN 'PENDING' ELSE 'CANCELLED' END AS payment_status, "
                 "CASE WHEN f.status = 'PAID' THEN coalesce(d.status, 'PENDING') END "
                 "AS delivery_status, d.changed_at AS delivery_changed_at "
-                + _ORDERS_FROM
-                + _ORDERS_FILTER
-                + "ORDER BY f.created_at DESC, o.transaction_id DESC LIMIT :limit OFFSET :offset"
+                "FROM contributions o "
+                "JOIN financial_transactions f ON f.id = o.transaction_id "
+                "AND f.school_id = o.school_id "
+                "LEFT JOIN campaign_deliveries d ON d.transaction_id = o.transaction_id "
+                "AND d.school_id = o.school_id "
+                "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
+                "AND (CAST(:payment AS text) IS NULL OR CASE f.status WHEN 'PAID' THEN 'PAID' "
+                " WHEN 'PENDING_PAYMENT' THEN 'PENDING' WHEN 'REVIEW_REQUIRED' THEN 'PENDING' "
+                " ELSE 'CANCELLED' END = :payment) "
+                "AND (CAST(:delivery AS text) IS NULL OR "
+                " (f.status = 'PAID' AND coalesce(d.status, 'PENDING') = :delivery)) "
+                "AND (CAST(:search AS text) IS NULL "
+                " OR o.guardian_name ILIKE :like ESCAPE '\\' "
+                " OR o.student_name ILIKE :like ESCAPE '\\' "
+                " OR o.class_name ILIKE :like ESCAPE '\\' "
+                " OR CAST(f.reference_code AS text) = :digits) "
+                "ORDER BY f.created_at DESC, o.transaction_id DESC LIMIT :limit OFFSET :offset"
             ),
             {
                 **_order_params(school_id, campaign_id, payment, delivery, search),
