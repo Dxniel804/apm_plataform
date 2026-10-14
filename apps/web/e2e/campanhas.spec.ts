@@ -113,6 +113,8 @@ test("familia: ve a campanha na pagina da escola, monta o carrinho, paga pelo Pi
   });
 
   await page.goto(SCHOOL);
+  // a vitrine fica na aba "Campanhas" (a outra aba e a contribuicao mensal)
+  await page.getByRole("tab", { name: "Campanhas" }).click();
   await expect(page.getByRole("heading", { name: "Campanhas da escola" })).toBeVisible();
   const shelf = page.getByRole("listitem").filter({ hasText: title });
   await expect(shelf).toContainText("2 produtos");
