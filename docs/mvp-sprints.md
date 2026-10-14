@@ -1,6 +1,13 @@
 # MVP do APM Digital: plano de sprints
 
-Atualizado em 2026-10-14. **Proposta para aprovação do dono. Nada deste plano foi iniciado**: a seção 0 de `docs/arquiteturasystemforklin.md` manda aprovar a ordem antes de implementar.
+Atualizado em 2026-10-14. **Ordem aprovada pelo dono em 14/10** ("go ahead nas sprints"). Ao fim de cada sprint, o relatório do que foi feito, alterado e mexido vai ao dono.
+
+## Andamento
+
+| Sprint | Estado |
+|---|---|
+| **M0** | **Concluído em 2026-10-14**, na branch `feat/m0-close-redesign` (local, sem push). Verificado: `tsc`, `lint`, 639 testes (Node 22), e2e com login real 162 passou e 20 ignorados |
+| M1 a M9 | Aguardando |
 
 Base: `docs/thelastversion.md`, `docs/arquiteturasystemforklin.md`, as decisões da conversa de 14/10 e o código verificado no mesmo dia. Etiquetas, como no documento da arquitetura: **[HOJE]** existe e foi verificado, **[PLANEJADO]** foi desenhado e não existe, **[ABERTO]** depende de decisão do dono.
 
