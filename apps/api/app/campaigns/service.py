@@ -132,6 +132,7 @@ def create_campaign(db: Session, scope: SchoolScope, body: CampaignCreate) -> Ca
             description=body.description,
             starts_on=body.starts_on,
             ends_on=body.ends_on,
+            ask_student_class=body.ask_student_class,
         )
         _audit(db, scope, campaign_id, "campaign.created", status="DRAFT")
         db.commit()
@@ -146,6 +147,8 @@ def update_campaign(
         raise invalid_field("body", "empty")
     if "title" in sent and body.title is None:
         raise invalid_field("title", "required")
+    if "ask_student_class" in sent and body.ask_student_class is None:
+        raise invalid_field("ask_student_class", "required")
     with database_rules(db):
         row = _load_for_update(db, scope, campaign_id)
         if row["status"] == "ENDED":
@@ -214,6 +217,7 @@ def add_item(
             name=body.name,
             description=body.description,
             price_cents=body.price_cents,
+            unit_cost_cents=body.unit_cost_cents,
             max_per_order=body.max_per_order,
             position=body.position,
         )

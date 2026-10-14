@@ -100,6 +100,8 @@ class Campaign(ScopeMixin, Base):
     starts_on: Mapped[date | None] = mapped_column(Date)
     ends_on: Mapped[date | None] = mapped_column(Date)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The family must say the student and the class when it orders (0014).
+    ask_student_class: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     cover_storage_key: Mapped[str | None] = mapped_column(Text)
     cover_content_type: Mapped[str | None] = mapped_column(Text)
     cover_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
@@ -137,6 +139,10 @@ class CampaignItem(ScopeMixin, Base):
             "max_per_order IS NULL OR max_per_order BETWEEN 1 AND 99", name="max_per_order_range"
         ),
         CheckConstraint("position BETWEEN 0 AND 999", name="position_range"),
+        CheckConstraint(
+            "unit_cost_cents IS NULL OR unit_cost_cents BETWEEN 0 AND 1000000",
+            name="unit_cost_range",
+        ),
         *_image_checks("image"),
         Index("ix_campaign_items_campaign_id", "campaign_id", "position"),
         Index("ix_campaign_items_school_id", "school_id"),
@@ -147,6 +153,8 @@ class CampaignItem(ScopeMixin, Base):
     name: Mapped[str] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     price_cents: Mapped[int] = mapped_column(BigInteger)
+    # What one unit costs the APM (0014): a management metric, not a ledger entry.
+    unit_cost_cents: Mapped[int | None] = mapped_column(BigInteger)
     max_per_order: Mapped[int | None] = mapped_column(Integer)
     position: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
@@ -195,6 +203,10 @@ class ContributionItem(ScopeMixin, Base):
         CheckConstraint("length(btrim(item_name)) BETWEEN 1 AND 120", name="item_name_length"),
         CheckConstraint("unit_price_cents BETWEEN 100 AND 1000000", name="unit_price_range"),
         CheckConstraint("quantity BETWEEN 1 AND 99", name="quantity_range"),
+        CheckConstraint(
+            "unit_cost_cents IS NULL OR unit_cost_cents BETWEEN 0 AND 1000000",
+            name="unit_cost_range",
+        ),
         Index("ix_contribution_items_transaction_id", "transaction_id"),
         Index("ix_contribution_items_campaign_item_id", "campaign_item_id"),
         Index("ix_contribution_items_school_id", "school_id"),
@@ -207,4 +219,38 @@ class ContributionItem(ScopeMixin, Base):
     item_name: Mapped[str] = mapped_column(Text)
     unit_price_cents: Mapped[int] = mapped_column(BigInteger)
     quantity: Mapped[int] = mapped_column(Integer)
+    # The copy of the cost of the product at the purchase, filled by a trigger (0014).
+    unit_cost_cents: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CampaignDelivery(ScopeMixin, Base):
+    """The delivery state of an order of a campaign (0014): a row appears when the management first
+    marks the order, and it can be switched back. The database accepts DELIVERED only for a PAID
+    order of a campaign."""
+
+    __tablename__ = "campaign_deliveries"
+    __table_args__ = (
+        *scope_constraints("campaign_deliveries"),
+        ForeignKeyConstraint(
+            ["transaction_id", "organization_id", "school_id"],
+            [
+                "contributions.transaction_id",
+                "contributions.organization_id",
+                "contributions.school_id",
+            ],
+            name="fk_campaign_deliveries_transaction_id_contributions",
+            ondelete="RESTRICT",
+        ),
+        user_fk("campaign_deliveries", "changed_by_user_id"),
+        CheckConstraint(in_list("status", ("PENDING", "DELIVERED")), name="status_valid"),
+        Index("ix_campaign_deliveries_school_id", "school_id"),
+    )
+
+    transaction_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    school_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'DELIVERED'"))
+    changed_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -149,6 +149,13 @@ def drop_school(conn: Connection, fresh: Fresh) -> None:
     from tests.dbsupport import purge_financial
 
     purge_financial(conn, [fresh.org])
+    # a test that logged a member in leaves its session behind
+    conn.execute(
+        text(
+            "DELETE FROM sessions WHERE membership_id IN (SELECT id FROM memberships WHERE organization_id = :o)"
+        ),
+        {"o": fresh.org},
+    )
     conn.execute(text("DELETE FROM memberships WHERE organization_id = :o"), {"o": fresh.org})
     conn.execute(text("DELETE FROM users WHERE email LIKE :p"), {"p": f"t5-%-{fresh.school}%"})
     conn.execute(text("DELETE FROM schools WHERE organization_id = :o"), {"o": fresh.org})

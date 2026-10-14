@@ -253,6 +253,8 @@ FINANCIAL_TRIGGER_FUNCTIONS = (
     # the campaigns (0013): four more
     "campaigns_check_change", "campaign_items_check_state", "contribution_items_check_item",
     "contribution_items_check_total",
+    # the campaigns v2 (0014): the copy of the cost and the delivery check
+    "contribution_items_copy_cost", "campaign_deliveries_check",
 )  # fmt: skip
 FUNCTIONS.update(
     {
@@ -432,7 +434,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
 
     # 30 of TASK-003 and 0006 + 37 of the financial schema (0007) + 4 of the public flow (0008)
     # + 2 of the expiry job (0009) + 5 of the staff requests (0012) + 8 of the campaigns (0013)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8
+    # + 3 of the deliveries (0014)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
@@ -565,6 +568,7 @@ def test_application_role_table_privileges_are_exactly_these(admin_engine: Engin
                     "campaigns",
                     "campaign_items",
                     "contribution_items",
+                    "campaign_deliveries",
                 ]
             },
         ).all()

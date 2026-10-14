@@ -36,7 +36,7 @@ FINANCIAL_TABLES = (
 REQUEST_TABLES = ("staff_requests", "staff_request_attachments")
 # The campaigns the management sells (0013) and the copy of what an order bought: school tables
 # like the others, next to the ledger (the amount of an order is the sum of its items).
-CAMPAIGN_TABLES = ("campaigns", "campaign_items", "contribution_items")
+CAMPAIGN_TABLES = ("campaigns", "campaign_items", "contribution_items", "campaign_deliveries")
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
 RLS_TABLES = (
@@ -133,6 +133,10 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("campaign_items", "campaign_items_update", "UPDATE", "public"),
         ("contribution_items", "contribution_items_select", "SELECT", "public"),
         ("contribution_items", "contribution_items_insert", "INSERT", "public"),
+        # 0014: the delivery state of an order (a row per order, switched back and forth).
+        ("campaign_deliveries", "campaign_deliveries_select", "SELECT", "public"),
+        ("campaign_deliveries", "campaign_deliveries_insert", "INSERT", "public"),
+        ("campaign_deliveries", "campaign_deliveries_update", "UPDATE", "public"),
     }
 )
 

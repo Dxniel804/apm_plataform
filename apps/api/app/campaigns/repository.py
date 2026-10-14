@@ -17,10 +17,13 @@ from sqlalchemy.orm import Session
 
 Row = RowMapping
 
-CAMPAIGN_COLUMNS = frozenset({"title", "description", "starts_on", "ends_on"})
+CAMPAIGN_COLUMNS = frozenset({"title", "description", "starts_on", "ends_on", "ask_student_class"})
 ITEM_COLUMNS = frozenset(
-    {"name", "description", "price_cents", "max_per_order", "position", "is_active"}
-)
+    {
+        "name", "description", "price_cents", "unit_cost_cents", "max_per_order", "position",
+        "is_active",
+    }
+)  # fmt: skip
 
 
 def insert_campaign(
@@ -33,12 +36,14 @@ def insert_campaign(
     description: str | None,
     starts_on: dt.date | None,
     ends_on: dt.date | None,
+    ask_student_class: bool,
 ) -> uuid.UUID:
     created: uuid.UUID = db.execute(
         text(
             "INSERT INTO campaigns (organization_id, school_id, created_by_user_id, title, "
-            "description, starts_on, ends_on) VALUES (:organization_id, :school_id, "
-            ":created_by_user_id, :title, :description, :starts_on, :ends_on) RETURNING id"
+            "description, starts_on, ends_on, ask_student_class) VALUES (:organization_id, "
+            ":school_id, :created_by_user_id, :title, :description, :starts_on, :ends_on, "
+            ":ask_student_class) RETURNING id"
         ),
         {
             "organization_id": organization_id,
@@ -48,6 +53,7 @@ def insert_campaign(
             "description": description,
             "starts_on": starts_on,
             "ends_on": ends_on,
+            "ask_student_class": ask_student_class,
         },
     ).scalar_one()
     return created
@@ -67,7 +73,7 @@ def search_campaigns(
             text(
                 "SELECT c.id, c.title, c.description, c.status, c.starts_on, c.ends_on, "
                 "c.cover_storage_key IS NOT NULL AS has_cover, c.cover_version, c.created_at, "
-                "c.updated_at, "
+                "c.updated_at, c.ask_student_class, "
                 "(SELECT count(*) FROM campaign_items i "
                 " WHERE i.campaign_id = c.id AND i.school_id = c.school_id) AS items_count, "
                 "(SELECT count(*) FROM campaign_items i "
@@ -139,6 +145,8 @@ def update_campaign(
             "starts_on = CASE WHEN :set_starts_on THEN CAST(:starts_on AS date) "
             "ELSE starts_on END, "
             "ends_on = CASE WHEN :set_ends_on THEN CAST(:ends_on AS date) ELSE ends_on END, "
+            "ask_student_class = CASE WHEN :set_ask_student_class "
+            "THEN CAST(:ask_student_class AS boolean) ELSE ask_student_class END, "
             "updated_at = now() WHERE id = :id AND school_id = :school_id"
         ),
         {
@@ -216,15 +224,16 @@ def insert_item(
     name: str,
     description: str | None,
     price_cents: int,
+    unit_cost_cents: int | None,
     max_per_order: int | None,
     position: int,
 ) -> uuid.UUID:
     created: uuid.UUID = db.execute(
         text(
             "INSERT INTO campaign_items (organization_id, school_id, campaign_id, name, "
-            "description, price_cents, max_per_order, position) VALUES (:organization_id, "
-            ":school_id, :campaign_id, :name, :description, :price_cents, :max_per_order, "
-            ":position) RETURNING id"
+            "description, price_cents, unit_cost_cents, max_per_order, position) VALUES "
+            "(:organization_id, :school_id, :campaign_id, :name, :description, :price_cents, "
+            ":unit_cost_cents, :max_per_order, :position) RETURNING id"
         ),
         {
             "organization_id": organization_id,
@@ -233,6 +242,7 @@ def insert_item(
             "name": name,
             "description": description,
             "price_cents": price_cents,
+            "unit_cost_cents": unit_cost_cents,
             "max_per_order": max_per_order,
             "position": position,
         },
@@ -244,8 +254,8 @@ def items_of(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) -> Seque
     return (
         db.execute(
             text(
-                "SELECT id, name, description, price_cents, max_per_order, position, is_active, "
-                "image_storage_key IS NOT NULL AS has_image, image_version "
+                "SELECT id, name, description, price_cents, unit_cost_cents, max_per_order, "
+                "position, is_active, image_storage_key IS NOT NULL AS has_image, image_version "
                 "FROM campaign_items WHERE campaign_id = :campaign_id AND school_id = :school_id "
                 "ORDER BY position, created_at, id"
             ),
@@ -314,6 +324,8 @@ def update_item(
             "ELSE description END, "
             "price_cents = CASE WHEN :set_price_cents THEN CAST(:price_cents AS bigint) "
             "ELSE price_cents END, "
+            "unit_cost_cents = CASE WHEN :set_unit_cost_cents "
+            "THEN CAST(:unit_cost_cents AS bigint) ELSE unit_cost_cents END, "
             "max_per_order = CASE WHEN :set_max_per_order THEN CAST(:max_per_order AS integer) "
             "ELSE max_per_order END, "
             "position = CASE WHEN :set_position THEN CAST(:position AS integer) ELSE position END, "
@@ -406,3 +418,262 @@ def audit_event(
             "data": json.dumps(data),
         },
     )
+
+
+# --- the dashboard, the orders and their delivery (0014) -------------------------------------
+
+# The state of the payment of an order as the panel shows it: waiting (the Pix is open, or in
+# review), paid, or cancelled (cancelled, expired). One expression for every statement below.
+_PAYMENT = (
+    "CASE f.status WHEN 'PAID' THEN 'PAID' WHEN 'PENDING_PAYMENT' THEN 'PENDING' "
+    "WHEN 'REVIEW_REQUIRED' THEN 'PENDING' ELSE 'CANCELLED' END"
+)
+# An order of the campaign with its ledger row and, when it was ever marked, its delivery row.
+_ORDERS_FROM = (
+    "FROM contributions o "
+    "JOIN financial_transactions f ON f.id = o.transaction_id AND f.school_id = o.school_id "
+    "LEFT JOIN campaign_deliveries d ON d.transaction_id = o.transaction_id "
+    "AND d.school_id = o.school_id "
+    "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
+)
+
+
+def orders_by_payment(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) -> Sequence[Row]:
+    return (
+        db.execute(
+            text(
+                "SELECT " + _PAYMENT + " AS payment_status, count(*) AS orders, "
+                "coalesce(sum(f.amount_cents), 0) AS cents "
+                "FROM contributions o "
+                "JOIN financial_transactions f ON f.id = o.transaction_id "
+                "AND f.school_id = o.school_id "
+                "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id GROUP BY 1"
+            ),
+            {"campaign_id": campaign_id, "school_id": school_id},
+        )
+        .mappings()
+        .all()
+    )
+
+
+def delivered_orders(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) -> int:
+    return int(
+        db.execute(
+            text(
+                "SELECT count(*) "
+                + _ORDERS_FROM
+                + "AND f.status = 'PAID' AND d.status = 'DELIVERED'"
+            ),
+            {"campaign_id": campaign_id, "school_id": school_id},
+        ).scalar_one()
+    )
+
+
+def sold_items(db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID) -> Sequence[Row]:
+    """Every product of the campaign (the ones that sold nothing too) with what its PAID orders
+    took, read from the COPY the orders kept (name, price and cost at the purchase)."""
+    return (
+        db.execute(
+            text(
+                "SELECT ci.id AS item_id, ci.name, ci.position, "
+                "coalesce(s.units, 0) AS units_sold, coalesce(s.revenue, 0) AS revenue_cents, "
+                "s.cost AS cost_cents, coalesce(s.known, true) AS cost_known "
+                "FROM campaign_items ci LEFT JOIN ("
+                " SELECT i.campaign_item_id, sum(i.quantity) AS units, "
+                "  sum(i.quantity * i.unit_price_cents) AS revenue, "
+                "  sum(i.quantity * i.unit_cost_cents) AS cost, "
+                "  bool_and(i.unit_cost_cents IS NOT NULL) AS known "
+                " FROM contribution_items i "
+                " JOIN contributions o ON o.transaction_id = i.transaction_id "
+                "  AND o.school_id = i.school_id "
+                " JOIN financial_transactions f ON f.id = o.transaction_id "
+                "  AND f.school_id = o.school_id "
+                " WHERE i.campaign_id = :campaign_id AND i.school_id = :school_id "
+                "  AND f.status = 'PAID' GROUP BY i.campaign_item_id"
+                ") s ON s.campaign_item_id = ci.id "
+                "WHERE ci.campaign_id = :campaign_id AND ci.school_id = :school_id "
+                "ORDER BY ci.position, ci.created_at, ci.id"
+            ),
+            {"campaign_id": campaign_id, "school_id": school_id},
+        )
+        .mappings()
+        .all()
+    )
+
+
+def _like(search: str) -> str:
+    """The text of a search as a LIKE pattern: the characters that mean something to LIKE are
+    escaped (a person typing `%` looks for a percent sign)."""
+    escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+_ORDERS_FILTER = (
+    "AND (CAST(:payment AS text) IS NULL OR " + _PAYMENT + " = :payment) "
+    "AND (CAST(:delivery AS text) IS NULL OR "
+    " (f.status = 'PAID' AND coalesce(d.status, 'PENDING') = :delivery)) "
+    "AND (CAST(:search AS text) IS NULL "
+    " OR o.guardian_name ILIKE :like ESCAPE '\\' OR o.student_name ILIKE :like ESCAPE '\\' "
+    " OR o.class_name ILIKE :like ESCAPE '\\' "
+    " OR CAST(f.reference_code AS text) = :digits) "
+)
+
+
+def _order_params(
+    school_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    payment: str | None,
+    delivery: str | None,
+    search: str | None,
+) -> dict[str, Any]:
+    digits = "".join(ch for ch in (search or "") if ch.isdigit()).lstrip("0")
+    return {
+        "school_id": school_id,
+        "campaign_id": campaign_id,
+        "payment": payment,
+        "delivery": delivery,
+        "search": search,
+        "like": _like(search) if search else None,
+        "digits": digits or None,
+    }
+
+
+def count_orders(
+    db: Session,
+    school_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    *,
+    payment: str | None,
+    delivery: str | None,
+    search: str | None,
+) -> int:
+    return int(
+        db.execute(
+            text("SELECT count(*) " + _ORDERS_FROM + _ORDERS_FILTER),
+            _order_params(school_id, campaign_id, payment, delivery, search),
+        ).scalar_one()
+    )
+
+
+def search_orders(
+    db: Session,
+    school_id: uuid.UUID,
+    campaign_id: uuid.UUID,
+    *,
+    payment: str | None,
+    delivery: str | None,
+    search: str | None,
+    limit: int,
+    offset: int,
+) -> Sequence[Row]:
+    return (
+        db.execute(
+            text(
+                "SELECT o.transaction_id AS order_id, f.reference_code, f.created_at, "
+                "o.guardian_name, o.student_name, o.class_name, f.amount_cents, "
+                f"{_PAYMENT} AS payment_status, "
+                "CASE WHEN f.status = 'PAID' THEN coalesce(d.status, 'PENDING') END "
+                "AS delivery_status, d.changed_at AS delivery_changed_at "
+                + _ORDERS_FROM
+                + _ORDERS_FILTER
+                + "ORDER BY f.created_at DESC, o.transaction_id DESC LIMIT :limit OFFSET :offset"
+            ),
+            {
+                **_order_params(school_id, campaign_id, payment, delivery, search),
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        .mappings()
+        .all()
+    )
+
+
+def order_lines(db: Session, school_id: uuid.UUID, order_ids: Sequence[uuid.UUID]) -> Sequence[Row]:
+    return (
+        db.execute(
+            text(
+                "SELECT transaction_id, item_name, quantity, unit_price_cents "
+                "FROM contribution_items WHERE school_id = :school_id "
+                "AND transaction_id = ANY(:ids) ORDER BY created_at, id"
+            ),
+            {"school_id": school_id, "ids": list(order_ids)},
+        )
+        .mappings()
+        .all()
+    )
+
+
+def paid_orders_of_campaign(
+    db: Session, school_id: uuid.UUID, campaign_id: uuid.UUID, order_ids: Sequence[uuid.UUID]
+) -> list[uuid.UUID]:
+    """Of the given ids, the ones that are orders of THIS campaign and PAID (the only ones a
+    delivery can be recorded for)."""
+    rows = db.execute(
+        text(
+            "SELECT o.transaction_id FROM contributions o "
+            "JOIN financial_transactions f ON f.id = o.transaction_id "
+            "AND f.school_id = o.school_id "
+            "WHERE o.campaign_id = :campaign_id AND o.school_id = :school_id "
+            "AND f.status = 'PAID' AND o.transaction_id = ANY(:ids)"
+        ),
+        {"campaign_id": campaign_id, "school_id": school_id, "ids": list(order_ids)},
+    ).all()
+    return [row[0] for row in rows]
+
+
+def mark_delivered(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    school_id: uuid.UUID,
+    user_id: uuid.UUID,
+    order_ids: Sequence[uuid.UUID],
+) -> int:
+    """DELIVERED for each order (a row is created the first time); the ones that already were are
+    left alone. Returns how many changed."""
+    result = db.execute(
+        text(
+            "INSERT INTO campaign_deliveries (organization_id, school_id, transaction_id, "
+            "status, changed_by_user_id) "
+            "SELECT :organization_id, :school_id, t, 'DELIVERED', :user_id "
+            "FROM unnest(CAST(:ids AS uuid[])) AS t "
+            "ON CONFLICT (transaction_id, organization_id, school_id) DO UPDATE SET "
+            "status = 'DELIVERED', changed_by_user_id = EXCLUDED.changed_by_user_id, "
+            "changed_at = now() WHERE campaign_deliveries.status <> 'DELIVERED'"
+        ),
+        {
+            "organization_id": organization_id,
+            "school_id": school_id,
+            "user_id": user_id,
+            "ids": list(order_ids),
+        },
+    )
+    return int(result.rowcount)  # type: ignore[attr-defined]
+
+
+def mark_pending(
+    db: Session,
+    *,
+    school_id: uuid.UUID,
+    user_id: uuid.UUID,
+    order_ids: Sequence[uuid.UUID],
+) -> int:
+    """Back to PENDING the orders that were DELIVERED. Returns how many changed."""
+    result = db.execute(
+        text(
+            "UPDATE campaign_deliveries SET status = 'PENDING', changed_by_user_id = :user_id, "
+            "changed_at = now() WHERE school_id = :school_id AND status = 'DELIVERED' "
+            "AND transaction_id = ANY(:ids)"
+        ),
+        {"school_id": school_id, "user_id": user_id, "ids": list(order_ids)},
+    )
+    return int(result.rowcount)  # type: ignore[attr-defined]
+
+
+def school_timezone(db: Session, school_id: uuid.UUID) -> str:
+    zone: str = db.execute(
+        text("SELECT timezone FROM school_settings WHERE school_id = :school_id"),
+        {"school_id": school_id},
+    ).scalar_one()
+    return zone

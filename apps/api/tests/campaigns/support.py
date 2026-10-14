@@ -78,14 +78,18 @@ def seed_campaign(
     starts_on: date | None = None,
     ends_on: date | None = None,
     title: str = "Festa Junina",
+    ask_student_class: bool = False,
+    costs: tuple[int | None, ...] = (),
 ) -> Seeded:
-    """A COMMITTED campaign of a fresh school, written as the admin (the API sees it)."""
+    """A COMMITTED campaign of a fresh school, written as the admin (the API sees it). The
+    campaigns the tests seed do not ask for the student and the class unless they say so; `costs`
+    gives the cost of each product, in order."""
     with engine.begin() as connection:
         campaign: uuid.UUID = connection.execute(
             text(
                 "INSERT INTO campaigns (organization_id, school_id, created_by_user_id, title, "
-                "description, starts_on, ends_on) VALUES (:org, :school, :user, :title, "
-                "'Barracas e jogos', :starts_on, :ends_on) RETURNING id"
+                "description, starts_on, ends_on, ask_student_class) VALUES (:org, :school, :user, "
+                ":title, 'Barracas e jogos', :starts_on, :ends_on, :ask) RETURNING id"
             ),
             {
                 "org": fresh.org,
@@ -94,14 +98,15 @@ def seed_campaign(
                 "title": title,
                 "starts_on": starts_on,
                 "ends_on": ends_on,
+                "ask": ask_student_class,
             },
         ).scalar_one()
         ids: list[uuid.UUID] = [
             connection.execute(
                 text(
                     "INSERT INTO campaign_items (organization_id, school_id, campaign_id, name, "
-                    "price_cents, max_per_order, position) VALUES (:org, :school, :campaign, "
-                    ":name, :price, :limit, :position) RETURNING id"
+                    "price_cents, unit_cost_cents, max_per_order, position) VALUES (:org, :school, "
+                    ":campaign, :name, :price, :cost, :limit, :position) RETURNING id"
                 ),
                 {
                     "org": fresh.org,
@@ -109,6 +114,7 @@ def seed_campaign(
                     "campaign": campaign,
                     "name": name,
                     "price": price,
+                    "cost": costs[position] if position < len(costs) else None,
                     "limit": limit,
                     "position": position,
                 },
@@ -125,3 +131,26 @@ def seed_campaign(
                 {"id": campaign},
             )
     return Seeded(campaign, ids)
+
+
+def committed_manager(apis: Any, engine: Engine, school: Any) -> Client:
+    """The treasurer of a COMMITTED fresh school (the one the public flow orders from), logged in.
+    The people `make_school` creates have no password: this gives the treasurer one."""
+    from tests.authsupport import PASSWORD_HASH, TestUser
+
+    fresh = school.fresh
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE users SET password_hash = :hash WHERE id = :id"),
+            {"hash": PASSWORD_HASH, "id": fresh.treasurer},
+        )
+        email: str = conn.execute(
+            text("SELECT email FROM users WHERE id = :id"), {"id": fresh.treasurer}
+        ).scalar_one()
+        membership: uuid.UUID = conn.execute(
+            text("SELECT id FROM memberships WHERE user_id = :id"), {"id": fresh.treasurer}
+        ).scalar_one()
+    api = apis.make()
+    response = api.login(email)
+    assert response.status_code == 200, response.text
+    return Client(api, TestUser(fresh.treasurer, email, (membership,)), apis.world, fresh.school)

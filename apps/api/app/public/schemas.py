@@ -106,6 +106,8 @@ class PublicCampaignSummary(BaseModel):
     has_cover: bool
     cover_version: int
     items_count: int
+    # The order must say the student and the class (so the management knows to whom to deliver).
+    ask_student_class: bool
 
 
 class PublicCampaignOut(PublicCampaignSummary):

@@ -101,8 +101,21 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
     ("contribution_items", "contribution_items_20_item"): _t(
         B, {INS}, "contribution_items_check_item"
     ),
+    ("contribution_items", "contribution_items_15_copy_cost"): _t(
+        B, {INS}, "contribution_items_copy_cost"
+    ),
     ("contribution_items", "contribution_items_90_total"): _t(
         A, {INS}, "contribution_items_check_total"
+    ),
+    # the delivery of an order (0014)
+    ("campaign_deliveries", "campaign_deliveries_05_immutable"): _t(
+        B, {UPD}, "assert_immutable_columns"
+    ),
+    ("campaign_deliveries", "campaign_deliveries_20_check"): _t(
+        B, {INS, UPD}, "campaign_deliveries_check"
+    ),
+    ("campaign_deliveries", "campaign_deliveries_25_member"): _t(
+        B, {INS, UPD}, "assert_active_member"
     ),
     ("contributions", "contributions_90_campaign_total"): _t(
         A, {INS}, "contribution_items_check_total"
@@ -154,6 +167,7 @@ AUDITED = [
     "campaigns",
     "campaign_items",
     "contribution_items",
+    "campaign_deliveries",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -164,6 +178,7 @@ for _table in [
     "campaigns",
     "campaign_items",
     "contribution_items",
+    "campaign_deliveries",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
@@ -246,6 +261,8 @@ EXPECTED_FUNCTIONS = {
     # the campaigns (0013)
     "campaigns_check_change", "campaign_items_check_state", "contribution_items_check_item",
     "contribution_items_check_total",
+    # the campaigns v2 (0014)
+    "contribution_items_copy_cost", "campaign_deliveries_check",
     # the public flow (0008, ADR-018) and the expiry job (0009, ADR-019)
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",

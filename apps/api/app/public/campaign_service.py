@@ -33,7 +33,7 @@ MIN_ORDER_CENTS = 100
 # `_LIST_OPEN` because a statement is always a constant (nothing is interpolated into SQL).
 _LIST_OPEN = text(
     "SELECT c.id, c.title, c.description, c.ends_on, "
-    "c.cover_storage_key IS NOT NULL AS has_cover, c.cover_version, "
+    "c.cover_storage_key IS NOT NULL AS has_cover, c.cover_version, c.ask_student_class, "
     "(SELECT count(*) FROM campaign_items i WHERE i.campaign_id = c.id "
     " AND i.school_id = c.school_id AND i.is_active) AS items_count "
     "FROM campaigns c WHERE c.school_id = :school AND ("
@@ -172,6 +172,23 @@ def _order_lines(
     return lines
 
 
+def _require_student_and_class(
+    order: OrderIn, values: dict[str, str], errors: list[dict[str, str]]
+) -> None:
+    """A campaign that delivers asks for the student and the class, whatever the school asks on the
+    contribution of the month: they are stored with the order, and are required."""
+    for name in ("student_name", "class_name"):
+        raw: str | None = getattr(order, name)
+        value = raw.strip() if raw else ""
+        if not value:
+            if not any(error["field"] == name for error in errors):
+                errors.append({"field": name, "code": "required"})
+        elif (problem := service.field_problem(name, value)) is not None:
+            errors.append({"field": name, "code": problem})
+        else:
+            values[name] = value
+
+
 def create_order(
     db: Session,
     settings: ApiSettings,
@@ -191,6 +208,8 @@ def create_order(
             raise service.not_found()
         errors: list[dict[str, str]] = []
         values = service.identification_values(school, order, errors)
+        if campaign["ask_student_class"]:
+            _require_student_and_class(order, values, errors)
         lines = _order_lines(db, school, campaign_id, order, errors)
         total = sum(line["unit_price_cents"] * line["quantity"] for line in lines)
         if not errors and not MIN_ORDER_CENTS <= total <= MAX_ORDER_CENTS:

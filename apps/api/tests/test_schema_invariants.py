@@ -17,7 +17,12 @@ from tests.dbsupport import Tenants, transaction
 from tests.financial.test_isolation import TABLES as FINANCIAL_TABLES
 
 REQUEST_TABLES = ("staff_requests", "staff_request_attachments")  # 0012, outside the ledger
-CAMPAIGN_TABLES = ("campaigns", "campaign_items", "contribution_items")  # 0013
+CAMPAIGN_TABLES = (
+    "campaigns",
+    "campaign_items",
+    "contribution_items",
+    "campaign_deliveries",
+)  # 0013, 0014
 
 
 def _constraint(error: IntegrityError) -> str:
