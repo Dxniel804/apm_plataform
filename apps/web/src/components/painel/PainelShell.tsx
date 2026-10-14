@@ -7,13 +7,14 @@ import { PasswordForm } from "@/components/conta/PasswordForm";
 import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
 import { CampaignsArea } from "@/components/personalizacao/CampaignsArea";
 import { RequestsArea } from "@/components/solicitacoes/RequestsArea";
-import { BagIcon, BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, KeyIcon } from "@/components/ui/icons";
+import { BagIcon, BarChartIcon, BoxArrowInRightIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon } from "@/components/ui/icons";
+import { FormModal } from "@/components/ui/FormModal";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
 import { describeAuthError, isSessionLost } from "@/lib/auth-messages";
 import { sectionHref, type PainelSection } from "@/lib/painel-section";
-import { areaHref, areasFor, type PainelArea } from "@/lib/permissions";
+import { areasFor, type PainelArea } from "@/lib/permissions";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { ContextChooser } from "./ContextChooser";
 import { KIND_META } from "./kinds";
@@ -64,6 +65,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
   const [signingOut, setSigningOut] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // "Alterar senha" e uma janela por cima do painel. O endereco antigo /painel/conta continua valendo: abre o resumo ja com a janela.
+  const [passwordOpen, setPasswordOpen] = useState(area === "conta");
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   async function selectMembership(membershipId: string) {
@@ -112,15 +115,22 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
   const areas = areasFor(active.permissions);
   const navItems = navFor(areas, period, { statement: active.permissions.includes("statement:read") });
-  const { title, icon } = titleFor(area, section, areas.manageExpenses, areas.manageRequests);
+  // /painel/conta mostra o resumo por baixo da janela.
+  const shownArea: PainelArea = area === "conta" ? "resumo" : area;
+  const { title, icon } = titleFor(shownArea, section, areas.manageExpenses, areas.manageRequests);
   // O painel e da ESCOLA do vinculo ativo (todo vinculo tem uma, ADR-020). O id vem da sessao; a API ainda
   // confere contra o contexto.
   const schoolId = active.school.id;
 
+  function closePassword() {
+    setPasswordOpen(false);
+    if (area === "conta") router.replace("/painel"); // o endereco volta ao do resumo
+  }
+
   const sidebar = (variant: "bar" | "drawer") => (
     <Sidebar
       items={navItems}
-      area={area}
+      area={shownArea}
       section={section}
       collapsed={variant === "bar" && collapsed}
       onToggleCollapsed={() => writeCollapsed(!collapsed)}
@@ -137,7 +147,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
       }
       userName={session.user.fullName}
       roleLabel={ROLE_LABELS[active.role]}
-      accountHref={areaHref("conta")}
+      onChangePassword={() => setPasswordOpen(true)}
+      passwordOpen={passwordOpen}
       onSignOut={signOut}
       signingOut={signingOut}
     />
@@ -185,15 +196,13 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             </p>
           )}
 
-          {area === "conta" ? (
-            <PasswordForm />
-          ) : area === "despesas" ? (
+          {shownArea === "despesas" ? (
             <ExpensesArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
-          ) : area === "solicitacoes" ? (
+          ) : shownArea === "solicitacoes" ? (
             <RequestsArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
-          ) : area === "personalizacao" ? (
+          ) : shownArea === "personalizacao" ? (
             <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
-          ) : area === "fechamento" ? (
+          ) : shownArea === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : (
             <PainelData
@@ -209,6 +218,12 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
         </main>
       </div>
 
+      {passwordOpen && (
+        <FormModal title="Alterar senha" intro="Ao trocar, as outras sessões abertas com a sua conta são encerradas. Você continua conectado neste navegador." onClose={closePassword}>
+          <PasswordForm onClose={closePassword} />
+        </FormModal>
+      )}
+
       {/* gaveta do menu (celular) */}
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} label="Menu do painel" placement="drawer">
         {sidebar("drawer")}
@@ -219,7 +234,6 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
 /** Titulo e icone do cabecalho, por area e por tipo de lancamento. */
 function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean, manageRequests: boolean): { title: string; icon: ReactNode } {
-  if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={20} /> };
   if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={20} /> };
   if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={20} /> };
   if (area === "personalizacao") return { title: "Campanhas", icon: <BagIcon size={20} /> };

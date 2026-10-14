@@ -113,7 +113,7 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
               value={formatBRL(c.totalInCents)}
               note={`Contribuições ${formatBRL(c.contributionsInCents)} · outras ${formatBRL(c.otherInCents)} · devoluções recebidas ${formatBRL(c.refundsInCents)}`}
             />
-            <Row label="Saídas pagas" value={formatBRL(c.totalOutCents)} note={`Despesas ${formatBRL(c.expensesOutCents)} · reembolsos ${formatBRL(c.reimbursementsOutCents)}`} />
+            <Row label="Total de saídas" value={formatBRL(c.totalOutCents)} note={`Despesas ${formatBRL(c.expensesOutCents)} · reembolsos ${formatBRL(c.reimbursementsOutCents)}`} />
             <Row label="Saldo em caixa no fechamento" value={formatBRL(c.closingBalanceCents)} note="Saldo principal." />
             <Row
               label="Após reembolsos pendentes"

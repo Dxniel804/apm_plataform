@@ -22,17 +22,30 @@ describe("PasswordForm", () => {
   it("troca a senha pela API, limpa os campos e avisa que as outras sessoes foram encerradas", async () => {
     const change = vi.spyOn(api.auth, "changePassword").mockResolvedValue({ ok: true, data: true });
     const user = userEvent.setup();
-    render(<PasswordForm />);
+    render(<PasswordForm onClose={() => {}} />);
     await fill(user, "senha-atual-qualquer", NEW);
     expect(change).toHaveBeenCalledWith("senha-atual-qualquer", NEW);
     expect(await screen.findByRole("status")).toHaveTextContent("Senha alterada. As outras sessões foram encerradas.");
     for (const label of ["Senha atual", "Nova senha", "Repita a nova senha"]) expect(screen.getByLabelText(label)).toHaveValue("");
+    // depois de trocar, o botao de saida passa a ser "Fechar"
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+  });
+
+  it("Cancelar fecha a janela sem chamar a API", async () => {
+    const change = vi.spyOn(api.auth, "changePassword");
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<PasswordForm onClose={onClose} />);
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(change).not.toHaveBeenCalled();
   });
 
   it("valida no cliente: curta, igual a atual, confirmacao diferente, atual vazia; nao chama a API", async () => {
     const change = vi.spyOn(api.auth, "changePassword");
     const user = userEvent.setup();
-    render(<PasswordForm />);
+    render(<PasswordForm onClose={() => {}} />);
     await user.click(screen.getByRole("button", { name: "Alterar senha" }));
     expect(screen.getByText("Informe a senha atual.")).toBeInTheDocument();
 
@@ -57,7 +70,7 @@ describe("PasswordForm", () => {
   it("senha atual incorreta (403): erro no campo e todos os campos limpos", async () => {
     vi.spyOn(api.auth, "changePassword").mockResolvedValue(problem(403, "current_password_incorrect"));
     const user = userEvent.setup();
-    render(<PasswordForm />);
+    render(<PasswordForm onClose={() => {}} />);
     await fill(user, "errada-errada-123", NEW);
     expect(await screen.findByText("A senha atual está incorreta.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nova senha")).toHaveValue("");
@@ -66,7 +79,7 @@ describe("PasswordForm", () => {
   it("422 weak_password: o texto do campo vem do code (too_short, same_as_current)", async () => {
     vi.spyOn(api.auth, "changePassword").mockResolvedValue(problem(422, "weak_password", { fields: [{ field: "new_password", code: "same_as_current" }] }));
     const user = userEvent.setup();
-    render(<PasswordForm />);
+    render(<PasswordForm onClose={() => {}} />);
     await fill(user, "senha-atual-bem-longa", NEW);
     expect(await screen.findByText("A nova senha precisa ser diferente da atual.")).toBeInTheDocument();
   });
@@ -74,7 +87,7 @@ describe("PasswordForm", () => {
   it("429, rede e erro generico em portugues", async () => {
     const change = vi.spyOn(api.auth, "changePassword").mockResolvedValueOnce(problem(429, "rate_limited", { retryAfterSeconds: 90 }));
     const user = userEvent.setup();
-    render(<PasswordForm />);
+    render(<PasswordForm onClose={() => {}} />);
     await fill(user, "senha-atual-bem-longa", NEW);
     expect(await screen.findByRole("alert")).toHaveTextContent("Aguarde 2 minutos");
     change.mockResolvedValueOnce(fail({ kind: "network" }));
@@ -87,7 +100,7 @@ describe("PasswordForm", () => {
     const spies = [vi.spyOn(console, "error"), vi.spyOn(console, "warn"), vi.spyOn(console, "log")];
     vi.spyOn(api.auth, "changePassword").mockResolvedValue(fail({ kind: "network" }));
     const user = userEvent.setup();
-    const { container } = render(<PasswordForm />);
+    const { container } = render(<PasswordForm onClose={() => {}} />);
     await fill(user, "segredo-atual-12345", "segredo-novo-bem-longo");
     await screen.findByRole("alert");
     expect(setItem).not.toHaveBeenCalled();

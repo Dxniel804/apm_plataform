@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/Button";
+import { FormButtons } from "@/components/ui/FormModal";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import { describeAuthError, describeFieldError } from "@/lib/auth-messages";
@@ -12,12 +12,12 @@ const MAX = 128;
 type Field = "current" | "next" | "confirm";
 
 /**
- * Troca de senha (POST /api/v1/auth/password). A API confere a senha atual, exige de 12 a 128 caracteres e
- * uma senha diferente da atual, ENCERRA todas as outras sessoes e abre uma nova neste navegador (cookies
+ * Troca de senha (POST /api/v1/auth/password), para ficar dentro de uma `FormModal` (o titulo e da janela). A API
+ * confere a senha atual, exige de 12 a 128 caracteres e uma senha diferente da atual, ENCERRA todas as outras sessoes e abre uma nova neste navegador (cookies
  * novos na mesma resposta). As senhas so existem nos campos e no corpo do pedido: nao entram em estado do
  * React, URL, log nem storage, e os campos sao limpos depois.
  */
-export function PasswordForm() {
+export function PasswordForm({ onClose }: { onClose: () => void }) {
   const currentRef = useRef<HTMLInputElement>(null);
   const nextRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -77,16 +77,10 @@ export function PasswordForm() {
       method="post"
       noValidate
       onSubmit={submit}
-      aria-labelledby="password-title"
+      aria-label="Alterar senha"
       aria-busy={pending}
-      className="max-w-lg space-y-5"
+      className="space-y-5"
     >
-      <h2 id="password-title" className="text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] font-semibold leading-tight">
-        Alterar senha
-      </h2>
-      <p className="text-sub text-ink-2">
-        Ao trocar, as outras sessões abertas com a sua conta são encerradas. Você continua conectado neste navegador.
-      </p>
       <TextField label="Senha atual" name="current-password" type="password" autoComplete="current-password" inputRef={currentRef} error={errors.current} />
       <TextField
         label="Nova senha"
@@ -104,9 +98,13 @@ export function PasswordForm() {
         {done && <p role="status" className="rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">Senha alterada. As outras sessões foram encerradas.</p>}
       </div>
 
-      <Button type="submit" disabled={pending} aria-busy={pending} className="w-full sm:w-auto sm:min-w-56">
-        {pending ? "Alterando…" : "Alterar senha"}
-      </Button>
+      <FormButtons
+        onCancel={onClose}
+        cancelLabel={done ? "Fechar" : "Cancelar"}
+        submitLabel="Alterar senha"
+        pendingLabel="Alterando…"
+        pending={pending}
+      />
     </form>
   );
 }

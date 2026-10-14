@@ -62,7 +62,7 @@ describe("BalanceChart (Composicao do saldo)", () => {
   });
 });
 
-describe("OutflowSplit (Saidas pagas)", () => {
+describe("OutflowSplit (Total de saidas)", () => {
   it("mostra o total do mes e cada parte com valor e porcentagem", () => {
     render(<OutflowSplit summary={{ ...SUMMARY, totalOutCents: 24000, reimbursementsOutCents: 20800, expensesOutCents: 3200 }} />);
     expect(screen.getByText("Total do mês: R$ 240,00")).toBeInTheDocument();
