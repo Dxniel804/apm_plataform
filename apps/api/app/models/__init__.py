@@ -1,5 +1,11 @@
 from app.models.auth import Invitation, LoginAttempt, UserSession
-from app.models.campaigns import Campaign, CampaignDelivery, CampaignItem, ContributionItem
+from app.models.campaigns import (
+    Campaign,
+    CampaignDelivery,
+    CampaignItem,
+    ContributionFee,
+    ContributionItem,
+)
 from app.models.financial import (
     Contribution,
     Expense,
@@ -28,6 +34,7 @@ __all__ = [
     "Campaign",
     "CampaignDelivery",
     "CampaignItem",
+    "ContributionFee",
     "Category",
     "Contribution",
     "ContributionItem",

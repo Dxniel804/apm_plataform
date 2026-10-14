@@ -127,6 +127,7 @@ def process_notification(
             ),
             scope,
         )
+        _record_fee(db, target, charge[1], expected, payment.fee_cents)
         return _finish(db, event, "PAID", None)
     db.execute(
         text(
@@ -144,6 +145,30 @@ def process_notification(
         scope,
     )
     return _finish(db, event, "REVIEW_REQUIRED", None)
+
+
+def _record_fee(
+    db: Session, target: Any, transaction_id: Any, gross_cents: int, fee_cents: int | None
+) -> None:
+    """What the gateway kept from this payment, written next to the contribution once (the database
+    refuses it for a contribution that is not PAID or for another amount). A provider that does not
+    say the fee leaves nothing: the fee is then seen in the bank statement (M5)."""
+    if fee_cents is None or not 0 <= fee_cents <= gross_cents:
+        return
+    db.execute(
+        text(
+            "INSERT INTO contribution_fees (organization_id, school_id, transaction_id, "
+            "gross_cents, gateway_fee_cents) VALUES (:org, :school, :tx, :gross, :fee) "
+            "ON CONFLICT DO NOTHING"
+        ),
+        {
+            "org": target.organization_id,
+            "school": target.school_id,
+            "tx": transaction_id,
+            "gross": gross_cents,
+            "fee": fee_cents,
+        },
+    )
 
 
 def _finish(

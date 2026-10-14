@@ -13,6 +13,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKeyConstraint,
@@ -253,4 +254,46 @@ class CampaignDelivery(ScopeMixin, Base):
     status: Mapped[str] = mapped_column(Text, server_default=text("'DELIVERED'"))
     changed_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ContributionFee(ScopeMixin, Base):
+    """The fee the gateway kept from a PAID contribution (0016): written once, with the gross
+    amount of the ledger row, and never changed. `net_cents` is computed by the database."""
+
+    __tablename__ = "contribution_fees"
+    __table_args__ = (
+        *scope_constraints("contribution_fees"),
+        ForeignKeyConstraint(
+            ["transaction_id", "organization_id", "school_id"],
+            [
+                "contributions.transaction_id",
+                "contributions.organization_id",
+                "contributions.school_id",
+            ],
+            name="fk_contribution_fees_transaction_id_contributions",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("gross_cents > 0", name="gross_positive"),
+        CheckConstraint(
+            "gateway_fee_cents >= 0 AND gateway_fee_cents <= gross_cents", name="fee_range"
+        ),
+        CheckConstraint(in_list("fee_payer", ("SCHOOL", "PAYER")), name="fee_payer_valid"),
+        Index("ix_contribution_fees_school_id", "school_id"),
+    )
+
+    transaction_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    school_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    gross_cents: Mapped[int] = mapped_column(BigInteger)
+    gateway_fee_cents: Mapped[int] = mapped_column(BigInteger)
+    fee_payer: Mapped[str] = mapped_column(Text, server_default=text("'SCHOOL'"))
+    net_cents: Mapped[int] = mapped_column(
+        BigInteger,
+        Computed(
+            "CASE fee_payer WHEN 'SCHOOL' THEN gross_cents - gateway_fee_cents "
+            "ELSE gross_cents END",
+            persisted=True,
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

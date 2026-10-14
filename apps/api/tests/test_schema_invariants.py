@@ -22,7 +22,8 @@ CAMPAIGN_TABLES = (
     "campaign_items",
     "contribution_items",
     "campaign_deliveries",
-)  # 0013, 0014
+    "contribution_fees",
+)  # 0013, 0014, 0016
 
 
 def _constraint(error: IntegrityError) -> str:

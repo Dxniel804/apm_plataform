@@ -18,6 +18,8 @@ from typing import Protocol
 from app.core.errors import ProblemError
 
 SANDBOX = "SANDBOX"
+# The fee the fake bank keeps from every payment (R$ 0,80, like a real gateway), never above it.
+SANDBOX_FEE_CENTS = 80
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,8 @@ class ProviderPayment:
     received_amount_cents: int | None
     paid_at: datetime | None
     end_to_end_id: str | None
+    # What the gateway kept from this payment, in cents (None: the provider does not say).
+    fee_cents: int | None = None
 
 
 class PixProvider(Protocol):
@@ -92,8 +96,14 @@ class SandboxPixProvider:
             if record.paid_at is None:
                 expired = datetime.now(UTC) >= record.expires_at
                 return ProviderPayment(txid, "EXPIRED" if expired else "PENDING", None, None, None)
+            received = record.received_amount_cents
             return ProviderPayment(
-                txid, "PAID", record.received_amount_cents, record.paid_at, record.end_to_end_id
+                txid,
+                "PAID",
+                received,
+                record.paid_at,
+                record.end_to_end_id,
+                fee_cents=None if received is None else min(SANDBOX_FEE_CENTS, received),
             )
 
     def simulate_payment(self, txid: str, amount_cents: int | None = None) -> ChargeTarget | None:

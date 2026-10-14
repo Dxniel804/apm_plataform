@@ -217,6 +217,7 @@ def test_the_summary_repeats_the_columns_of_statement_summary_with_both_balances
         "pending_reimbursements_cents": 1500,
         "balance_after_pending_cents": 10650,
         "entries_count": 6,
+        "gateway_fees_cents": 0,  # no Pix of the gateway in this month
     }
 
 

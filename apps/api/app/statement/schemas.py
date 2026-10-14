@@ -39,6 +39,12 @@ class StatementEntryOut(BaseModel):
         default=None,
         description="The month a contribution is for (YYYY-MM), when the family said it.",
     )
+    gateway_fee_cents: int | None = Field(
+        default=None, description="What the payment gateway kept, for a contribution paid by Pix."
+    )
+    net_cents: int | None = Field(
+        default=None, description="What the school receives from that payment (gross minus fee)."
+    )
     opening_balance_cents: int = Field(
         description="The balance before the period, over ALL the entries (filters leave it as is)."
     )
@@ -78,6 +84,11 @@ class SummaryOut(BaseModel):
         description="SECONDARY balance: cash minus the reimbursements still to be paid."
     )
     entries_count: int
+    gateway_fees_cents: int = Field(
+        default=0,
+        description="The fees the gateway kept from the contributions settled in the month. "
+        "The cash figures above are GROSS; the bank receives this much less.",
+    )
 
 
 class SeriesPoint(BaseModel):

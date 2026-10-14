@@ -331,6 +331,9 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `contribution_items_20_item` | BEFORE INSERT | `contribution_items_check_item`: the product is on sale now (campaign ACTIVE and inside its dates, product active, quantity within its limit) and the copy is its CURRENT name and price |
 | | `contribution_items_90_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: the amount of the contribution is the sum of its items |
 | | `contribution_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name of the product) |
+| `contribution_fees` (0016, the fee of the gateway of a paid contribution) | `contribution_fees_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
+| | `contribution_fees_20_check` | BEFORE INSERT | `contribution_fees_check`: only for a PAID contribution, over the amount of its own ledger row |
+| | `contribution_fees_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
 | `campaign_deliveries` (0014, the delivery of an order) | `campaign_deliveries_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: the order, the scope and the creation never change |
 | | `campaign_deliveries_20_check` | BEFORE INSERT OR UPDATE | `campaign_deliveries_check`: DELIVERED only for a PAID order of a campaign |
 | | `campaign_deliveries_25_member` | BEFORE INSERT OR UPDATE | `assert_active_member` (who marked it) |

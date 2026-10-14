@@ -39,6 +39,7 @@ EXPECTED_TABLES = {
     "campaigns",
     "contribution_items",
     "campaign_deliveries",
+    "contribution_fees",
     *FINANCIAL_TABLES,
 }
 # 30 policies of the tenancy core and of 0006, plus one SELECT, one INSERT and (where a column can
@@ -46,12 +47,14 @@ EXPECTED_TABLES = {
 # expense_attachments having no UPDATE, plus the 4 SELECT policies of apm_definer of 0008 and the
 # 2 of 0009.
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3
-)  # + requests (0012) + campaigns (0013) + deliveries (0014)
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2
+)  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016)
 # 7 functions of the tenancy core and of 0006 (app_org, app_school, app_session_id, app_user_id and
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.
-EXPECTED_FUNCTIONS = 7 + 35 + 3 + 1 + 2 + 4 + 2  # + requests (0012) + campaigns (0013) + 0014
+EXPECTED_FUNCTIONS = (
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1
+)  # + requests (0012) + campaigns (0013) + 0014 + 0016
 CREATED_ROLES = ("apm_app", "apm_owner", "apm_definer")
 
 

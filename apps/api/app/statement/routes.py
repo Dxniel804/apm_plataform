@@ -100,8 +100,13 @@ def list_statement(
     months = queries.reference_months(
         db, scope.school_id, [item.transaction_id for item in items if item.kind == "CONTRIBUTION"]
     )
+    fees = queries.fees_of(
+        db, scope.school_id, [item.transaction_id for item in items if item.kind == "CONTRIBUTION"]
+    )
     for item in items:
         item.reference_month = months.get(item.transaction_id)
+        if item.transaction_id in fees:
+            item.gateway_fee_cents, item.net_cents = fees[item.transaction_id]
     next_cursor = (
         encode_cursor(settled_at=items[-1].settled_at, reference_code=items[-1].reference_code)
         if more
@@ -134,7 +139,13 @@ def statement_summary(
     row = queries.fetch_summary(db, scope.school_id, start, end)
     if row is None:
         raise not_found()
-    return SummaryOut(period=chosen, period_start=start, period_end=end, **row)
+    return SummaryOut(
+        period=chosen,
+        period_start=start,
+        period_end=end,
+        gateway_fees_cents=queries.fees_in_month(db, scope.school_id, start, end),
+        **row,
+    )
 
 
 def _periods_ending_at(chosen: str, months: int) -> list[str]:

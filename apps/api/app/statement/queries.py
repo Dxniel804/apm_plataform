@@ -37,6 +37,37 @@ def reference_months(db: Session, school_id: UUID, ids: list[UUID]) -> dict[UUID
     return {row[0]: row[1] for row in rows}
 
 
+def fees_of(db: Session, school_id: UUID, ids: list[UUID]) -> dict[UUID, tuple[int, int]]:
+    """For each contribution of the page that has one, (gateway fee, net) in cents."""
+    if not ids:
+        return {}
+    rows = db.execute(
+        text(
+            "SELECT transaction_id, gateway_fee_cents, net_cents FROM contribution_fees "
+            "WHERE school_id = :school_id AND transaction_id = ANY(:ids)"
+        ),
+        {"school_id": school_id, "ids": ids},
+    ).all()
+    return {row[0]: (int(row[1]), int(row[2])) for row in rows}
+
+
+def fees_in_month(db: Session, school_id: UUID, start: date, end: date) -> int:
+    """The fees of the contributions settled in the month (the same rows the statement lists)."""
+    total: int = db.execute(
+        text(
+            "SELECT coalesce(sum(cf.gateway_fee_cents), 0) FROM contribution_fees cf "
+            "JOIN financial_transactions f ON f.id = cf.transaction_id "
+            "AND f.school_id = cf.school_id "
+            "JOIN school_settings st ON st.school_id = cf.school_id "
+            "WHERE cf.school_id = :school_id AND f.settled_at IS NOT NULL "
+            "AND (f.settled_at AT TIME ZONE st.timezone)::date >= :start "
+            "AND (f.settled_at AT TIME ZONE st.timezone)::date <= :end"
+        ),
+        {"school_id": school_id, "start": start, "end": end},
+    ).scalar_one()
+    return int(total)
+
+
 def fetch_entries(
     db: Session,
     school_id: UUID,
