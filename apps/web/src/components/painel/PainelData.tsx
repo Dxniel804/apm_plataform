@@ -8,12 +8,14 @@ import { CalendarIcon, CashCoinIcon, ChevronDownThinIcon, DownloadIcon, XLgIcon 
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import { contributionsPdfHref } from "@/lib/api/statement";
-import type { ApiError, ApiResult, Page, PendingEntry, StatementEntry, StatementSummary } from "@/lib/api/types";
+import type { ApiError, ApiResult, GoalAdhesion, Page, PendingEntry, SeriesPoint, StatementEntry, StatementSummary } from "@/lib/api/types";
 import { describeAuthError } from "@/lib/auth-messages";
 import { sectionHref, type PainelSection } from "@/lib/painel-section";
 import { KIND_LABELS, type MovementKind } from "@/lib/status";
 import { PENDING_SECTIONS, periodLabel, pendingSectionTitle, recentPeriods, currentLocalPeriod } from "@/lib/statement-labels";
 import { CashContributionForm } from "./CashContributionForm";
+import { EvolutionChart } from "./EvolutionChart";
+import { GoalCard } from "./GoalCard";
 import { KIND_META } from "./kinds";
 import { PendingRows, StatementList } from "./StatementList";
 import { StatementIndicators } from "./StatementIndicators";
@@ -104,6 +106,22 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
     };
   }, [schoolId, period, summaryKey]);
   const summary: Res<StatementSummary> = summaryState?.key === summaryKey ? summaryState.res : LOADING;
+
+  // O grafico de evolucao e o cartao de meta e adesao: so no resumo. Se falharem, o resto da tela segue.
+  const extrasKey = `${schoolId}|${period ?? ""}|${reload}`;
+  const [extrasState, setExtrasState] = useState<{ key: string; series: SeriesPoint[] | null; goal: GoalAdhesion | null } | null>(null);
+  useEffect(() => {
+    if (section !== "resumo") return;
+    let cancelled = false;
+    void Promise.all([api.statement.series(schoolId, { period, months: 6 }), api.statement.goal(schoolId, period)]).then(([series, goal]) => {
+      if (!cancelled) setExtrasState({ key: extrasKey, series: series.ok ? series.data : null, goal: goal.ok ? goal.data : null });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolId, period, section, extrasKey]);
+  const extras = extrasState?.key === extrasKey ? extrasState : null;
+  const canConfigure = permissions.includes("school_settings:manage");
 
   const entriesKey = `${schoolId}|${period ?? ""}|${kind ?? ""}|${reload}`;
   const [entriesState, setEntriesState] = useState<{ key: string; res: Res<Page<StatementEntry>> } | null>(null);
@@ -215,7 +233,16 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
         <div className="space-y-8">
           {summary.state === "loading" && <Skeleton label="Carregando o resumo do mês…" />}
           {summary.state === "ready" && (
-            <StatementIndicators summary={summary.data} pendings={canReadStatement ? <PendingBlock pending={pending} /> : undefined} />
+            <StatementIndicators
+              summary={summary.data}
+              pendings={
+                <>
+                  {extras?.goal && <GoalCard goal={extras.goal} canConfigure={canConfigure} />}
+                  {extras?.series && <EvolutionChart points={extras.series} />}
+                  {canReadStatement && <PendingBlock pending={pending} />}
+                </>
+              }
+            />
           )}
           {summary.state === "forbidden" && <Notice tone="info">O seu perfil não tem acesso aos números desta escola.</Notice>}
           {summary.state === "error" && <Notice tone="bad">{summary.message}</Notice>}

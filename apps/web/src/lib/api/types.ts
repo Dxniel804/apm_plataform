@@ -185,6 +185,24 @@ export interface Receipt {
 // ---------------------------------------------------------------- REAL: extrato do painel (docs/statement.md)
 
 /** Colunas de statement_summary: a API nao soma nada e o site tambem nao. Dinheiro em centavos. */
+/** Um mes do grafico de evolucao: os mesmos numeros do resumo, calculados no servidor. */
+export interface SeriesPoint {
+  period: string;
+  totalInCents: Cents;
+  totalOutCents: Cents;
+  closingBalanceCents: Cents;
+}
+
+/** O cartao "meta e adesao": fala de CONTRIBUICOES, nunca de familias (a identificacao e opcional). */
+export interface GoalAdhesion {
+  period: string;
+  /** Nulo quando a escola nao definiu a meta (Configuracoes). */
+  goalCents: Cents | null;
+  collectedCents: Cents;
+  expectedContributions: number | null;
+  paidContributions: number;
+}
+
 export interface StatementSummary {
   /** YYYY-MM no fuso da escola. */
   period: string;

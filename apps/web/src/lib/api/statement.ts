@@ -4,8 +4,10 @@ import type {
   ApiResult,
   CashContributionInput,
   CashContributionResult,
+  GoalAdhesion,
   Page,
   PendingEntry,
+  SeriesPoint,
   StatementEntry,
   StatementSummary,
 } from "./types";
@@ -201,4 +203,43 @@ export function recordCashContribution(
     ...options,
     headers: { ...options.headers, "Idempotency-Key": idempotencyKey },
   });
+}
+
+const PERIOD_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function parseSeries(body: unknown): SeriesPoint[] | null {
+  if (typeof body !== "object" || body === null || !Array.isArray((body as { points?: unknown }).points)) return null;
+  const points: SeriesPoint[] = [];
+  for (const raw of (body as { points: unknown[] }).points) {
+    if (typeof raw !== "object" || raw === null) return null;
+    const r = raw as Record<string, unknown>;
+    const totalInCents = int(r.total_in_cents);
+    const totalOutCents = int(r.total_out_cents);
+    const closingBalanceCents = int(r.closing_balance_cents);
+    if (typeof r.period !== "string" || !PERIOD_RE.test(r.period) || totalInCents === null || totalOutCents === null || closingBalanceCents === null) return null;
+    points.push({ period: r.period, totalInCents, totalOutCents, closingBalanceCents });
+  }
+  return points;
+}
+
+/** GET .../statement/series: os ultimos meses (do mais antigo ao pedido), para o grafico de evolucao. */
+export function getSeries(schoolId: string, params: { period?: string; months?: number } = {}, options?: RequestOptions): Promise<ApiResult<SeriesPoint[]>> {
+  return apiGet(`${school(schoolId)}/statement/series${query({ period: params.period, months: params.months === undefined ? undefined : String(params.months) })}`, (body, status) => (status === 200 ? parseSeries(body) : null), options);
+}
+
+function parseGoal(body: unknown): GoalAdhesion | null {
+  if (typeof body !== "object" || body === null) return null;
+  const r = body as Record<string, unknown>;
+  const goal = r.goal_cents === null || r.goal_cents === undefined ? null : int(r.goal_cents);
+  const expected = r.expected_contributions === null || r.expected_contributions === undefined ? null : int(r.expected_contributions);
+  const collected = int(r.collected_cents);
+  const paid = int(r.paid_contributions);
+  if (typeof r.period !== "string" || !PERIOD_RE.test(r.period) || collected === null || paid === null) return null;
+  if ((r.goal_cents != null && goal === null) || (r.expected_contributions != null && expected === null)) return null;
+  return { period: r.period, goalCents: goal, collectedCents: collected, expectedContributions: expected, paidContributions: paid };
+}
+
+/** GET .../statement/goal: arrecadado contra a meta e contribuicoes pagas contra as esperadas. */
+export function getGoal(schoolId: string, period?: string, options?: RequestOptions): Promise<ApiResult<GoalAdhesion>> {
+  return apiGet(`${school(schoolId)}/statement/goal${query({ period })}`, (body, status) => (status === 200 ? parseGoal(body) : null), options);
 }

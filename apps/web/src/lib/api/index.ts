@@ -18,7 +18,7 @@ import {
   cancelStaffRequest, createStaffRequest, downloadRequestPhoto, getStaffRequest, listStaffRequests, resolveStaffRequest, startStaffRequest,
   uploadRequestPhoto,
 } from "./staff-requests";
-import { getPending, getStatement, getSummary, recordCashContribution } from "./statement";
+import { getGoal, getPending, getSeries, getStatement, getSummary, recordCashContribution } from "./statement";
 import { downloadPoster, getPublicLink, getSchoolSettings, updateSchoolSettings } from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
@@ -103,6 +103,8 @@ export const api: {
     summary: typeof getSummary;
     entries: typeof getStatement;
     pending: typeof getPending;
+    series: typeof getSeries;
+    goal: typeof getGoal;
     recordCash: typeof recordCashContribution;
   };
   auth: {
@@ -184,6 +186,8 @@ export const api: {
     summary: getSummary,
     entries: getStatement,
     pending: getPending,
+    series: getSeries,
+    goal: getGoal,
     recordCash: recordCashContribution,
   },
 };

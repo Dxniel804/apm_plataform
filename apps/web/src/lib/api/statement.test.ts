@@ -121,3 +121,24 @@ describe("recordCashContribution e PDF", () => {
     expect(contributionsPdfHref(SCHOOL_ID, "2026-10")).toBe(`/api/v1/schools/${SCHOOL_ID}/reports/contributions.pdf?period=2026-10`);
   });
 });
+
+describe("serie e meta (M3)", () => {
+  it("serie: um ponto por mes, em camelCase, e recusa numero ou mes mal formado", async () => {
+    const { getSeries } = await import("./statement");
+    const body = { period: "2026-10", points: [{ period: "2026-09", total_in_cents: 100, total_out_cents: 40, closing_balance_cents: 60 }] };
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const result = await getSeries("s1", { period: "2026-10", months: 6 }, { fetchImpl: f });
+    expect(f.mock.calls[0]![0]).toContain("/statement/series?period=2026-10&months=6");
+    expect(result).toMatchObject({ ok: true, data: [{ period: "2026-09", totalInCents: 100, totalOutCents: 40, closingBalanceCents: 60 }] });
+    const bad = vi.fn().mockResolvedValue(new Response(JSON.stringify({ points: [{ period: "setembro", total_in_cents: 1, total_out_cents: 1, closing_balance_cents: 1 }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    expect((await getSeries("s1", {}, { fetchImpl: bad })).ok).toBe(false);
+  });
+
+  it("meta: aceita meta nula e recusa texto no lugar do numero", async () => {
+    const { getGoal } = await import("./statement");
+    const mk = (b: unknown) => vi.fn().mockResolvedValue(new Response(JSON.stringify(b), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const ok = await getGoal("s1", undefined, { fetchImpl: mk({ period: "2026-10", goal_cents: null, collected_cents: 5000, expected_contributions: null, paid_contributions: 2 }) });
+    expect(ok).toMatchObject({ ok: true, data: { goalCents: null, collectedCents: 5000, expectedContributions: null, paidContributions: 2 } });
+    expect((await getGoal("s1", undefined, { fetchImpl: mk({ period: "2026-10", goal_cents: "muito", collected_cents: 1, expected_contributions: null, paid_contributions: 0 }) })).ok).toBe(false);
+  });
+});
