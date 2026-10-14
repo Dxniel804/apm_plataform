@@ -10,7 +10,8 @@ Atualizado em 2026-10-14. **Ordem aprovada pelo dono em 14/10** ("go ahead nas s
 | **M1** | **Concluído em 2026-10-14**, na branch `feat/m1-campaigns-v2` (local, sem push). Migração 0014; API (resumo, pedidos, entrega, PDF); página `/painel/campanhas/{id}` com abas. Verificado: 3889 testes da API, `ruff`, `mypy` e posture; `tsc`, lint e 679 testes do site (Node 22); e2e com login real 163 passou e 21 ignorados |
 | **M2** | **Concluído em 2026-10-14**, branch `feat/m2-school-link` (local). Migração 0015; mês de referência da contribuição; `/painel/configuracoes` (link, QR, cartaz PDF, valores, metas); prévia ao compartilhar. Domínio do link ainda a decidir (lido de `PUBLIC_BASE_URL`) |
 | **M3** | **Concluído em 2026-10-14**, branch `feat/m3-dashboard` (local). Dashboard com gráfico de evolução (6 meses) e cartão "Meta e adesão". Sem migração |
-| M4 a M9 | Aguardando |
+| **M4** | **Concluído em 2026-10-14**, branch `feat/m4-fees` (local). Migração 0016: tarifa do gateway ao lado do valor bruto (sem split, sem tarifa da plataforma). Quem paga a tarifa: por enquanto a escola; a opção "o responsável paga" fica no banco, sem uso, até você decidir |
+| M5 a M9 | Aguardando |
 
 Base: `docs/thelastversion.md`, `docs/arquiteturasystemforklin.md`, as decisões da conversa de 14/10 e o código verificado no mesmo dia. Etiquetas, como no documento da arquitetura: **[HOJE]** existe e foi verificado, **[PLANEJADO]** foi desenhado e não existe, **[ABERTO]** depende de decisão do dono.
 
