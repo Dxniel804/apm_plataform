@@ -80,6 +80,36 @@ class SummaryOut(BaseModel):
     entries_count: int
 
 
+class SeriesPoint(BaseModel):
+    """One month of the evolution chart: the same figures as `SummaryOut`, nothing recomputed."""
+
+    period: str = Field(examples=["2026-09"])
+    total_in_cents: int
+    total_out_cents: int
+    closing_balance_cents: int
+
+
+class SeriesOut(BaseModel):
+    """The last months, oldest first, ending at `period`. Every point comes from
+    `statement_summary`,
+    so the chart, the cards and the monthly closing always agree."""
+
+    period: str
+    points: list[SeriesPoint]
+
+
+class GoalOut(BaseModel):
+    """The "goal and adhesion" card: what the month collected against the goal of the school, and
+    how many contributions were paid against the expected number. It speaks of contributions, never
+    of families: the identification is optional, so families cannot be counted."""
+
+    period: str
+    goal_cents: int | None = Field(description="The monthly goal; null when the school set none.")
+    collected_cents: int = Field(description="Contributions of the guardians settled in the month.")
+    expected_contributions: int | None
+    paid_contributions: int = Field(description="How many contributions were paid in the month.")
+
+
 class PendingEntryOut(BaseModel):
     """One row of `statement_pending`: not settled, so outside the balance."""
 

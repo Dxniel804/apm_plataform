@@ -18,10 +18,13 @@ from app.statement.deps import (
     require_any,
     responses_of,
 )
-from app.statement.periods import PERIOD_PATTERN
+from app.statement.periods import PERIOD_PATTERN, month_bounds
 from app.statement.schemas import (
+    GoalOut,
     PendingEntryOut,
     PendingPage,
+    SeriesOut,
+    SeriesPoint,
     StatementEntryOut,
     StatementPage,
     SummaryOut,
@@ -132,6 +135,82 @@ def statement_summary(
     if row is None:
         raise not_found()
     return SummaryOut(period=chosen, period_start=start, period_end=end, **row)
+
+
+def _periods_ending_at(chosen: str, months: int) -> list[str]:
+    """`months` calendar months, oldest first, the last one being `chosen` (YYYY-MM)."""
+    index = int(chosen[:4]) * 12 + int(chosen[5:7]) - 1
+    return [f"{(i // 12):04d}-{(i % 12) + 1:02d}" for i in range(index - months + 1, index + 1)]
+
+
+@router.get(
+    "/series",
+    operation_id="statement_series",
+    summary="Entries, outflows and the cash balance of the last months, for the chart",
+    response_model=SeriesOut,
+    responses=responses_of(401, 403, 404, 409, 422),
+    openapi_extra=permission_extra(Permission.STATEMENT_READ, Permission.REPORTS_READ_AGGREGATE),
+)
+def statement_series(
+    principal: Annotated[
+        Principal,
+        Depends(require_any(Permission.STATEMENT_READ, Permission.REPORTS_READ_AGGREGATE)),
+    ],
+    scope: InSchool,
+    db: TenantDb,
+    period: Period = None,
+    months: Annotated[int, Query(ge=2, le=12, description="How many months (2 to 12).")] = 6,
+) -> SeriesOut:
+    """Aggregates only (no person in them), so the read-only `viewer` may see it. Each month is
+    the answer of `statement_summary`, so the chart never disagrees with the cards or the
+    closing."""
+    chosen, _, _ = month_of(db, scope, period)
+    points: list[SeriesPoint] = []
+    for each in _periods_ending_at(chosen, months):
+        start, end = month_bounds(each)
+        row = queries.fetch_summary(db, scope.school_id, start, end)
+        if row is None:
+            raise not_found()
+        points.append(
+            SeriesPoint(
+                period=each,
+                total_in_cents=row["total_in_cents"],
+                total_out_cents=row["total_out_cents"],
+                closing_balance_cents=row["closing_balance_cents"],
+            )
+        )
+    return SeriesOut(period=chosen, points=points)
+
+
+@router.get(
+    "/goal",
+    operation_id="statement_goal",
+    summary="Goal and adhesion of a month: collected against the goal, paid against the expected",
+    response_model=GoalOut,
+    responses=responses_of(401, 403, 404, 409, 422),
+    openapi_extra=permission_extra(Permission.STATEMENT_READ, Permission.REPORTS_READ_AGGREGATE),
+)
+def statement_goal(
+    principal: Annotated[
+        Principal,
+        Depends(require_any(Permission.STATEMENT_READ, Permission.REPORTS_READ_AGGREGATE)),
+    ],
+    scope: InSchool,
+    db: TenantDb,
+    period: Period = None,
+) -> GoalOut:
+    chosen, start, end = month_of(db, scope, period)
+    row = queries.fetch_summary(db, scope.school_id, start, end)
+    if row is None:
+        raise not_found()
+    goal, expected = queries.school_goals(db, scope.school_id)
+    return GoalOut(
+        period=chosen,
+        goal_cents=goal,
+        collected_cents=row["contributions_in_cents"],
+        expected_contributions=expected,
+        paid_contributions=queries.count_paid_contributions(db, scope.school_id, start, end),
+    )
 
 
 @router.get(

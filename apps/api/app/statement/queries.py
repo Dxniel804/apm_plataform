@@ -94,6 +94,31 @@ def fetch_summary(db: Session, school_id: UUID, start: date, end: date) -> dict[
     return None if row is None else dict(row)
 
 
+def count_paid_contributions(db: Session, school_id: UUID, start: date, end: date) -> int:
+    """How many contributions of the guardians were settled in the month (the same rows the
+    statement lists; campaign sales and other income are not contributions)."""
+    count: int = db.execute(
+        text(
+            "SELECT count(*) FROM statement_entries(:school_id, :start, :end) e "
+            "WHERE e.kind = 'CONTRIBUTION' AND e.report_group = 'CONTRIBUTIONS'"
+        ),
+        {"school_id": school_id, "start": start, "end": end},
+    ).scalar_one()
+    return int(count)
+
+
+def school_goals(db: Session, school_id: UUID) -> tuple[int | None, int | None]:
+    """The monthly goal and the number of contributions the school expects (null: not set)."""
+    row = db.execute(
+        text(
+            "SELECT monthly_goal_cents, expected_contributions FROM school_settings "
+            "WHERE school_id = :school_id"
+        ),
+        {"school_id": school_id},
+    ).one_or_none()
+    return (None, None) if row is None else (row[0], row[1])
+
+
 def fetch_pending(
     db: Session,
     school_id: UUID,
