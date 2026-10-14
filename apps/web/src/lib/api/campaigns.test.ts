@@ -108,7 +108,7 @@ describe("escrita", () => {
     await clearCampaignImage(SCHOOL_ID, CAMPAIGN_ID, ITEM_A, { fetchImpl: d, csrfToken: csrf });
     expect(init(d).method).toBe("DELETE");
 
-    const blob = vi.fn().mockResolvedValue(new Response(new Blob(["x"], { type: "image/png" }), { status: 200, headers: { "Content-Type": "image/png" } }));
+    const blob = vi.fn().mockResolvedValue(new Response("x", { status: 200, headers: { "Content-Type": "image/png" } }));
     const shown = await downloadCampaignImage(SCHOOL_ID, CAMPAIGN_ID, undefined, { fetchImpl: blob });
     expect(url(blob)).toBe(`${base}/${CAMPAIGN_ID}/image`);
     expect(shown.ok).toBe(true);
