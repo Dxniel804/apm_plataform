@@ -8,7 +8,8 @@ Atualizado em 2026-10-14. **Ordem aprovada pelo dono em 14/10** ("go ahead nas s
 |---|---|
 | **M0** | **Concluído em 2026-10-14**, na branch `feat/m0-close-redesign` (local, sem push). Verificado: `tsc`, `lint`, 639 testes (Node 22), e2e com login real 162 passou e 20 ignorados |
 | **M1** | **Concluído em 2026-10-14**, na branch `feat/m1-campaigns-v2` (local, sem push). Migração 0014; API (resumo, pedidos, entrega, PDF); página `/painel/campanhas/{id}` com abas. Verificado: 3889 testes da API, `ruff`, `mypy` e posture; `tsc`, lint e 679 testes do site (Node 22); e2e com login real 163 passou e 21 ignorados |
-| M2 a M9 | Aguardando |
+| **M2** | **Concluído em 2026-10-14**, branch `feat/m2-school-link` (local). Migração 0015; mês de referência da contribuição; `/painel/configuracoes` (link, QR, cartaz PDF, valores, metas); prévia ao compartilhar. Domínio do link ainda a decidir (lido de `PUBLIC_BASE_URL`) |
+| M3 a M9 | Aguardando |
 
 Base: `docs/thelastversion.md`, `docs/arquiteturasystemforklin.md`, as decisões da conversa de 14/10 e o código verificado no mesmo dia. Etiquetas, como no documento da arquitetura: **[HOJE]** existe e foi verificado, **[PLANEJADO]** foi desenhado e não existe, **[ABERTO]** depende de decisão do dono.
 
