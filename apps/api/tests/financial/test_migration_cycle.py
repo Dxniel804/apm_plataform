@@ -27,7 +27,7 @@ def _module() -> Any:
 
 
 BASE: str = _module().down_revision
-HEAD_LABEL = "0014_campaign_costs_deliveries (head)"
+HEAD_LABEL = "0015_school_link_settings (head)"
 FINANCIAL = {
     "audit_logs", "categories", "contributions", "expense_attachments", "expenses",
     "financial_transactions", "monthly_closings", "payment_accounts", "pix_charges", "refunds",

@@ -313,6 +313,7 @@ def test_what_each_role_may_do() -> None:
         Permission.REQUESTS_READ_ALL,
         Permission.REQUESTS_MANAGE,
         Permission.CAMPAIGNS_MANAGE,
+        Permission.SCHOOL_SETTINGS_MANAGE,
     }
     assert permissions_for("staff") == {
         Permission.EXPENSES_SUBMIT,

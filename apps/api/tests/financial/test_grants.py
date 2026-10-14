@@ -50,6 +50,7 @@ INSERTABLE: dict[str, set[str]] = {
         "receipt_expires_at",
         "idempotency_key",
         "campaign_id",  # the campaign an order belongs to (0013), written once with the row
+        "reference_month",  # the month it is for (0015), written once with the row
     },
     "expenses": {
         "transaction_id",
@@ -196,6 +197,9 @@ UPDATABLE: dict[str, set[str]] = {
         "brand_accent",
         "brand_accent_contrast",
         "approval_limit_cents",
+        "monthly_goal_cents",
+        "expected_contributions",
+        "free_amount_text",
         "updated_at",
     },
     "payment_accounts": {

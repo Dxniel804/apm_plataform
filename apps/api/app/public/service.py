@@ -11,7 +11,7 @@ import math
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, NoReturn
 
 from sqlalchemy import text
@@ -219,6 +219,52 @@ def refuse(errors: list[dict[str, str]]) -> None:
         raise ProblemError(422, "validation_error", "Invalid request", errors=errors)
 
 
+def school_today(db: Session, school: PublicSchool) -> date:
+    """Today in the time zone of the school (the month of a contribution is the school's month)."""
+    today: date = db.execute(
+        text(
+            "SELECT (now() AT TIME ZONE timezone)::date FROM school_settings WHERE school_id = :s"
+        ),
+        {"s": school.school_id},
+    ).scalar_one()
+    return today
+
+
+def free_amount_text(db: Session, school: PublicSchool) -> str | None:
+    """The sentence the school wrote for the family next to the free amount (the settings table is
+    read inside the school: the narrow function that finds the school does not carry it)."""
+    text_value: str | None = db.execute(
+        text("SELECT free_amount_text FROM school_settings WHERE school_id = :s"),
+        {"s": school.school_id},
+    ).scalar_one_or_none()
+    return text_value
+
+
+def offered_months(today: date) -> list[date]:
+    """The months a contribution can be for: the current one and the eleven before it, oldest first
+    (the first day of each)."""
+    months: list[date] = []
+    year, month = today.year, today.month
+    for _ in range(12):
+        months.append(date(year, month, 1))
+        year, month = (year, month - 1) if month > 1 else (year - 1, 12)
+    return list(reversed(months))
+
+
+def reference_month_value(
+    db: Session, school: PublicSchool, raw: str | None, errors: list[dict[str, str]]
+) -> date | None:
+    """The first day of the month the family chose, or None when it chose none. A month the server
+    does not offer is an error: a contribution is never "for" a year ago or for next year."""
+    if raw is None:
+        return None
+    chosen = date(int(raw[:4]), int(raw[5:7]), 1)
+    if chosen not in offered_months(school_today(db, school)):
+        errors.append({"field": "reference_month", "code": "out_of_range"})
+        return None
+    return chosen
+
+
 def clean_input(school: PublicSchool, data: ContributionIn) -> dict[str, str]:
     """The identification to store: only what the school asks for, trimmed, and valid. Raises the
     422 with a code per field when the amount or a required field is wrong."""
@@ -321,8 +367,13 @@ def create_contribution(
     existing = existing_contribution(db, school, key)
     if existing is None:
         values = clean_input(school, data)
+        month_errors: list[dict[str, str]] = []
+        reference_month = reference_month_value(db, school, data.reference_month, month_errors)
+        refuse(month_errors)
         try:
-            transaction_id = insert_contribution(db, school, key, token, data.amount_cents, values)
+            transaction_id = insert_contribution(
+                db, school, key, token, data.amount_cents, values, reference_month=reference_month
+            )
         except IntegrityError:
             db.rollback()  # lost a race with the same key: answer with the winner
             existing = existing_contribution(db, school, key)
@@ -359,6 +410,7 @@ def insert_contribution(
     *,
     category_key: str = "parent_contribution",
     campaign_id: uuid.UUID | None = None,
+    reference_month: date | None = None,
 ) -> uuid.UUID:
     """The ledger row and the detail of a PENDING_PAYMENT Pix contribution. The order of a
     campaign is the same thing filed under its own category and tied to its campaign."""
@@ -387,10 +439,11 @@ def insert_contribution(
         text(
             "INSERT INTO contributions (transaction_id, organization_id, school_id, method, "
             "guardian_name, student_name, class_name, contributor_email, contributor_phone, "
-            "receipt_token_hash, receipt_expires_at, idempotency_key, campaign_id) "
+            "receipt_token_hash, receipt_expires_at, idempotency_key, campaign_id, "
+            "reference_month) "
             "VALUES (:tx, :org, :school, 'PIX', :guardian_name, :student_name, :class_name, "
             ":contributor_email, :contributor_phone, :hash, "
-            "now() + make_interval(days => :days), :key, :campaign)"
+            "now() + make_interval(days => :days), :key, :campaign, :reference_month)"
         ),
         {
             **params,
@@ -401,6 +454,7 @@ def insert_contribution(
             "days": RECEIPT_DAYS,
             "key": key,
             "campaign": campaign_id,
+            "reference_month": reference_month,
         },
     )
     return uuid.UUID(str(transaction_id))
@@ -433,7 +487,8 @@ def renew_charge(
 def read_receipt(db: Session, school: PublicSchool, ref: ContributionRef) -> dict[str, Any]:
     row = db.execute(
         text(
-            "SELECT f.status, f.amount_cents, f.settled_at, f.reference_code, c.method "
+            "SELECT f.status, f.amount_cents, f.settled_at, f.reference_code, c.method, "
+            "c.reference_month "
             "FROM financial_transactions f JOIN contributions c ON c.transaction_id = f.id "
             "WHERE f.id = :tx"
         ),
@@ -464,6 +519,7 @@ def read_receipt(db: Session, school: PublicSchool, ref: ContributionRef) -> dic
         "paid_at": row[2],
         "school_name": school.name,
         "method": row[4],
+        "reference_month": None if row[5] is None else row[5].strftime("%Y-%m"),
         "campaign_title": campaign_title,
         "items": [
             {"name": line[0], "unit_price_cents": line[1], "quantity": line[2]} for line in lines

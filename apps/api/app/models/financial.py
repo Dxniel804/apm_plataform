@@ -5,12 +5,13 @@ grants live only in the migration (docs/financial-model.md lists them). Money is
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     FetchedValue,
     ForeignKeyConstraint,
@@ -286,6 +287,12 @@ class Contribution(ScopeMixin, TimestampMixin, Base):
             name="fk_contributions_campaign_id_campaigns",
             ondelete="RESTRICT",
         ),
+        # The month it is FOR (the first day of it), 0015.
+        CheckConstraint(
+            "reference_month IS NULL "
+            "OR reference_month = date_trunc('month', reference_month)::date",
+            name="reference_month_first_day",
+        ),
         Index("ix_contributions_school_id", "school_id"),
         Index("ix_contributions_campaign_id", "campaign_id"),
     )
@@ -316,6 +323,8 @@ class Contribution(ScopeMixin, TimestampMixin, Base):
     # The campaign it is an order of (0013): written once with the row. Its amount is then the sum
     # of its `contribution_items`, checked by the database at COMMIT.
     campaign_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # The month the family says it is paying for (0015): the first day of it; written once.
+    reference_month: Mapped[date | None] = mapped_column(Date)
     # Why the management settled a REVIEW_REQUIRED contribution; written once, and first.
     review_decision_reason: Mapped[str | None] = mapped_column(Text)
 

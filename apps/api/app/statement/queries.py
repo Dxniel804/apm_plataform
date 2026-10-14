@@ -21,6 +21,22 @@ def current_period(db: Session, school_id: UUID) -> str | None:
     return None if found is None else str(found)
 
 
+def reference_months(db: Session, school_id: UUID, ids: list[UUID]) -> dict[UUID, str]:
+    """The month each contribution of the page is FOR (YYYY-MM). Read apart, on purpose: the
+    statement function is the source of the closing hash and is not touched."""
+    if not ids:
+        return {}
+    rows = db.execute(
+        text(
+            "SELECT transaction_id, to_char(reference_month, 'YYYY-MM') FROM contributions "
+            "WHERE school_id = :school_id AND transaction_id = ANY(:ids) "
+            "AND reference_month IS NOT NULL"
+        ),
+        {"school_id": school_id, "ids": ids},
+    ).all()
+    return {row[0]: row[1] for row in rows}
+
+
 def fetch_entries(
     db: Session,
     school_id: UUID,

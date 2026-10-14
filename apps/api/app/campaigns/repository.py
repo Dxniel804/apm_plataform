@@ -611,9 +611,11 @@ def order_lines(db: Session, school_id: uuid.UUID, order_ids: Sequence[uuid.UUID
     return (
         db.execute(
             text(
-                "SELECT transaction_id, item_name, quantity, unit_price_cents "
-                "FROM contribution_items WHERE school_id = :school_id "
-                "AND transaction_id = ANY(:ids) ORDER BY created_at, id"
+                "SELECT i.transaction_id, i.item_name, i.quantity, i.unit_price_cents "
+                "FROM contribution_items i "
+                "JOIN campaign_items p ON p.id = i.campaign_item_id AND p.school_id = i.school_id "
+                "WHERE i.school_id = :school_id AND i.transaction_id = ANY(:ids) "
+                "ORDER BY p.position, p.created_at, i.id"
             ),
             {"school_id": school_id, "ids": list(order_ids)},
         )

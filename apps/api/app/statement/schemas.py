@@ -35,6 +35,10 @@ class StatementEntryOut(BaseModel):
     description: str | None
     beneficiary_user_id: UUID | None
     beneficiary_label: str | None
+    reference_month: str | None = Field(
+        default=None,
+        description="The month a contribution is for (YYYY-MM), when the family said it.",
+    )
     opening_balance_cents: int = Field(
         description="The balance before the period, over ALL the entries (filters leave it as is)."
     )

@@ -91,6 +91,8 @@ def get_school(slug: str, db: Db) -> PublicSchoolOut:
     school = service.resolve_school(db, slug)
     if school is None:
         raise service.not_found()
+    _bind(db, school)
+    months = [m.strftime("%Y-%m") for m in service.offered_months(service.school_today(db, school))]
     return PublicSchoolOut(
         slug=school.slug,
         name=school.name,
@@ -102,6 +104,8 @@ def get_school(slug: str, db: Db) -> PublicSchoolOut:
         min_amount_cents=school.min_amount_cents,
         max_amount_cents=school.max_amount_cents,
         identification=school.identification(),  # type: ignore[arg-type]
+        free_amount_text=service.free_amount_text(db, school),
+        reference_months=months,
     )
 
 

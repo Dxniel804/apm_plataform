@@ -23,6 +23,11 @@ class PublicSchoolOut(BaseModel):
     min_amount_cents: int
     max_amount_cents: int
     identification: dict[str, Presence]
+    # A sentence the school wrote for the family, shown next to the free amount (or null).
+    free_amount_text: str | None = None
+    # The months a contribution can be for, oldest first: the current month of the school and the
+    # eleven before it. The last one is the default.
+    reference_months: list[str] = []
 
 
 class Identification(BaseModel):
@@ -42,6 +47,8 @@ class ContributionIn(Identification):
     and stores only the fields that school asks for."""
 
     amount_cents: int = Field(gt=0, le=1_000_000_000)
+    # The month this contribution is for (YYYY-MM); the server accepts only the months it offers.
+    reference_month: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class ChargeOut(BaseModel):
@@ -80,6 +87,8 @@ class ReceiptOut(BaseModel):
     paid_at: datetime
     school_name: str
     method: str
+    # The month the contribution is for (YYYY-MM), when the family said it.
+    reference_month: str | None = None
     # Only for the order of a campaign: its title and what it bought (the sum is `amount_cents`).
     campaign_title: str | None = None
     items: list[ReceiptItemOut] = []

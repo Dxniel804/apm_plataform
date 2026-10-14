@@ -116,6 +116,13 @@ CASES: list[tuple[str, str, str, str]] = [
     # --- details ------------------------------------------------------------------------------------
     (CONTRIBUTIONS, "cash_tx", "kind = 'EXPENSE'", "ck_contributions_kind"),
     (CONTRIBUTIONS, "cash_tx", "method = 'CARD'", "ck_contributions_method_valid"),
+    # the month a contribution is for is always the first day of a month (0015)
+    (
+        CONTRIBUTIONS,
+        "cash_tx",
+        "reference_month = '2026-03-15'",
+        "ck_contributions_reference_month_first_day",
+    ),
     # PIX_DIRECT and its end-to-end id go together (a CASH row with an id, a PIX_DIRECT row without)
     (
         CONTRIBUTIONS,
@@ -266,6 +273,25 @@ CASES: list[tuple[str, str, str, str]] = [
         "settings",
         "approval_limit_cents = 0",
         "ck_school_settings_approval_limit_positive",
+    ),
+    # the goals and the text of the family page (0015)
+    (
+        "school_settings",
+        "settings",
+        "monthly_goal_cents = 99",
+        "ck_school_settings_monthly_goal_range",
+    ),
+    (
+        "school_settings",
+        "settings",
+        "expected_contributions = 0",
+        "ck_school_settings_expected_contributions_range",
+    ),
+    (
+        "school_settings",
+        "settings",
+        "free_amount_text = '   '",
+        "ck_school_settings_free_amount_text_length",
     ),
     (
         "school_settings",

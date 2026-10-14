@@ -94,6 +94,11 @@ def list_statement(
     )
     page, more = rows[:limit], len(rows) > limit
     items = [StatementEntryOut.model_validate(row) for row in page]
+    months = queries.reference_months(
+        db, scope.school_id, [item.transaction_id for item in items if item.kind == "CONTRIBUTION"]
+    )
+    for item in items:
+        item.reference_month = months.get(item.transaction_id)
     next_cursor = (
         encode_cursor(settled_at=items[-1].settled_at, reference_code=items[-1].reference_code)
         if more

@@ -122,6 +122,18 @@ class SchoolSettings(ScopeMixin, TimestampMixin, Base):
             "approval_limit_cents IS NULL OR approval_limit_cents > 0",
             name="approval_limit_positive",
         ),
+        CheckConstraint(
+            "monthly_goal_cents IS NULL OR monthly_goal_cents BETWEEN 100 AND 100000000000",
+            name="monthly_goal_range",
+        ),
+        CheckConstraint(
+            "expected_contributions IS NULL OR expected_contributions BETWEEN 1 AND 100000",
+            name="expected_contributions_range",
+        ),
+        CheckConstraint(
+            "free_amount_text IS NULL OR length(btrim(free_amount_text)) BETWEEN 1 AND 300",
+            name="free_amount_text_length",
+        ),
         Index("ix_school_settings_organization_id", "organization_id"),
     )
 
@@ -145,6 +157,12 @@ class SchoolSettings(ScopeMixin, TimestampMixin, Base):
     brand_accent_contrast: Mapped[str] = mapped_column(Text, server_default=text("'#ffffff'"))
     # NULL = off. An expense above it needs the school administrator (rule in the service).
     approval_limit_cents: Mapped[int | None] = mapped_column(BigInteger)
+    # What the school hopes to collect in a month and how many contributions it expects (0015): they
+    # feed the "goal and adhesion" card; nothing here decides money. NULL = not set.
+    monthly_goal_cents: Mapped[int | None] = mapped_column(BigInteger)
+    expected_contributions: Mapped[int | None] = mapped_column(Integer)
+    # A sentence the family reads next to the free amount field.
+    free_amount_text: Mapped[str | None] = mapped_column(Text)
 
 
 class PaymentAccount(ScopeMixin, TimestampMixin, Base):
