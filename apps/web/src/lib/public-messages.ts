@@ -13,6 +13,8 @@ const UNAVAILABLE = "O Pix ainda não está disponível para esta escola. Fale c
 export interface ContributionProblems {
   general: string | null;
   amount: string | null;
+  /** O mes escolhido nao e mais oferecido (so na contribuicao mensal). */
+  referenceMonth?: string | null;
   fields: IdentificationErrors;
 }
 
@@ -44,6 +46,8 @@ export function describeContributionError(error: ApiError): ContributionProblems
               : item.code === "out_of_range"
                 ? "O valor não está dentro do que a escola aceita."
                 : "Confira o valor da contribuição.";
+        } else if (item.field === "reference_month") {
+          out.referenceMonth = "Este mês não está disponível. Escolha outro mês.";
         } else if (item.field in FIELD_FROM_API) {
           const field = FIELD_FROM_API[item.field]!;
           out.fields[field] = item.code === "required" ? MISSING_MESSAGES[field] : "Confira este campo.";
@@ -51,7 +55,7 @@ export function describeContributionError(error: ApiError): ContributionProblems
           out.general = "Não foi possível enviar o pedido. Recarregue a página e tente de novo.";
         }
       }
-      if (!out.general && !out.amount && Object.keys(out.fields).length === 0) {
+      if (!out.general && !out.amount && !out.referenceMonth && Object.keys(out.fields).length === 0) {
         out.general = "Algum dado não foi aceito pela escola. Volte e confira o valor e os campos.";
       }
       return out;

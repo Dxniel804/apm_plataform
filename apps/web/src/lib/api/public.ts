@@ -73,6 +73,14 @@ export function parsePublicSchool(body: unknown): PublicSchool | null {
     if (value === null || value === 0) return null;
     suggested.push(value);
   }
+  const months: string[] = [];
+  if (Array.isArray(body.reference_months)) {
+    for (const item of body.reference_months) {
+      if (typeof item !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(item)) return null;
+      months.push(item);
+    }
+  }
+  const freeAmountText = typeof body.free_amount_text === "string" && body.free_amount_text.trim() ? body.free_amount_text.trim() : null;
   return {
     slug,
     name,
@@ -83,6 +91,8 @@ export function parsePublicSchool(body: unknown): PublicSchool | null {
     minAmountCents: min,
     maxAmountCents: max,
     identification: parseIdentification(body.identification),
+    freeAmountText,
+    referenceMonths: months,
   };
 }
 
@@ -140,7 +150,8 @@ function parseReceipt(body: unknown, status: number): Receipt | null {
       items.push({ name, unitPriceCents, quantity });
     }
   }
-  return { status: "PAID", referenceCode, amountCents, paidAt, schoolName, method, campaignTitle, items };
+  const referenceMonth = typeof body.reference_month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(body.reference_month) ? body.reference_month : null;
+  return { status: "PAID", referenceCode, amountCents, paidAt, schoolName, method, referenceMonth, campaignTitle, items };
 }
 
 // --- as campanhas a venda (docs/campaigns.md) ---------------------------------------------------------
@@ -212,6 +223,7 @@ export function getPublicSchool(slug: string, options?: RequestOptions): Promise
 /** Corpo do POST: so os campos preenchidos, com os nomes da API (a API ainda descarta o que a escola oculta). */
 export function contributionBody(input: CreateContributionInput): Record<string, string | number> {
   const body: Record<string, string | number> = { amount_cents: input.amountCents };
+  if (input.referenceMonth) body.reference_month = input.referenceMonth;
   for (const field of IDENTIFICATION_FIELDS) {
     const value = input.identification[field];
     if (value) body[API_FIELD[field]] = value;

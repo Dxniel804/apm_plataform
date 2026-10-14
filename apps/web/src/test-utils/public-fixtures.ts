@@ -17,6 +17,9 @@ export const SCHOOL: PublicSchool = {
     contributorEmail: "OPTIONAL",
     contributorPhone: "OPTIONAL",
   },
+  freeAmountText: null,
+  // Os meses que a API oferece: o mais antigo primeiro, o atual por ultimo.
+  referenceMonths: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"],
 };
 
 export const SCHOOL_BODY = {
@@ -36,6 +39,8 @@ export const SCHOOL_BODY = {
     contributor_email: "OPTIONAL",
     contributor_phone: "OPTIONAL",
   },
+  free_amount_text: null,
+  reference_months: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"],
 };
 
 export const TOKEN = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AbCde";
@@ -72,6 +77,7 @@ export const RECEIPT: Receipt = {
   paidAt: "2026-10-06T13:44:41Z",
   schoolName: "Escola Aurora (demo)",
   method: "PIX",
+  referenceMonth: null,
   campaignTitle: null,
   items: [],
 };

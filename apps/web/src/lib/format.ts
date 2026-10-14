@@ -50,3 +50,17 @@ export function formatCountdown(ms: number): string {
   const seconds = total % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
+
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** "2026-10" -> "outubro de 2026"; qualquer outra coisa volta sem mudar (a tela nunca quebra por isso). */
+export function formatMonthYear(month: string): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+  return match ? `${MONTHS[Number(match[2]) - 1]} de ${match[1]}` : month;
+}
+
+/** "2026-10" -> "out/2026": o mes curto, para a lista do extrato. */
+export function formatMonthShort(month: string): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+  return match ? `${MONTHS[Number(match[2]) - 1]!.slice(0, 3)}/${match[1]}` : month;
+}

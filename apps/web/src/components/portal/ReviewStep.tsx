@@ -23,6 +23,8 @@ interface ReviewStepProps {
   lines?: Array<{ name: string; quantity: number; unitPriceCents: number }>;
   /** Nome acessivel do botao que volta a escolher o valor ou os produtos. */
   editLabel?: string;
+  /** O mes a que a contribuicao se refere, por extenso ("outubro de 2026"); so na contribuicao mensal. */
+  referenceMonthLabel?: string | null;
 }
 
 function Row({ label, value, onEdit, editLabel, strong }: { label: string; value: string; onEdit?: (() => void) | null; editLabel?: string; strong?: boolean }) {
@@ -60,6 +62,7 @@ export function ReviewStep({
   onSubmit,
   lines,
   editLabel = "Alterar o valor",
+  referenceMonthLabel = null,
 }: ReviewStepProps) {
   const filled = IDENTIFICATION_FIELDS.filter((field) => identification[field]);
   return (
@@ -87,6 +90,7 @@ export function ReviewStep({
         ) : (
           <Row label="Contribuição" value={description} onEdit={onEditAmount} editLabel={editLabel} />
         )}
+        {referenceMonthLabel && <Row label="Referente a" value={referenceMonthLabel} onEdit={onEditAmount} editLabel="Alterar o mês" />}
         <Row label={lines ? "Total" : "Valor"} value={formatBRL(amountCents)} strong />
         {filled.map((field) => (
           <Row

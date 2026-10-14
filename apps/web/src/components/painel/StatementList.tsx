@@ -1,5 +1,6 @@
 import { StatusPill } from "@/components/ui/StatusPill";
 import type { PendingEntry, StatementEntry } from "@/lib/api/types";
+import { formatMonthShort } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { KIND_LABELS } from "@/lib/status";
 import { categoryLabel, entryStatus, formatLocalDateShort, pendingStatus } from "@/lib/statement-labels";
@@ -27,6 +28,7 @@ function EntryRow({ entry }: { entry: StatementEntry }) {
           <p className="mt-1 text-sub text-ink-2 [overflow-wrap:anywhere]">
             <span className="font-medium text-ink">{KIND_LABELS[entry.kind]}</span>
             {counterparty ? ` · ${counterparty}` : ""} · {formatLocalDateShort(entry.localDate)} · nº {entry.referenceCode}
+            {entry.referenceMonth ? ` · ref. ${formatMonthShort(entry.referenceMonth)}` : ""}
             {entry.lateAdjustment ? " · ajuste tardio" : ""}
           </p>
         </div>

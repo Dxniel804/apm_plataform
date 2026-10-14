@@ -5,6 +5,7 @@ import { CheckCircleFillIcon, CircleIcon } from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import type { PublicSchool } from "@/lib/api/types";
+import { formatMonthYear } from "@/lib/format";
 import { centsFromDigits, formatBRL, formatBRLNumber, parsePastedAmount } from "@/lib/money";
 import { StickyActions } from "./FlowChrome";
 
@@ -61,6 +62,9 @@ interface AmountStepProps {
   onChoice: (choice: string) => void;
   onCustomChange: (cents: number) => void;
   onContinue: () => void;
+  /** O mes a que a contribuicao se refere (YYYY-MM). So aparece se a API oferece meses. */
+  referenceMonth?: string | null;
+  onReferenceMonth?: (month: string) => void;
 }
 
 export function AmountStep({
@@ -72,6 +76,8 @@ export function AmountStep({
   onChoice,
   onCustomChange,
   onContinue,
+  referenceMonth = null,
+  onReferenceMonth,
 }: AmountStepProps) {
   const customRef = useRef<HTMLInputElement>(null);
   const previous = useRef(choice);
@@ -172,12 +178,39 @@ export function AmountStep({
               e.preventDefault();
               applyPasted(e.dataTransfer.getData("text"));
             }}
-            hint={`Mínimo ${formatBRL(minCents)}, máximo ${formatBRL(maxCents)}.`}
+            hint={school.freeAmountText ?? `Mínimo ${formatBRL(minCents)}, máximo ${formatBRL(maxCents)}.`}
             error={customError ?? undefined}
           />
+          {school.freeAmountText && (
+            <p className="mt-1.5 text-foot text-ink-2">
+              Mínimo {formatBRL(minCents)}, máximo {formatBRL(maxCents)}.
+            </p>
+          )}
           <div aria-live="polite">
             {pasteWarning && <p className="mt-1.5 text-sub font-medium text-warn">{pasteWarning}</p>}
           </div>
+        </div>
+      )}
+
+      {school.referenceMonths.length > 0 && onReferenceMonth && (
+        <div className="mt-6">
+          <label htmlFor="reference-month" className="mb-2 block text-sub font-semibold text-ink">
+            Para qual mês?
+          </label>
+          <select
+            id="reference-month"
+            name="reference-month"
+            value={referenceMonth ?? school.referenceMonths[school.referenceMonths.length - 1]}
+            onChange={(e) => onReferenceMonth(e.target.value)}
+            className="block min-h-[3.375rem] w-full rounded-ctl border-[1.5px] border-field-border bg-white px-4 text-[1rem] text-ink focus:border-brand-600"
+          >
+            {[...school.referenceMonths].reverse().map((month) => (
+              <option key={month} value={month}>
+                {formatMonthYear(month)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-foot text-ink-2">O mês a que esta contribuição se refere. Vem marcado o mês atual.</p>
         </div>
       )}
 

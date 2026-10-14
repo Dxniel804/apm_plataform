@@ -1,7 +1,7 @@
 import { Amount } from "@/components/ui/Amount";
 import { StatusPill } from "@/components/ui/StatusPill";
 import type { Receipt } from "@/lib/api/types";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatMonthYear } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { pixStatusView } from "@/lib/status";
 import { SchoolMonogram } from "./SchoolMonogram";
@@ -38,6 +38,7 @@ export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; h
     ["Número", receipt.referenceCode],
     ["Forma de pagamento", METHOD_LABELS[receipt.method] ?? receipt.method],
     ["Pago em", formatDateTime(receipt.paidAt)],
+    ...(receipt.referenceMonth ? ([["Referente a", formatMonthYear(receipt.referenceMonth)]] as Array<[string, string]>) : []),
   ];
 
   return (

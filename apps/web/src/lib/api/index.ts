@@ -19,6 +19,7 @@ import {
   uploadRequestPhoto,
 } from "./staff-requests";
 import { getPending, getStatement, getSummary, recordCashContribution } from "./statement";
+import { downloadPoster, getPublicLink, getSchoolSettings, updateSchoolSettings } from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
   endCampaign, getCampaign, getCampaignDashboard, listCampaignOrders, listCampaigns, setCampaignImage, updateCampaign, updateCampaignItem,
@@ -39,6 +40,12 @@ export const api: {
     campaigns: typeof getPublicCampaigns;
     campaign: typeof getPublicCampaign;
     createOrder: typeof createOrder;
+  };
+  schoolSettings: {
+    get: typeof getSchoolSettings;
+    update: typeof updateSchoolSettings;
+    publicLink: typeof getPublicLink;
+    poster: typeof downloadPoster;
   };
   campaigns: {
     list: typeof listCampaigns;
@@ -119,6 +126,7 @@ export const api: {
     campaign: getPublicCampaign,
     createOrder,
   },
+  schoolSettings: { get: getSchoolSettings, update: updateSchoolSettings, publicLink: getPublicLink, poster: downloadPoster },
   campaigns: {
     list: listCampaigns,
     get: getCampaign,

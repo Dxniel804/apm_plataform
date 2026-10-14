@@ -37,7 +37,9 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
             ? areas.requests
             : area === "campanhas"
               ? areas.manageCampaigns
-              : areas.manageExpenses || areas.myExpenses);
+              : area === "configuracoes"
+                ? areas.manageSettings
+                : areas.manageExpenses || areas.myExpenses);
     const home = homeArea(areas);
     if (!allowed && home !== area) redirect(areaHref(home));
   }

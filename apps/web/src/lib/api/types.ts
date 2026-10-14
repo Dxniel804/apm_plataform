@@ -123,6 +123,10 @@ export interface PublicSchool {
   minAmountCents: Cents;
   maxAmountCents: Cents;
   identification: IdentificationConfig;
+  /** Uma frase que a escola escreveu para a familia, ao lado do valor livre. */
+  freeAmountText: string | null;
+  /** Os meses para os quais da para contribuir (YYYY-MM), do mais antigo ao atual. */
+  referenceMonths: string[];
 }
 
 export type ChargeStatus = PixChargeStatus;
@@ -151,6 +155,8 @@ export interface CreatedContribution extends ContributionState {
 export interface CreateContributionInput {
   amountCents: Cents;
   identification: IdentificationValues;
+  /** O mes a que a contribuicao se refere (YYYY-MM), escolhido entre os que a API oferece. */
+  referenceMonth?: string | null;
 }
 
 /** Uma linha do que um pedido de campanha comprou, como foi comprado (nome e preco do dia). */
@@ -169,6 +175,8 @@ export interface Receipt {
   schoolName: string;
   /** Forma de pagamento como a API manda (PIX, CASH, TRANSFER, OTHER). */
   method: string;
+  /** O mes a que a contribuicao se refere (YYYY-MM), quando a familia o disse. */
+  referenceMonth: string | null;
   /** So no pedido de uma campanha: o titulo e o que ele comprou (a soma e `amountCents`). */
   campaignTitle: string | null;
   items: ReceiptItem[];
@@ -218,6 +226,8 @@ export interface StatementEntry {
   statusLabel: string;
   originLabel: string | null;
   beneficiaryLabel: string | null;
+  /** O mes a que uma contribuicao se refere (YYYY-MM), quando a familia o disse. */
+  referenceMonth: string | null;
   categoryKey: string;
   description: string | null;
   runningBalanceCents: Cents;
@@ -397,6 +407,36 @@ export interface StaffRequestInput {
 // ---------------------------------------------------------------- REAL: campanhas (docs/campaigns.md)
 
 export type CampaignStatus = "DRAFT" | "ACTIVE" | "ENDED";
+
+// ---------------------------------------------------------------- REAL: configuracoes da escola e link publico
+
+export interface SchoolSettings {
+  suggestedAmountsCents: Cents[];
+  allowCustomAmount: boolean;
+  minContributionCents: Cents;
+  maxContributionCents: Cents;
+  /** Uma frase para a familia, ao lado do valor livre. */
+  freeAmountText: string | null;
+  /** O que a escola espera arrecadar no mes e quantas contribuicoes (nulo: nao definido). */
+  monthlyGoalCents: Cents | null;
+  expectedContributions: number | null;
+}
+
+/** So o que foi enviado muda; `null` apaga o texto e as metas. */
+export interface SchoolSettingsInput {
+  suggestedAmountsCents?: Cents[];
+  allowCustomAmount?: boolean;
+  freeAmountText?: string | null;
+  monthlyGoalCents?: Cents | null;
+  expectedContributions?: number | null;
+}
+
+export interface PublicLink {
+  schoolName: string;
+  slug: string;
+  /** O endereco que as familias abrem. Ja impresso num QR Code, ele nao pode mudar. */
+  url: string;
+}
 
 /** Um produto de uma campanha, como a gestao o ve. O preco e da API: o site nunca decide um total. */
 export interface CampaignItem {

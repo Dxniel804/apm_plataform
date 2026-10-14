@@ -76,6 +76,7 @@ function parseEntry(value: unknown): StatementEntry | null {
   const originLabel = optStr(value.origin_label);
   const beneficiaryLabel = optStr(value.beneficiary_label);
   const description = optStr(value.description);
+  const referenceMonth = typeof value.reference_month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value.reference_month) ? value.reference_month : null;
   if (
     !transactionId || referenceCode === null || !kind || !direction || !occurredAt || !localDate ||
     amountCents === null || signedAmountCents === null || !status || !categoryKey || running === null ||
@@ -86,7 +87,7 @@ function parseEntry(value: unknown): StatementEntry | null {
   }
   return {
     transactionId, referenceCode, kind, displayType, direction, occurredAt, localDate, amountCents, signedAmountCents,
-    lateAdjustment: value.late_adjustment === true, status, statusLabel: statusLabel ?? status, originLabel, beneficiaryLabel, categoryKey, description,
+    lateAdjustment: value.late_adjustment === true, status, statusLabel: statusLabel ?? status, originLabel, beneficiaryLabel, referenceMonth, categoryKey, description,
     runningBalanceCents: running,
   };
 }

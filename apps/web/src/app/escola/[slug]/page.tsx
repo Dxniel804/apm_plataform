@@ -14,7 +14,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   if (!isPlausibleSlug(slug)) return { title: "Escola não encontrada" };
   const result = await getPublicSchool(slug, { fetchImpl: serverFetch });
-  return { title: result.ok ? `Contribuir · ${result.data.name}` : "Escola não encontrada" };
+  if (!result.ok) return { title: "Escola não encontrada" };
+  // A previa quando o link e compartilhado (WhatsApp, Instagram): o nome da escola, uma frase e a imagem desta pasta.
+  const title = `Contribuir · ${result.data.name}`;
+  const description = `Contribua com a ${result.data.apmName} pelo Pix. O dinheiro vai direto para a conta da APM.`;
+  return {
+    metadataBase: new URL(process.env.PUBLIC_BASE_URL ?? "http://localhost:3000"),
+    title,
+    description,
+    openGraph: { title, description, type: "website", locale: "pt_BR", siteName: "APM Digital" },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function SchoolPortalPage({ params }: Props) {

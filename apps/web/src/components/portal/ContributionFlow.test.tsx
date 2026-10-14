@@ -49,6 +49,60 @@ describe("ContributionFlow (portal real)", () => {
     expect(await screen.findByRole("heading", { name: "Confira antes de pagar" })).toBeInTheDocument();
   });
 
+  it("pergunta para qual mes, com o mes atual marcado e os 12 ofertados, do mais novo ao mais antigo", async () => {
+    render(<ContributionFlow school={SCHOOL} />);
+
+    const select = screen.getByLabelText("Para qual mês?");
+    expect(select).toHaveValue("2026-10");
+    const options = Array.from(select.querySelectorAll("option")).map((o) => o.textContent);
+    expect(options).toEqual(["outubro de 2026", "setembro de 2026", "agosto de 2026", "julho de 2026", "junho de 2026", "maio de 2026"]);
+  });
+
+  it("o mes escolhido vai para a API, aparece na revisao e pode ser alterado por la", async () => {
+    const create = vi.spyOn(api.public, "createContribution").mockResolvedValue(okCreated);
+    render(<ContributionFlow school={SCHOOL} />);
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText("Para qual mês?"), "2026-08");
+    await toReview(user);
+    expect(screen.getByText("Referente a").nextElementSibling).toHaveTextContent("agosto de 2026");
+
+    await user.click(submit());
+
+    expect(create.mock.calls[0]![1]).toMatchObject({ amountCents: 2000, referenceMonth: "2026-08" });
+  });
+
+  it("escola sem meses na resposta (API antiga): nao pergunta o mes e nao manda o campo", async () => {
+    const create = vi.spyOn(api.public, "createContribution").mockResolvedValue(okCreated);
+    render(<ContributionFlow school={{ ...SCHOOL, referenceMonths: [] }} />);
+    const user = userEvent.setup();
+    expect(screen.queryByLabelText("Para qual mês?")).not.toBeInTheDocument();
+    await toReview(user);
+    expect(screen.queryByText("Referente a")).not.toBeInTheDocument();
+    await user.click(submit());
+
+    expect(create.mock.calls[0]![1]).toEqual({ amountCents: 2000, identification: {}, referenceMonth: null });
+  });
+
+  it("se a API recusar o mes, a pessoa volta ao valor com o aviso", async () => {
+    vi.spyOn(api.public, "createContribution").mockResolvedValue(problem("validation_error", 422, { fields: [{ field: "reference_month", code: "out_of_range" }] }));
+    render(<ContributionFlow school={SCHOOL} />);
+    const user = userEvent.setup();
+    await toReview(user);
+    await user.click(submit());
+
+    expect(await screen.findByText("Este mês não está disponível. Escolha outro mês.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Para qual mês?")).toBeInTheDocument();
+  });
+
+  it("o texto que a escola escreveu aparece ao lado do valor livre", async () => {
+    render(<ContributionFlow school={{ ...SCHOOL, freeAmountText: "Qualquer valor ajuda a nossa festa." }} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("radio", { name: /Outro valor/ }));
+
+    expect(screen.getByText("Qualquer valor ajuda a nossa festa.")).toBeInTheDocument();
+    expect(screen.getByText(/Mínimo R\$\s?10,00, máximo/)).toBeInTheDocument();
+  });
+
   it("cria a contribuicao com UMA Idempotency-Key (uuid), gera o QR e nunca grava nada em storage", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const create = vi.spyOn(api.public, "createContribution").mockResolvedValue(okCreated);
@@ -60,7 +114,7 @@ describe("ContributionFlow (portal real)", () => {
     expect(create).toHaveBeenCalledTimes(1);
     const [slug, input, key] = create.mock.calls[0]!;
     expect(slug).toBe("demo-aurora");
-    expect(input).toEqual({ amountCents: 2000, identification: {} });
+    expect(input).toEqual({ amountCents: 2000, identification: {}, referenceMonth: "2026-10" });
     expect(key).toMatch(UUID);
     expect(await screen.findByRole("heading", { name: "Pague com Pix" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /QR Code do Pix/ })).toBeInTheDocument();
@@ -100,7 +154,7 @@ describe("ContributionFlow (portal real)", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(submit());
     await screen.findByRole("heading", { name: "Pague com Pix" });
-    expect(create.mock.calls[1]![1]).toEqual({ amountCents: 3000, identification: {} });
+    expect(create.mock.calls[1]![1]).toEqual({ amountCents: 3000, identification: {}, referenceMonth: "2026-10" });
     expect(create.mock.calls[1]![2]).not.toBe(create.mock.calls[0]![2]);
     expect(create.mock.calls[1]![2]).toMatch(UUID);
   });
@@ -120,7 +174,7 @@ describe("ContributionFlow (portal real)", () => {
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(submit());
     await screen.findByRole("heading", { name: "Pague com Pix" });
-    expect(create.mock.calls[1]![1]).toEqual({ amountCents: 2000, identification: { guardianName: "Maria Teste" } });
+    expect(create.mock.calls[1]![1]).toEqual({ amountCents: 2000, identification: { guardianName: "Maria Teste" }, referenceMonth: "2026-10" });
     expect(create.mock.calls[1]![2]).not.toBe(create.mock.calls[0]![2]);
   });
 

@@ -22,6 +22,8 @@ export interface Areas {
   myRequests: boolean;
   /** "Personalizacao": as campanhas (produtos e carrinho) que a gestao vende as familias. */
   manageCampaigns: boolean;
+  /** "Configuracoes": os valores sugeridos, as metas e o link publico da escola (school_settings:manage). */
+  manageSettings: boolean;
 }
 
 export function areasFor(permissions: readonly string[]): Areas {
@@ -38,10 +40,11 @@ export function areasFor(permissions: readonly string[]): Areas {
     manageRequests: has("requests:read_all") || has("requests:manage"),
     myRequests: has("requests:submit"),
     manageCampaigns: has("campaigns:manage"),
+    manageSettings: has("school_settings:manage"),
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "configuracoes" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;

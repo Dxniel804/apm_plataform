@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { CreatedContribution, PublicCampaignSummary, PublicSchool } from "@/lib/api/types";
+import { formatMonthYear } from "@/lib/format";
 import { describeContributionError } from "@/lib/public-messages";
 import {
   validateAmount,
@@ -39,6 +40,9 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
   };
   const [choice, setChoice] = useState<string | null>(null);
   const [customCents, setCustomCents] = useState(0);
+  // O mes a que a contribuicao se refere: vem o mes atual (o ultimo que a API oferece).
+  const currentMonth = school.referenceMonths.at(-1) ?? null;
+  const [referenceMonth, setReferenceMonth] = useState<string | null>(currentMonth);
   const [amountError, setAmountError] = useState<string | null>(null);
   const [values, setValues] = useState<IdentificationValues>({});
   const [errors, setErrors] = useState<IdentificationErrors>({});
@@ -102,7 +106,7 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
 
   async function createCharge() {
     if (amountCents === null || amountCents <= 0) return;
-    const input = { amountCents, identification: values };
+    const input = { amountCents, identification: values, referenceMonth };
     const signature = JSON.stringify(input);
     if (attempt.current?.signature !== signature) attempt.current = { key: crypto.randomUUID(), signature };
     setSubmitting(true);
@@ -118,8 +122,8 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
         setStep("identification");
         return;
       }
-      if (problems.amount) {
-        setAmountError(problems.amount);
+      if (problems.amount || problems.referenceMonth) {
+        setAmountError(problems.amount ?? problems.referenceMonth ?? null);
         setStep("amount");
         return;
       }
@@ -135,6 +139,7 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
     setStep("amount");
     setChoice(null);
     setCustomCents(0);
+    setReferenceMonth(currentMonth);
     setValues({});
     setErrors({});
     setAmountError(null);
@@ -206,6 +211,8 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
                   setAmountError(null);
                 }}
                 onContinue={continueFromAmount}
+                referenceMonth={referenceMonth}
+                onReferenceMonth={setReferenceMonth}
               />
             )}
 
@@ -237,6 +244,7 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
                 onEditIdentification={fields.length > 0 ? () => setStep("identification") : null}
                 onBack={() => setStep(fields.length > 0 ? "identification" : "amount")}
                 onSubmit={createCharge}
+                referenceMonthLabel={referenceMonth ? formatMonthYear(referenceMonth) : null}
               />
             )}
 

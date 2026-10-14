@@ -8,6 +8,7 @@ import {
   ChatLeftTextIcon,
   CounterclockwiseIcon,
   ReplyAllIcon,
+  SettingsIcon,
 } from "@/components/ui/icons";
 import { sectionHref } from "@/lib/painel-section";
 import { areaHref, type Areas, type PainelArea } from "@/lib/permissions";
@@ -95,6 +96,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       label: "Fechamento",
       href: areaHref("fechamento", { period }),
       icon: <CalendarCheckIcon size={22} />,
+    });
+  }
+  if (areas.manageSettings) {
+    items.push({
+      area: "configuracoes",
+      label: "Configurações",
+      href: areaHref("configuracoes"),
+      icon: <SettingsIcon size={22} />,
     });
   }
   return items;
