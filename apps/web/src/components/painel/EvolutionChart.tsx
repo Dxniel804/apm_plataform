@@ -12,9 +12,8 @@ const short = (period: string) => MONTHS_SHORT[Number(period.slice(5, 7)) - 1] ?
  */
 export function EvolutionChart({ points }: { points: SeriesPoint[] }) {
   const max = Math.max(1, ...points.flatMap((p) => [p.totalInCents, p.totalOutCents]));
-  const height = 140;
-  const colWidth = 100 / points.length;
   const empty = points.every((p) => p.totalInCents === 0 && p.totalOutCents === 0);
+  const pct = (cents: number) => (cents <= 0 ? 0 : Math.max(2, (cents / max) * 100));
   return (
     <section aria-labelledby="evolution-title" className="rounded-[var(--r-lg)] border border-line p-6">
       <h2 id="evolution-title" className="text-[1rem] font-medium text-ink">
@@ -25,24 +24,23 @@ export function EvolutionChart({ points }: { points: SeriesPoint[] }) {
       {empty ? (
         <p className="mt-5 text-body text-ink-2">Ainda não há movimento nesses meses. Quando houver, as barras aparecem aqui.</p>
       ) : (
-        <svg role="img" aria-label={`Entradas e saídas dos últimos ${points.length} meses. Os valores estão na tabela abaixo.`} viewBox={`0 0 100 ${height + 18}`} preserveAspectRatio="none" className="mt-4 h-52 w-full">
-          {points.map((p, index) => {
-            const x = index * colWidth;
-            const inH = (p.totalInCents / max) * height;
-            const outH = (p.totalOutCents / max) * height;
-            const bar = colWidth * 0.3;
-            return (
-              <g key={p.period}>
-                <rect x={x + colWidth * 0.18} y={height - inH} width={bar} height={inH} fill="var(--series-in)" rx="0.6" />
-                <rect x={x + colWidth * 0.18 + bar + 0.8} y={height - outH} width={bar} height={outH} fill="var(--series-out)" rx="0.6" />
-                <text x={x + colWidth / 2} y={height + 12} textAnchor="middle" fontSize="4.2" fill="var(--ink-2)">
-                  {short(p.period)}
-                </text>
-              </g>
-            );
-          })}
-          <line x1="0" y1={height} x2="100" y2={height} stroke="var(--line)" strokeWidth="0.4" />
-        </svg>
+        <div role="img" aria-label={`Entradas e saídas dos últimos ${points.length} meses. Os valores estão na tabela abaixo.`} className="mt-5">
+          <div className="grid h-48 items-end gap-2 border-b border-line-strong sm:h-56" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+            {points.map((p) => (
+              <div key={p.period} className="flex h-full items-end justify-center gap-1 sm:gap-1.5">
+                <div title={`Entradas: ${formatBRL(p.totalInCents)}`} className="w-[38%] max-w-9 rounded-t-md" style={{ height: `${pct(p.totalInCents)}%`, background: "var(--series-in)" }} />
+                <div title={`Saídas: ${formatBRL(p.totalOutCents)}`} className="w-[38%] max-w-9 rounded-t-md" style={{ height: `${pct(p.totalOutCents)}%`, background: "var(--series-out)" }} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 grid gap-2" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+            {points.map((p) => (
+              <p key={p.period} className="text-center text-foot text-ink-2">
+                {short(p.period)}
+              </p>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-foot text-ink-2" aria-hidden="true">

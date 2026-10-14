@@ -72,13 +72,14 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
         <TrendUpIcon size={20} className="text-ink-2" aria-hidden="true" />
         Composição do saldo
       </h3>
-      <p className="mt-0.5 text-foot text-ink-2 @[26rem]:pl-[1.875rem]">Do saldo inicial até o caixa final, em reais</p>
+      <p className="mt-0.5 text-foot text-ink-2 @[26rem]:pl-[1.875rem]">Do saldo inicial até o caixa final, em reais{min < 0 ? ". A linha tracejada é o zero: abaixo dela o saldo está negativo." : ""}</p>
 
       <ul className="mt-6 grid gap-3 @[26rem]:grid-cols-6 @[26rem]:gap-0 @[26rem]:pt-4">
         {bars.map((bar) => {
           const lo = Math.min(bar.from, bar.to);
           const hi = Math.max(bar.from, bar.to);
-          const style = { "--lo": place(lo), "--hi": place(hi), background: bar.color } as CSSProperties;
+          const negative = hi <= 0 && lo < 0;
+          const style = { "--lo": place(lo), "--hi": place(hi), background: negative ? "var(--bad, #c0392b)" : bar.color } as CSSProperties;
           const carry = carries[bar.key];
           const total = bar.from === 0;
           return (
@@ -95,6 +96,15 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
                   style={style}
                   className={`absolute inset-y-0 left-[calc(var(--lo)*1%)] w-[calc((var(--hi)-var(--lo))*1%)] min-w-1 rounded-full @[26rem]:inset-y-auto @[26rem]:bottom-[calc(var(--lo)*1%)] @[26rem]:left-[24%] @[26rem]:h-[calc((var(--hi)-var(--lo))*1%)] @[26rem]:min-h-[3px] @[26rem]:w-auto @[26rem]:min-w-0 @[26rem]:right-[24%] ${total ? "@[26rem]:rounded-b-none @[26rem]:rounded-t-[8px]" : "@[26rem]:rounded-[8px]"}`}
                 />
+                {min < 0 && (
+                  <>
+                    {/* A linha do zero: o saldo abaixo dela e negativo (a barra fica na cor das saidas). */}
+                    <span
+                      style={{ "--zero": place(0) } as CSSProperties}
+                      className="absolute hidden border-t border-dashed border-ink-3 @[26rem]:block @[26rem]:bottom-[calc(var(--zero)*1%)] @[26rem]:inset-x-0"
+                    />
+                  </>
+                )}
                 {carry !== undefined && (
                   <span
                     style={{ "--lvl": place(carry) } as CSSProperties}
