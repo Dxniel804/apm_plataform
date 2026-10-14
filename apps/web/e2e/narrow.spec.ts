@@ -25,7 +25,7 @@ const painelRoutes = [
   "/painel?tipo=devolucoes",
   "/painel/despesas",
   "/painel/solicitacoes",
-  "/painel/personalizacao",
+  "/painel/campanhas",
   "/painel/fechamento",
   "/painel/conta",
 ];

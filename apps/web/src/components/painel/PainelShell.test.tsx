@@ -26,7 +26,7 @@ const problem = (code: string, status: number): ApiResult<never> => ({
   error: { kind: "problem", status, code } as ApiError,
 });
 
-function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "solicitacoes" | "personalizacao" | "fechamento"; period?: string } = {}) {
+function renderShell(s: Session = session(), props: { area?: "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento"; period?: string } = {}) {
   return render(<PainelShell session={s} area={props.area ?? "resumo"} period={props.period} />);
 }
 
@@ -69,7 +69,7 @@ describe("PainelShell com sessao real", () => {
     const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage", "campaigns:manage"] } });
     const t = renderShell(treasurer);
     expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Campanhas", "Fechamento"]));
-    expect(screen.getAllByRole("link", { name: "Campanhas" })[0]).toHaveAttribute("href", "/painel/personalizacao");
+    expect(screen.getAllByRole("link", { name: "Campanhas" })[0]).toHaveAttribute("href", "/painel/campanhas");
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Minhas solicitações" })).not.toBeInTheDocument();
     t.unmount();
@@ -85,7 +85,7 @@ describe("PainelShell com sessao real", () => {
 
   it("a area Personalizacao tem o proprio titulo e recebe a escola do vinculo ativo", () => {
     const manager = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "campaigns:manage"] } });
-    renderShell(manager, { area: "personalizacao" });
+    renderShell(manager, { area: "campanhas" });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Campanhas");
     expect(screen.getByTestId("campaigns-area")).toHaveTextContent(SCHOOL_MEMBERSHIP.school.id);
   });

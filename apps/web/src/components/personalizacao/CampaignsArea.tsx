@@ -1,18 +1,23 @@
 "use client";
 
+import type { CampaignTab } from "@/lib/painel-section";
 import { areasFor } from "@/lib/permissions";
+import { CampaignPage } from "./CampaignPage";
 import { CampaignsBoard } from "./CampaignsBoard";
 
 interface Props {
   schoolId: string;
   permissions: string[];
+  /** A campanha aberta (/painel/campanhas/{id}); sem ela, a lista. */
+  campaignId?: string;
+  tab?: CampaignTab;
 }
 
 /**
- * Area "Personalizacao": as campanhas que a gestao vende as familias (festa, kit, rifa), com produtos e preco. So
+ * Area "Campanhas": as campanhas que a gestao vende as familias (festa, kit, rifa), com produtos e preco. So
  * quem tem `campaigns:manage` ve; a API confere de novo a cada pedido.
  */
-export function CampaignsArea({ schoolId, permissions }: Props) {
+export function CampaignsArea({ schoolId, permissions, campaignId, tab = "resumo" }: Props) {
   const areas = areasFor(permissions);
   if (!areas.manageCampaigns) {
     return (
@@ -21,6 +26,7 @@ export function CampaignsArea({ schoolId, permissions }: Props) {
       </p>
     );
   }
+  if (campaignId) return <CampaignPage key={campaignId} schoolId={schoolId} campaignId={campaignId} initialTab={tab} />;
   return (
     <div>
       {/* O Figma repete o titulo da pagina dentro do painel; para leitor de tela ele ja e o h1 do cabecalho. */}

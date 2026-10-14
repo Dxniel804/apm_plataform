@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
 import { describeAuthError, isSessionLost } from "@/lib/auth-messages";
-import { sectionHref, type PainelSection } from "@/lib/painel-section";
+import { sectionHref, type CampaignTab, type PainelSection } from "@/lib/painel-section";
 import { areasFor, type PainelArea } from "@/lib/permissions";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { ContextChooser } from "./ContextChooser";
@@ -34,6 +34,9 @@ interface PainelShellProps {
   tab?: "minhas" | "fila";
   /** YYYY-MM da URL (?mes=); sem ele a API usa o mes corrente no fuso da escola. */
   period?: string;
+  /** Na area das campanhas: a campanha aberta (/painel/campanhas/{id}) e a aba escolhida (?aba=). */
+  campaignId?: string;
+  campaignTab?: CampaignTab;
 }
 
 /* Preferencia "barra lateral recolhida": conveniencia so deste navegador (localStorage), nunca estado de negocio. */
@@ -59,7 +62,7 @@ const writeCollapsed = (value: boolean) => {
   collapsedListeners.forEach((listener) => listener());
 };
 
-export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period }: PainelShellProps) {
+export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, campaignId, campaignTab = "resumo" }: PainelShellProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -200,8 +203,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <ExpensesArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
           ) : shownArea === "solicitacoes" ? (
             <RequestsArea key={schoolId} schoolId={schoolId} userId={session.user.id} permissions={active.permissions} tab={tab} />
-          ) : shownArea === "personalizacao" ? (
-            <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
+          ) : shownArea === "campanhas" ? (
+            <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} campaignId={campaignId} tab={campaignTab} />
           ) : shownArea === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : (
@@ -236,7 +239,7 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean, manageRequests: boolean): { title: string; icon: ReactNode } {
   if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={20} /> };
   if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={20} /> };
-  if (area === "personalizacao") return { title: "Campanhas", icon: <BagIcon size={20} /> };
+  if (area === "campanhas") return { title: "Campanhas", icon: <BagIcon size={20} /> };
   if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={20} /> };
   if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={20} /> };
   return { title: KIND_META[section].plural, icon: KIND_META[section].icon };

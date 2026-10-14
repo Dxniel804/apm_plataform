@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { CAMPAIGN_ID, ITEM_A, detailBody, itemBody, summaryBody } from "@/test-utils/campaign-fixtures";
+import { CAMPAIGN_ID, ITEM_A, ORDER_1, ORDER_2, dashboardBody, detailBody, itemBody, orderBody, orderPageBody, summaryBody } from "@/test-utils/campaign-fixtures";
 import { json, problem } from "@/test-utils/auth-fixtures";
 import { SCHOOL_ID } from "@/test-utils/statement-fixtures";
 import {
-  activateCampaign, addCampaignItem, clearCampaignImage, createCampaign, downloadCampaignImage, endCampaign, getCampaign, listCampaigns,
-  parseCampaignDetail, setCampaignImage, updateCampaign, updateCampaignItem,
+  activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport, endCampaign,
+  getCampaign, getCampaignDashboard, listCampaignOrders, listCampaigns, parseCampaignDetail, setCampaignImage, updateCampaign, updateCampaignItem,
 } from "./campaigns";
 
 const ok = (body: unknown, status = 200) => vi.fn().mockResolvedValue(json(body, status, { "Content-Type": "application/json" }));
@@ -117,5 +117,97 @@ describe("escrita", () => {
   it("409 e 422 chegam com o code e o campo", async () => {
     const f = vi.fn().mockResolvedValue(problem("campaign_needs_a_product", 409));
     expect(await activateCampaign(SCHOOL_ID, CAMPAIGN_ID, { fetchImpl: f, csrfToken: csrf })).toMatchObject({ ok: false, error: { status: 409, code: "campaign_needs_a_product" } });
+  });
+});
+
+describe("painel da campanha, pedidos e entrega", () => {
+  it("dashboard: arrecadado, custo, lucro, entregas e vendidos por produto, em camelCase", async () => {
+    const f = ok(dashboardBody());
+    const result = await getCampaignDashboard(SCHOOL_ID, CAMPAIGN_ID, { fetchImpl: f });
+    expect(url(f)).toBe(`${base}/${CAMPAIGN_ID}/dashboard`);
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        collectedCents: 3050, costCents: 1100, costComplete: true, profitCents: 1950, deliveredOrdersCount: 1, toDeliverOrdersCount: 1,
+        items: [{ name: "Cachorro-quente", unitsSold: 3, revenueCents: 2400, costCents: 900, costKnown: true }, { name: "Pamonha" }],
+      },
+    });
+  });
+
+  it("dashboard sem lucro: o custo incompleto vem como null (a tela diz 'custo nao informado')", async () => {
+    const result = await getCampaignDashboard(SCHOOL_ID, CAMPAIGN_ID, { fetchImpl: ok(dashboardBody({ cost_complete: false, profit_cents: null, items: [{ item_id: ITEM_A, name: "Pamonha", units_sold: 1, revenue_cents: 650, cost_cents: null, cost_known: false }] })) });
+    expect(result).toMatchObject({ ok: true, data: { costComplete: false, profitCents: null, items: [{ costCents: null, costKnown: false }] } });
+  });
+
+  it("recusa numero, situacao ou produto mal formados no dashboard", async () => {
+    for (const bad of [dashboardBody({ collected_cents: "3" }), dashboardBody({ status: "LIVE" }), dashboardBody({ cost_complete: "sim" }), dashboardBody({ items: [{ item_id: ITEM_A }] }), dashboardBody({ paid_orders_count: 1.5 })]) {
+      const result = await getCampaignDashboard(SCHOOL_ID, CAMPAIGN_ID, { fetchImpl: ok(bad) });
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  it("pedidos: filtros e busca vao na URL, a pagina volta em camelCase", async () => {
+    const f = ok(orderPageBody([orderBody(), orderBody({ order_id: ORDER_2, payment_status: "PENDING", delivery_status: null })], { total: 2 }));
+    const result = await listCampaignOrders(SCHOOL_ID, CAMPAIGN_ID, { payment: "PAID", delivery: "PENDING", search: "  ana ", limit: 25, offset: 50 }, { fetchImpl: f });
+    expect(url(f)).toBe(`${base}/${CAMPAIGN_ID}/orders?payment=PAID&delivery=PENDING&search=ana&limit=25&offset=50`);
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        total: 2,
+        items: [
+          { orderId: ORDER_1, referenceCode: 42, studentName: "Ana", className: "3A", paymentStatus: "PAID", deliveryStatus: "PENDING", lines: [{ itemName: "Cachorro-quente", quantity: 2, unitPriceCents: 800 }, { itemName: "Pamonha" }] },
+          { paymentStatus: "PENDING", deliveryStatus: null },
+        ],
+      },
+    });
+  });
+
+  it("pedidos sem filtro: sem query; e um pagamento ou entrega desconhecidos sao recusados", async () => {
+    const f = ok(orderPageBody());
+    await listCampaignOrders(SCHOOL_ID, CAMPAIGN_ID, {}, { fetchImpl: f });
+    expect(url(f)).toBe(`${base}/${CAMPAIGN_ID}/orders`);
+    for (const bad of [orderBody({ payment_status: "REFUNDED" }), orderBody({ delivery_status: "LOST" }), orderBody({ amount_cents: "9" }), orderBody({ lines: [{ item_name: "", quantity: 1, unit_price_cents: 1 }] })]) {
+      expect((await listCampaignOrders(SCHOOL_ID, CAMPAIGN_ID, {}, { fetchImpl: ok(orderPageBody([bad])) })).ok).toBe(false);
+    }
+  });
+
+  it("entrega: POST com os ids e a escolha, e o resultado em tres numeros", async () => {
+    const f = ok({ changed: 1, unchanged: 1, skipped: 0 });
+    const result = await changeCampaignDelivery(SCHOOL_ID, CAMPAIGN_ID, [ORDER_1, ORDER_2], true, { fetchImpl: f, csrfToken: csrf });
+    expect(url(f)).toBe(`${base}/${CAMPAIGN_ID}/orders/delivery`);
+    expect(init(f).method).toBe("POST");
+    expect(init(f).headers["X-CSRF-Token"]).toBe(csrf);
+    expect(sent(f)).toEqual({ order_ids: [ORDER_1, ORDER_2], delivered: true });
+    expect(result).toMatchObject({ ok: true, data: { changed: 1, unchanged: 1, skipped: 0 } });
+    expect((await changeCampaignDelivery(SCHOOL_ID, CAMPAIGN_ID, [ORDER_1], false, { fetchImpl: ok({ changed: "1" }), csrfToken: csrf })).ok).toBe(false);
+  });
+
+  it("o PDF da campanha vem da API com a sessao", async () => {
+    const f = vi.fn().mockResolvedValue(new Response("%PDF-1.4", { status: 200, headers: { "Content-Type": "application/pdf" } }));
+    const result = await downloadCampaignReport(SCHOOL_ID, CAMPAIGN_ID, { fetchImpl: f });
+    expect(url(f)).toBe(`${base}/${CAMPAIGN_ID}/report.pdf`);
+    expect(result).toMatchObject({ ok: true, data: { contentType: "application/pdf" } });
+  });
+
+  it("custo do produto e o aluno e turma da campanha vao no corpo; custo nulo apaga", async () => {
+    const created = ok(detailBody(), 201);
+    await createCampaign(SCHOOL_ID, { title: "Festa", askStudentClass: false }, { fetchImpl: created, csrfToken: csrf });
+    expect(sent(created)).toEqual({ title: "Festa", ask_student_class: false });
+    const added = ok(detailBody(), 201);
+    await addCampaignItem(SCHOOL_ID, CAMPAIGN_ID, { name: "Bolo", priceCents: 900, unitCostCents: 0 }, { fetchImpl: added, csrfToken: csrf });
+    expect(sent(added)).toEqual({ name: "Bolo", price_cents: 900, unit_cost_cents: 0 });
+    const cleared = ok(detailBody());
+    await updateCampaignItem(SCHOOL_ID, CAMPAIGN_ID, ITEM_A, { unitCostCents: null }, { fetchImpl: cleared, csrfToken: csrf });
+    expect(sent(cleared)).toEqual({ unit_cost_cents: null });
+    const patched = ok(detailBody());
+    await updateCampaign(SCHOOL_ID, CAMPAIGN_ID, { askStudentClass: true }, { fetchImpl: patched, csrfToken: csrf });
+    expect(sent(patched)).toEqual({ ask_student_class: true });
+  });
+
+  it("o produto traz o custo e a campanha traz o aluno e turma", () => {
+    const parsed = parseCampaignDetail(detailBody({ ask_student_class: true, items: [itemBody({ unit_cost_cents: 300 })] }));
+    expect(parsed).toMatchObject({ askStudentClass: true, items: [{ unitCostCents: 300 }] });
+    expect(parseCampaignDetail(detailBody({ ask_student_class: "sim" }))).toBeNull();
+    expect(parseCampaignDetail(detailBody({ items: [itemBody({ unit_cost_cents: "3" })] }))).toBeNull();
   });
 });

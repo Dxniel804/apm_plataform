@@ -32,6 +32,48 @@ async function toReview(user: ReturnType<typeof userEvent.setup>) {
 
 const submit = () => screen.getByRole("button", { name: /Gerar Pix de/ });
 
+describe("aluno e turma", () => {
+  it("campanha que pede aluno e turma: a etapa de dados aparece e os dois campos sao obrigatorios", async () => {
+    const create = vi.spyOn(api.public, "createOrder");
+    render(<CampaignOrderFlow school={SCHOOL} campaign={publicCampaign({ askStudentClass: true })} />);
+    const user = userEvent.setup();
+    await add(user, "Cachorro-quente");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByLabelText(/Nome do aluno/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Turma/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getAllByText(/Informe|obrigat/i).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Confira antes de pagar" })).not.toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("com os dois preenchidos, o pedido segue e leva aluno e turma para a API", async () => {
+    const create = vi.spyOn(api.public, "createOrder").mockResolvedValue(okCreated());
+    render(<CampaignOrderFlow school={SCHOOL} campaign={publicCampaign({ askStudentClass: true })} />);
+    const user = userEvent.setup();
+    await add(user, "Cachorro-quente");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.type(await screen.findByLabelText(/Nome do aluno/), "Ana Souza");
+    await user.type(screen.getByLabelText(/Turma/), "3A");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(await screen.findByRole("button", { name: /Gerar Pix de/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![2]).toMatchObject({ identification: { studentName: "Ana Souza", classroom: "3A" } });
+  });
+
+  it("campanha que nao pede: o aluno e a turma ficam escondidos quando a escola tambem nao pede", async () => {
+    render(<CampaignOrderFlow school={SCHOOL} campaign={publicCampaign({ askStudentClass: false })} />);
+    const user = userEvent.setup();
+    await add(user, "Cachorro-quente");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByLabelText(/Nome do responsável/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Nome do aluno/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Turma/)).not.toBeInTheDocument();
+  });
+});
+
 describe("o carrinho", () => {
   it("mostra a campanha, os produtos com o preco e o limite, e o total sobe e desce com as quantidades", async () => {
     render(<CampaignOrderFlow school={SCHOOL} campaign={publicCampaign()} />);

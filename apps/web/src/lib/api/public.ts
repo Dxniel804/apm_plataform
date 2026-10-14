@@ -168,7 +168,9 @@ function parseCampaignSummary(value: unknown): PublicCampaignSummary | null {
   const endsOn = value.ends_on === null || value.ends_on === undefined ? null : str(value.ends_on);
   if (!id || !title || itemsCount === null || coverVersion === null || typeof value.has_cover !== "boolean") return null;
   if ((value.description != null && description === null) || (value.ends_on != null && endsOn === null)) return null;
-  return { id, title, description, endsOn, hasCover: value.has_cover, coverVersion, itemsCount };
+  // Campanhas antigas, de antes do campo existir, nao pedem aluno e turma.
+  const askStudentClass = typeof value.ask_student_class === "boolean" ? value.ask_student_class : false;
+  return { id, title, description, endsOn, hasCover: value.has_cover, coverVersion, itemsCount, askStudentClass };
 }
 
 export function parsePublicCampaign(body: unknown): PublicCampaign | null {

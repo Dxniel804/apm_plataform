@@ -1,6 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push }) }));
 import { api } from "@/lib/api";
 import type { ApiResult, CampaignSummary } from "@/lib/api/types";
 import { CAMPAIGN_ID, detail, summary } from "@/test-utils/campaign-fixtures";
@@ -14,10 +17,11 @@ const MANAGER = ["campaigns:manage", "statement:read"];
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:preview");
   URL.revokeObjectURL = vi.fn();
+  push.mockClear();
 });
 afterEach(() => vi.restoreAllMocks());
 
-describe("area Personalizacao", () => {
+describe("area Campanhas", () => {
   it("so quem tem campaigns:manage ve as campanhas; os outros recebem um aviso e nenhuma chamada a API", () => {
     const list = vi.spyOn(api.campaigns, "list");
     render(<CampaignsArea schoolId={SCHOOL_ID} permissions={["requests:read_all", "expenses:read_all"]} />);
@@ -91,17 +95,12 @@ describe("lista de campanhas", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Nada foi alterado");
   });
 
-  it("abre o editor de uma campanha e fecha de novo", async () => {
+  it("cada campanha leva a pagina dela (/painel/campanhas/{id})", async () => {
     vi.spyOn(api.campaigns, "list").mockResolvedValue(ok([summary()]));
-    const get = vi.spyOn(api.campaigns, "get").mockResolvedValue({ ok: true, data: detail() });
-    const user = userEvent.setup();
     render(<CampaignsBoard schoolId={SCHOOL_ID} />);
 
-    await user.click(await screen.findByRole("button", { name: "Abrir a campanha Festa Junina" }));
-    expect(await screen.findByRole("heading", { name: "Texto e datas" })).toBeInTheDocument();
-    expect(get).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID);
-    await user.click(screen.getByRole("button", { name: "Fechar a campanha Festa Junina" }));
-    expect(screen.queryByRole("heading", { name: "Texto e datas" })).not.toBeInTheDocument();
+    const link = await screen.findByRole("link", { name: "Abrir a campanha Festa Junina" });
+    expect(link).toHaveAttribute("href", `/painel/campanhas/${CAMPAIGN_ID}`);
   });
 });
 
@@ -137,10 +136,9 @@ describe("nova campanha", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("cria um rascunho, abre o editor dele e avisa o que fazer em seguida", async () => {
-    const list = vi.spyOn(api.campaigns, "list").mockResolvedValueOnce(ok([])).mockResolvedValue(ok([summary()]));
+  it("cria um rascunho e abre a pagina dele, na aba dos produtos", async () => {
+    vi.spyOn(api.campaigns, "list").mockResolvedValue(ok([]));
     const create = vi.spyOn(api.campaigns, "create").mockResolvedValue({ ok: true, data: detail() });
-    vi.spyOn(api.campaigns, "get").mockResolvedValue({ ok: true, data: detail() });
     const user = userEvent.setup();
     render(<CampaignsBoard schoolId={SCHOOL_ID} />);
     await screen.findByRole("heading", { name: "Nenhuma campanha ainda" });
@@ -150,10 +148,25 @@ describe("nova campanha", () => {
     await user.type(screen.getByLabelText(/Texto para as famílias/), "Barracas e jogos");
     await user.click(screen.getByRole("button", { name: "Criar rascunho" }));
 
-    await waitFor(() => expect(create).toHaveBeenCalledWith(SCHOOL_ID, { title: "Festa Junina", description: "Barracas e jogos", startsOn: undefined, endsOn: undefined }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Campanha criada como rascunho");
-    expect(await screen.findByRole("heading", { name: "Texto e datas" })).toBeInTheDocument();
-    await waitFor(() => expect(list).toHaveBeenCalledTimes(2)); // a lista recarrega
+    await waitFor(() => expect(create).toHaveBeenCalledWith(SCHOOL_ID, { title: "Festa Junina", description: "Barracas e jogos", startsOn: undefined, endsOn: undefined, askStudentClass: true }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/painel/campanhas/${CAMPAIGN_ID}?aba=produtos`));
+  });
+
+  it("a campanha pede o aluno e a turma por padrao, e a gestao pode desligar", async () => {
+    vi.spyOn(api.campaigns, "list").mockResolvedValue(ok([]));
+    const create = vi.spyOn(api.campaigns, "create").mockResolvedValue({ ok: true, data: detail() });
+    const user = userEvent.setup();
+    render(<CampaignsBoard schoolId={SCHOOL_ID} />);
+    await screen.findByRole("heading", { name: "Nenhuma campanha ainda" });
+
+    await user.click(screen.getByRole("button", { name: "Nova campanha" }));
+    const ask = screen.getByRole("checkbox", { name: /Pedir o aluno e a turma/ });
+    expect(ask).toBeChecked();
+    await user.click(ask);
+    await user.type(screen.getByLabelText("Título"), "Rifa");
+    await user.click(screen.getByRole("button", { name: "Criar rascunho" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledWith(SCHOOL_ID, expect.objectContaining({ title: "Rifa", askStudentClass: false })));
   });
 
   it("erro da API aparece no formulario e nada e criado", async () => {

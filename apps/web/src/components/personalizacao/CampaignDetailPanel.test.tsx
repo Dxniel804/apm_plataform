@@ -118,7 +118,7 @@ describe("editor de uma campanha", () => {
     await user.clear(within(editor).getByLabelText(/Texto para as famílias/));
     await user.click(within(editor).getByRole("button", { name: "Salvar texto e datas" }));
 
-    await waitFor(() => expect(update).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, { title: "Festa de São João", description: null, startsOn: null, endsOn: null }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, { title: "Festa de São João", description: null, startsOn: null, endsOn: null, askStudentClass: false }));
     expect(onChanged).toHaveBeenCalledWith("Campanha salva.");
   });
 
@@ -164,7 +164,7 @@ describe("produtos", () => {
     await user.type(within(form).getByLabelText(/Limite por pedido/), "3");
     await user.click(within(form).getByRole("button", { name: "Adicionar produto" }));
 
-    await waitFor(() => expect(add).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, { name: "Camiseta", description: undefined, priceCents: 4500, maxPerOrder: 3 }));
+    await waitFor(() => expect(add).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, { name: "Camiseta", description: undefined, priceCents: 4500, unitCostCents: null, maxPerOrder: 3 }));
     expect(await screen.findByRole("status")).toHaveTextContent("Produto adicionado.");
   });
 
@@ -202,7 +202,7 @@ describe("produtos", () => {
     await user.click(within(form).getByRole("button", { name: "Salvar produto" }));
 
     await waitFor(() =>
-      expect(updateItem).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, ITEM_A, { name: "Cachorro-quente", description: "Pão, salsicha e molho da casa.", priceCents: 950, maxPerOrder: null }),
+      expect(updateItem).toHaveBeenCalledWith(SCHOOL_ID, CAMPAIGN_ID, ITEM_A, { name: "Cachorro-quente", description: "Pão, salsicha e molho da casa.", priceCents: 950, unitCostCents: null, maxPerOrder: null }),
     );
     expect(await screen.findByRole("status")).toHaveTextContent("Produto salvo.");
   });

@@ -8,6 +8,7 @@ import { TextAreaField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import type { ApiResult, CampaignDetail, CampaignItem } from "@/lib/api/types";
 import { MAX_PRICE_CENTS, MIN_PRICE_CENTS, describeCampaignError } from "@/lib/campaign-labels";
+import { CostField, MAX_COST_CENTS } from "./CostField";
 import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { CampaignImage } from "./CampaignImage";
 import { ImageButtons } from "./ImageButtons";
@@ -32,6 +33,7 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
   const [cents, setCents] = useState(item.priceCents);
+  const [cost, setCost] = useState<number | null>(item.unitCostCents);
   const [limit, setLimit] = useState(item.maxPerOrder === null ? "" : String(item.maxPerOrder));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -56,6 +58,7 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
     setName(item.name);
     setDescription(item.description ?? "");
     setCents(item.priceCents);
+    setCost(item.unitCostCents);
     setLimit(item.maxPerOrder === null ? "" : String(item.maxPerOrder));
     setErrors({});
     setEditing(true);
@@ -66,13 +69,14 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
     const problems: Record<string, string> = {};
     if (!name.trim()) problems.name = "Escreva o nome do produto.";
     if (cents < MIN_PRICE_CENTS || cents > MAX_PRICE_CENTS) problems.price_cents = "O preço vai de R$ 1,00 a R$ 10.000,00.";
+    if (cost !== null && cost > MAX_COST_CENTS) problems.unit_cost_cents = "O custo vai de R$ 0,00 a R$ 10.000,00.";
     const max = limit.trim() === "" ? null : Number(limit);
     if (max !== null && (!Number.isInteger(max) || max < 1 || max > 99)) problems.max_per_order = "O limite por pedido vai de 1 a 99.";
     setErrors(problems);
     if (Object.keys(problems).length > 0) return;
     setBusy(true);
     const problem = await run(
-      () => api.campaigns.updateItem(schoolId, campaignId, item.id, { name: name.trim(), description: description.trim() || null, priceCents: cents, maxPerOrder: max }),
+      () => api.campaigns.updateItem(schoolId, campaignId, item.id, { name: name.trim(), description: description.trim() || null, priceCents: cents, unitCostCents: cost, maxPerOrder: max }),
       "Produto salvo.",
     );
     setBusy(false);
@@ -105,6 +109,7 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
             <span className="font-bold text-brand-800">{formatBRL(item.priceCents)}</span>
             {item.maxPerOrder !== null ? ` · até ${item.maxPerOrder} por pedido` : " · sem limite por pedido"}
           </p>
+          <p className="mt-0.5 text-sub text-ink-2">{item.unitCostCents === null ? "Custo não informado" : `Custo ${formatBRL(item.unitCostCents)} por unidade`}</p>
         </div>
         <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
           <StatusPill tone={item.isActive ? "success" : "neutral"}>{item.isActive ? "À venda" : "Fora da venda"}</StatusPill>
@@ -151,6 +156,7 @@ export function CampaignItemRow({ schoolId, campaignId, campaignTitle, item, edi
               />
               <TextField label="Limite por pedido" optional name="item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
             </div>
+            <CostField name="item-cost" value={cost} onChange={setCost} error={errors.unit_cost_cents} />
             <ImageButtons
               what={`imagem do produto ${item.name}`}
               hasImage={item.hasImage}

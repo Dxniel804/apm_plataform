@@ -1,5 +1,5 @@
 import { formatWait } from "@/lib/auth-messages";
-import type { ApiError, CampaignStatus } from "@/lib/api/types";
+import type { ApiError, CampaignStatus, OrderDeliveryStatus, OrderPaymentStatus } from "@/lib/api/types";
 import type { StatusTone } from "@/lib/status";
 
 /**
@@ -15,6 +15,23 @@ export function campaignStatusView(status: CampaignStatus): { label: string; ton
     case "ENDED":
       return { label: "Encerrada", tone: "info" };
   }
+}
+
+/** A situacao do pagamento de um pedido, como o painel mostra: Pendente, Aprovado, Cancelado. */
+export function paymentStatusView(status: OrderPaymentStatus): { label: string; tone: StatusTone } {
+  switch (status) {
+    case "PAID":
+      return { label: "Aprovado", tone: "success" };
+    case "PENDING":
+      return { label: "Pendente", tone: "warning" };
+    case "CANCELLED":
+      return { label: "Cancelado", tone: "neutral" };
+  }
+}
+
+/** A entrega de um pedido. Sem entrega para acompanhar (pedido nao aprovado) nao ha rotulo. */
+export function deliveryStatusView(status: OrderDeliveryStatus): { label: string; tone: StatusTone } {
+  return status === "DELIVERED" ? { label: "Entregue", tone: "success" } : { label: "A entregar", tone: "info" };
 }
 
 /** Limites do banco (a tela avisa antes; a API confere de novo). Em centavos. */
@@ -46,6 +63,8 @@ const FIELD_TEXT: Record<string, Record<string, string>> = {
   name: { required: "Escreva o nome do produto.", invalid: "O nome precisa ter de 1 a 120 caracteres." },
   price_cents: { required: "Informe o preço.", invalid: "O preço vai de R$ 1,00 a R$ 10.000,00." },
   max_per_order: { invalid: "O limite por pedido vai de 1 a 99." },
+  unit_cost_cents: { invalid: "O custo vai de R$ 0,00 a R$ 10.000,00." },
+  order_ids: { duplicate: "Escolha cada pedido uma vez só." },
   file: {
     required: "Escolha uma imagem.",
     empty: "O arquivo está vazio.",

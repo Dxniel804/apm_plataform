@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { CheckboxField } from "@/components/ui/CheckboxField";
 import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { TextAreaField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -20,6 +21,7 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
   const [description, setDescription] = useState("");
   const [startsOn, setStartsOn] = useState("");
   const [endsOn, setEndsOn] = useState("");
+  const [askStudentClass, setAskStudentClass] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [general, setGeneral] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,6 +43,7 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
       description: description.trim() || undefined,
       startsOn: startsOn || undefined,
       endsOn: endsOn || undefined,
+      askStudentClass,
     });
     setBusy(false);
     if (!created.ok) {
@@ -52,6 +55,7 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
     setDescription("");
     setStartsOn("");
     setEndsOn("");
+    setAskStudentClass(true);
     onSaved(created.data.id);
   }
 
@@ -71,6 +75,7 @@ export function CampaignForm({ schoolId, open, onClose, onSaved }: Props) {
           <TextField label="Começa em" optional name="campaign-starts" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} error={errors.starts_on} />
           <TextField label="Termina em" optional name="campaign-ends" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} error={errors.ends_on} />
         </div>
+        <CheckboxField label="Pedir o aluno e a turma" hint="Assim você sabe a quem entregar cada pedido. Dá para mudar depois." checked={askStudentClass} onChange={(e) => setAskStudentClass(e.target.checked)} />
         <div aria-live="polite">
           {general && (
             <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">

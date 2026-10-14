@@ -1,13 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, chipClass } from "@/components/ui/Button";
+import { Button, ButtonLink, chipClass } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import type { ApiResult, CampaignStatus, CampaignSummary } from "@/lib/api/types";
 import { campaignStatusView, describeCampaignError, describePeriod } from "@/lib/campaign-labels";
 import { formatBRL } from "@/lib/money";
-import { CampaignDetailPanel } from "./CampaignDetailPanel";
 import { CampaignForm } from "./CampaignForm";
 
 const FILTERS: Array<{ status: CampaignStatus | undefined; label: string }> = [
@@ -18,17 +18,15 @@ const FILTERS: Array<{ status: CampaignStatus | undefined; label: string }> = [
 ];
 
 /**
- * Lista das campanhas da escola do vinculo ativo, com "Nova campanha". Cada cartao abre o editor. O filtro e feito
- * aqui (sao poucas campanhas); nada decide estado: a API devolve e a tela mostra.
+ * Lista das campanhas da escola do vinculo ativo, com "Nova campanha". Cada cartao leva a pagina da campanha
+ * (/painel/campanhas/{id}). O filtro e feito aqui (sao poucas campanhas); nada decide estado: a API devolve e a tela mostra.
  */
 export function CampaignsBoard({ schoolId }: { schoolId: string }) {
   const [filter, setFilter] = useState<CampaignStatus | undefined>(undefined);
-  const [version, setVersion] = useState(0);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const router = useRouter();
   const [creating, setCreating] = useState(false);
-  const [banner, setBanner] = useState<string | null>(null);
 
-  const key = `${schoolId}|${version}`;
+  const key = schoolId;
   const [loaded, setLoaded] = useState<{ key: string; res: ApiResult<CampaignSummary[]> } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +41,6 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
   const res = loaded?.key === key ? loaded.res : loaded?.res ?? null;
   const all = res && res.ok ? res.data : [];
   const items = filter ? all.filter((campaign) => campaign.status === filter) : all;
-  const reload = () => setVersion((n) => n + 1);
 
   return (
     <div>
@@ -56,8 +53,6 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
               aria-pressed={filter === f.status}
               onClick={() => {
                 setFilter(f.status);
-                setOpenId(null);
-                setBanner(null);
               }}
               className={chipClass(filter === f.status)}
             >
@@ -76,18 +71,10 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
         onClose={() => setCreating(false)}
         onSaved={(id) => {
           setCreating(false);
-          setFilter(undefined);
-          setBanner("Campanha criada como rascunho. Adicione os produtos e ponha à venda quando estiver pronta.");
-          setOpenId(id);
-          reload();
+          // A campanha nasce rascunho: abre direto nos produtos, onde a gestao a monta e poe a venda.
+          router.push(`/painel/campanhas/${encodeURIComponent(id)}?aba=produtos`);
         }}
       />
-
-      {banner && (
-        <p role="status" className="mb-4 rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">
-          {banner}
-        </p>
-      )}
 
       {!res && (
         <div role="status" aria-busy="true" aria-live="polite">
@@ -119,7 +106,6 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
         <ul aria-label="Campanhas da escola" className="space-y-4">
           {items.map((campaign) => {
             const view = campaignStatusView(campaign.status);
-            const isOpen = openId === campaign.id;
             const period = describePeriod(campaign.startsOn, campaign.endsOn);
             return (
               <li key={campaign.id} className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
@@ -135,18 +121,10 @@ export function CampaignsBoard({ schoolId }: { schoolId: string }) {
                   <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                     <StatusPill tone={view.tone}>{view.label}</StatusPill>
                   </div>
-                  <Button variant="chip" size="md" aria-expanded={isOpen} aria-label={`${isOpen ? "Fechar" : "Abrir"} a campanha ${campaign.title}`} onClick={() => setOpenId(isOpen ? null : campaign.id)} className="min-h-12 w-full px-8 sm:w-auto">
-                    {isOpen ? "Fechar" : "Abrir"}
-                  </Button>
+                  <ButtonLink href={`/painel/campanhas/${encodeURIComponent(campaign.id)}`} variant="chip" size="md" aria-label={`Abrir a campanha ${campaign.title}`} className="min-h-12 w-full px-8 sm:w-auto">
+                    Abrir
+                  </ButtonLink>
                 </div>
-                {isOpen && (
-                  <CampaignDetailPanel
-                    schoolId={schoolId}
-                    campaignId={campaign.id}
-                    // O painel mostra o proprio aviso ("Capa salva."): aqui so recarrega as contagens da lista.
-                    onChanged={reload}
-                  />
-                )}
               </li>
             );
           })}

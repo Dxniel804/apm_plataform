@@ -83,9 +83,9 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
   }
   if (areas.manageCampaigns) {
     items.push({
-      area: "personalizacao",
+      area: "campanhas",
       label: "Campanhas",
-      href: areaHref("personalizacao"),
+      href: areaHref("campanhas"),
       icon: <BagIcon size={22} />,
     });
   }

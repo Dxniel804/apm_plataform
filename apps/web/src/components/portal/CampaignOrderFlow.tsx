@@ -26,7 +26,12 @@ const STEP_NAMES: Partial<Record<Step, string>> = { amount: "Produtos" };
  * pelo Pix. O mesmo caminho da contribuicao livre, com o carrinho no lugar do valor. A tela manda QUAIS produtos
  * e QUANTOS; o servidor le os precos, soma e cria o Pix. O total que a tela mostra e so uma conta de tela.
  */
-export function CampaignOrderFlow({ school, campaign }: { school: PublicSchool; campaign: PublicCampaign }) {
+export function CampaignOrderFlow({ school: publicSchool, campaign }: { school: PublicSchool; campaign: PublicCampaign }) {
+  // Uma campanha que entrega pede o aluno e a turma, qualquer que seja o que a escola pede na contribuicao do mes
+  // (a API exige os dois do mesmo jeito).
+  const school: PublicSchool = campaign.askStudentClass
+    ? { ...publicSchool, identification: { ...publicSchool.identification, studentName: "REQUIRED", classroom: "REQUIRED" } }
+    : publicSchool;
   const fields = visibleFields(school.identification);
   // "amount" e a etapa do carrinho (a etapa dos produtos); o resto e igual ao da contribuicao.
   const steps: Step[] = fields.length > 0 ? ["amount", "identification", "review", "pix"] : ["amount", "review", "pix"];

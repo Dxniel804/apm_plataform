@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePeriod, parseSection, sectionHref } from "./painel-section";
+import { parseCampaignTab, parsePeriod, parseSection, sectionHref } from "./painel-section";
 
 describe("painel sections", () => {
   it("converte o parametro da URL em tipo do dominio", () => {
@@ -30,5 +30,15 @@ describe("painel sections", () => {
     for (const bad of [undefined, "", "2026-13", "2026-00", "26-10", "2026-1", "2026-10-01", "../x", "<script>"]) {
       expect(parsePeriod(bad)).toBeUndefined();
     }
+  });
+});
+
+describe("parseCampaignTab", () => {
+  it("aceita so as tres abas; qualquer outra coisa abre o resumo", () => {
+    expect(parseCampaignTab("pedidos")).toBe("pedidos");
+    expect(parseCampaignTab(["produtos", "pedidos"])).toBe("produtos");
+    expect(parseCampaignTab("resumo")).toBe("resumo");
+    expect(parseCampaignTab("outra")).toBe("resumo");
+    expect(parseCampaignTab(undefined)).toBe("resumo");
   });
 });

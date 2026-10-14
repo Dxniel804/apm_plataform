@@ -41,7 +41,7 @@ export function areasFor(permissions: readonly string[]): Areas {
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "personalizacao" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;
@@ -56,6 +56,6 @@ export function homeArea(areas: Areas): PainelArea {
   if (areas.resumo) return "resumo";
   if (areas.myExpenses || areas.manageExpenses) return "despesas";
   if (areas.requests) return "solicitacoes";
-  if (areas.manageCampaigns) return "personalizacao";
+  if (areas.manageCampaigns) return "campanhas";
   return "resumo";
 }

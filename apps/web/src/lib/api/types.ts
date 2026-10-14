@@ -404,6 +404,8 @@ export interface CampaignItem {
   name: string;
   description: string | null;
   priceCents: Cents;
+  /** O que uma unidade custa para a APM (opcional). Medida de gestao: nao e lancamento no caixa. */
+  unitCostCents: Cents | null;
   maxPerOrder: number | null;
   position: number;
   isActive: boolean;
@@ -430,6 +432,8 @@ export interface CampaignSummary {
 export interface CampaignDetail extends CampaignSummary {
   description: string | null;
   coverVersion: number;
+  /** A familia precisa dizer o aluno e a turma ao fazer o pedido (para a gestao saber a quem entregar). */
+  askStudentClass: boolean;
   items: CampaignItem[];
 }
 
@@ -438,14 +442,93 @@ export interface CampaignInput {
   description?: string | null;
   startsOn?: string | null;
   endsOn?: string | null;
+  askStudentClass?: boolean;
 }
 
 export interface CampaignItemInput {
   name: string;
   description?: string | null;
   priceCents: Cents;
+  unitCostCents?: Cents | null;
   maxPerOrder?: number | null;
   position?: number;
+}
+
+/** Situacao do pagamento de um pedido, como o painel mostra: Pendente, Aprovado, Cancelado. */
+export type OrderPaymentStatus = "PENDING" | "PAID" | "CANCELLED";
+export type OrderDeliveryStatus = "PENDING" | "DELIVERED";
+
+/** Um produto da campanha e o que os pedidos APROVADOS levaram dele. */
+export interface SoldItem {
+  itemId: string;
+  name: string;
+  unitsSold: number;
+  revenueCents: Cents;
+  /** Custo total do que foi vendido; nulo quando algum pedido foi feito sem custo informado. */
+  costCents: Cents | null;
+  costKnown: boolean;
+}
+
+/** O painel de uma campanha. Tudo calculado no servidor. */
+export interface CampaignDashboard {
+  campaignId: string;
+  title: string;
+  status: CampaignStatus;
+  paidOrdersCount: number;
+  pendingOrdersCount: number;
+  cancelledOrdersCount: number;
+  /** Arrecadado: o que os pedidos aprovados trouxeram (o mesmo numero do caixa). */
+  collectedCents: Cents;
+  unitsSold: number;
+  costCents: Cents;
+  /** Falso quando alguma unidade vendida nao tem custo: ai nao ha lucro para mostrar. */
+  costComplete: boolean;
+  profitCents: Cents | null;
+  deliveredOrdersCount: number;
+  toDeliverOrdersCount: number;
+  items: SoldItem[];
+}
+
+export interface OrderLineView {
+  itemName: string;
+  quantity: number;
+  unitPriceCents: Cents;
+}
+
+export interface CampaignOrder {
+  orderId: string;
+  referenceCode: number;
+  createdAt: string;
+  guardianName: string | null;
+  studentName: string | null;
+  className: string | null;
+  amountCents: Cents;
+  paymentStatus: OrderPaymentStatus;
+  /** So um pedido aprovado tem entrega para acompanhar. */
+  deliveryStatus: OrderDeliveryStatus | null;
+  deliveryChangedAt: string | null;
+  lines: OrderLineView[];
+}
+
+export interface CampaignOrderPage {
+  items: CampaignOrder[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface OrderFilters {
+  payment?: OrderPaymentStatus;
+  delivery?: OrderDeliveryStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface DeliveryResult {
+  changed: number;
+  unchanged: number;
+  skipped: number;
 }
 
 /** O que a familia ve (docs/campaigns.md): so produtos ativos, com o preco de hoje. */
@@ -467,6 +550,8 @@ export interface PublicCampaignSummary {
   hasCover: boolean;
   coverVersion: number;
   itemsCount: number;
+  /** O pedido precisa do nome do aluno e da turma. */
+  askStudentClass: boolean;
 }
 
 export interface PublicCampaign extends PublicCampaignSummary {

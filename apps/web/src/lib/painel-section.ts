@@ -36,3 +36,12 @@ export function sectionHref(section: PainelSection, period?: string): string {
   if (period && PERIOD.test(period)) params.push(`mes=${period}`);
   return params.length > 0 ? `/painel?${params.join("&")}` : "/painel";
 }
+
+/** As abas da pagina de uma campanha (`?aba=`): o resumo, os pedidos e os produtos (o editor). */
+export type CampaignTab = "resumo" | "pedidos" | "produtos";
+export const CAMPAIGN_TABS: readonly CampaignTab[] = ["resumo", "pedidos", "produtos"];
+
+export function parseCampaignTab(raw: string | string[] | undefined): CampaignTab {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return CAMPAIGN_TABS.find((tab) => tab === value) ?? "resumo";
+}

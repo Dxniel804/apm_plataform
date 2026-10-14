@@ -20,7 +20,8 @@ const title = uniqueTag("E2E campanha");
 const PNG_1X1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 const SCHOOL = "/escola/demo-aurora";
 
-const row = (page: Page, text: string) => page.getByRole("listitem").filter({ hasText: text });
+/** O id da campanha que este arquivo criou, lido do endereco da pagina dela. */
+let campaignPath = "";
 
 async function axe(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
@@ -31,7 +32,7 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
   await loginAs(page, CARLA.email);
   await openMenuIfNeeded(page);
   await page.getByRole("link", { name: "Campanhas" }).first().click();
-  await expect(page).toHaveURL(/\/painel\/personalizacao$/);
+  await expect(page).toHaveURL(/\/painel\/campanhas$/);
   await expect(page.getByRole("heading", { level: 1, name: "Campanhas" })).toBeVisible();
 
   // titulo e obrigatorio: avisa sem falar com a API
@@ -44,12 +45,17 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
 
   await form.getByLabel("Título").fill(title);
   await form.getByLabel(/Texto para as famílias/).fill("Barracas, jogos e a camiseta da turma.");
+  // aluno e turma ligados por padrao: a gestao sabe a quem entregar
+  await expect(form.getByRole("checkbox", { name: /Pedir o aluno e a turma/ })).toBeChecked();
   await form.getByRole("button", { name: "Criar rascunho" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Campanha criada como rascunho" })).toBeVisible();
-  const card = row(page, title);
-  await expect(card).toContainText("Rascunho");
-  const editor = card.getByRole("heading", { name: "Texto e datas" });
-  await expect(editor).toBeVisible();
+  // a campanha nasce rascunho e abre na propria pagina, na aba dos produtos
+  await expect(page).toHaveURL(/\/painel\/campanhas\/[0-9a-f-]{36}\?aba=produtos$/);
+  campaignPath = new URL(page.url()).pathname;
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  const card = page.getByRole("tabpanel");
+  await expect(page.getByRole("tab", { name: "Produtos" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByText("Rascunho").first()).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Texto e datas" })).toBeVisible();
 
   // sem produto nenhum a API recusa pôr à venda e o texto explica
   await card.getByRole("button", { name: "Pôr à venda" }).click();
@@ -64,16 +70,19 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
   await add.getByLabel("Nome do produto").fill("Cachorro-quente");
   await add.getByLabel("Preço").fill("800");
   await add.getByLabel(/Limite por pedido/).fill("5");
+  await add.getByLabel(/Custo por unidade/).fill("300");
   await add.getByRole("button", { name: "Adicionar produto" }).click();
   await expect(add).toHaveCount(0);
   await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("Cachorro-quente");
   await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 8,00");
+  await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("Custo R$ 3,00 por unidade");
   await card.getByRole("button", { name: "Novo produto" }).click();
   const add2 = page.getByRole("dialog", { name: "Adicionar produto" });
   await add2.getByLabel("Nome do produto").fill("Pamonha");
   await add2.getByLabel("Preço").fill("650");
   await add2.getByRole("button", { name: "Adicionar produto" }).click();
   await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 6,50");
+  await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("Custo não informado"); // a Pamonha ficou sem custo
 
   // capa e imagem de um produto (a API tira os metadados e o navegador a le de volta com a sessao)
   await card.getByLabel("Arquivo da capa da campanha").setInputFiles({ name: "capa.png", mimeType: "image/png", buffer: PNG_1X1 });
@@ -103,7 +112,7 @@ test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e 
   await card.getByRole("button", { name: "Pôr à venda" }).click();
   await page.getByRole("dialog", { name: "Pôr à venda" }).getByRole("button", { name: "Pôr à venda" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Campanha à venda." })).toBeVisible();
-  await expect(card).toContainText("À venda");
+  await expect(page.getByText("À venda").first()).toBeVisible();
 });
 
 test("familia: ve a campanha na pagina da escola, monta o carrinho, paga pelo Pix e o comprovante lista o pedido", async ({ page }) => {
@@ -140,6 +149,11 @@ test("familia: ve a campanha na pagina da escola, monta o carrinho, paga pelo Pi
   await page.getByRole("button", { name: "Continuar" }).click();
 
   await page.getByLabel(/Nome do responsável/).fill("Maria E2E");
+  // a campanha entrega: o aluno e a turma sao obrigatorios
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("heading", { name: "Confira antes de pagar" })).toHaveCount(0);
+  await page.getByLabel(/Nome do aluno/).fill("Ana E2E");
+  await page.getByLabel(/Turma/).fill("3A");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Confira antes de pagar" })).toBeVisible();
   const review = page.getByRole("list", { name: "Resumo da contribuição" });
@@ -175,23 +189,67 @@ test("familia: ve a campanha na pagina da escola, monta o carrinho, paga pelo Pi
   await expect(page.getByRole("list", { name: "Produtos do pedido" })).toContainText("2 × Cachorro-quente");
 });
 
-test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proximos; encerrar tira da pagina da escola", async ({ page, browser }) => {
+test("gestao: acompanha o resumo, os pedidos e a entrega; um preco novo vale so para os proximos; encerrar tira da pagina da escola", async ({ page, browser }) => {
   await loginAs(page, CARLA.email);
-  await page.goto("/painel/personalizacao");
-  const card = row(page, title);
+  await page.goto("/painel/campanhas");
+  const card = page.getByRole("listitem").filter({ hasText: title });
   await expect(card).toContainText("1 pedido pago");
   await expect(card).toContainText("R$ 22,50");
+  await card.getByRole("link", { name: `Abrir a campanha ${title}` }).click();
+  await expect(page).toHaveURL(new RegExp(`${campaignPath}$`));
+
+  // resumo: arrecadado, custo (so de um produto: sem lucro) e vendidos por produto
+  await expect(page.getByText("Arrecadado", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("tabpanel")).toContainText("R$ 22,50");
+  await expect(page.getByRole("tabpanel")).toContainText("custo não informado"); // a Pamonha vendida nao tem custo
+  const sold = page.getByRole("table");
+  await expect(sold.getByRole("row", { name: /Cachorro-quente/ })).toContainText("2");
+  await expect(sold.getByRole("row", { name: /Cachorro-quente/ })).toContainText("R$ 6,00"); // 2 x R$ 3,00
+  expect(await axe(page), "axe com o resumo").toEqual([]);
+
+  // o PDF da campanha vem da API com a sessao
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Baixar PDF da campanha" }).click();
+  expect((await download).suggestedFilename()).toMatch(/^campanha-[0-9a-f]{8}\.pdf$/);
+
+  // pedidos: quem comprou, o que, o pagamento e a entrega
+  await page.getByRole("tab", { name: "Pedidos" }).click();
+  const orders = page.getByRole("list", { name: "Pedidos da campanha" });
+  await expect(orders).toContainText("Ana E2E · 3A");
+  await expect(orders).toContainText("responsável: Maria E2E");
+  await expect(orders).toContainText("Aprovado");
+  await expect(orders).toContainText("A entregar");
+  expect(await axe(page), "axe com os pedidos").toEqual([]);
+
+  // entrega: marca, aparece como entregue, filtra, e desfaz
+  await page.getByRole("button", { name: /Marcar o pedido APM-\d+ como entregue/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 pedido marcado como entregue" })).toBeVisible();
+  await expect(orders).toContainText("Entregue");
+  await page.getByRole("button", { name: "Entregues" }).click();
+  await expect(orders.getByRole("listitem")).toHaveCount(1);
+  await page.getByRole("button", { name: "A entregar" }).click();
+  await expect(page.getByText("Nenhum pedido aqui")).toBeVisible();
+  await page.getByRole("button", { name: "Entregues" }).click();
+  await page.getByRole("button", { name: /Desfazer a entrega do pedido APM-\d+/ }).click();
+  await expect(page.getByRole("status").filter({ hasText: "voltou para a entregar" })).toBeVisible();
+  await page.getByRole("tab", { name: "Resumo" }).click();
+  await expect(page.getByText("Entregas", { exact: true })).toBeVisible();
 
   // o preco muda: o pedido que ja foi feito nao muda e o proximo paga o preco novo
-  await card.getByRole("button", { name: `Abrir a campanha ${title}` }).click();
-  await card.getByRole("button", { name: "Editar o produto Pamonha" }).click();
+  await page.getByRole("tab", { name: "Produtos" }).click();
+  const products = page.getByRole("tabpanel");
+  await products.getByRole("button", { name: "Editar o produto Pamonha" }).click();
   const form = page.getByRole("dialog", { name: "Editar produto" });
   await form.getByLabel("Preço").fill("1000");
+  await form.getByLabel(/Custo por unidade/).fill("200");
   await form.getByRole("button", { name: "Salvar produto" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Produto salvo." })).toBeVisible();
-  await expect(card.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 10,00");
-  await expect(card).toContainText("1 pedido pago");
-  await expect(card).toContainText("R$ 22,50"); // o que o pedido pago trouxe nao mudou
+  await expect(products.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 10,00");
+  await page.getByRole("tab", { name: "Resumo" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("R$ 22,50"); // o que o pedido pago trouxe nao mudou
+  // agora todo produto vendido tem custo? A Pamonha foi vendida SEM custo (a copia do pedido nao muda): continua sem lucro
+  await expect(page.getByRole("tabpanel")).toContainText("custo não informado");
+  await page.getByRole("tab", { name: "Produtos" }).click();
 
   const visitor = await (await browser.newContext({ baseURL: process.env.E2E_BASE_URL })).newPage();
   await visitor.goto(SCHOOL);
@@ -201,14 +259,17 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
 
   // encerrar e definitivo e tira a campanha da pagina da escola (o 404 e o mesmo de uma que nunca existiu)
   const campaignUrl = visitor.url();
-  await card.getByRole("button", { name: "Encerrar campanha" }).click();
+  await page.getByRole("tabpanel").getByRole("button", { name: "Encerrar campanha" }).click();
   const confirm = page.getByRole("dialog", { name: "Encerrar campanha" });
   await expect(confirm).toContainText("Encerrar é definitivo");
   await confirm.getByRole("button", { name: "Encerrar de vez" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Campanha encerrada." })).toBeVisible();
-  await expect(card).toContainText("Encerrada");
-  await expect(card.getByRole("button", { name: "Editar texto e datas" })).toHaveCount(0);
-  await expect(card.getByRole("button", { name: "Novo produto" })).toHaveCount(0);
+  await expect(page.getByText("Encerrada").first()).toBeVisible();
+  await expect(page.getByRole("tabpanel").getByRole("button", { name: "Editar texto e datas" })).toHaveCount(0);
+  await expect(page.getByRole("tabpanel").getByRole("button", { name: "Novo produto" })).toHaveCount(0);
+  // depois de encerrada ainda da para entregar o que foi vendido
+  await page.getByRole("tab", { name: "Pedidos" }).click();
+  await expect(page.getByRole("button", { name: /Marcar o pedido APM-\d+ como entregue/ })).toBeVisible();
 
   await visitor.goto(SCHOOL);
   await expect(visitor.getByText(title)).toHaveCount(0);
@@ -217,11 +278,17 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
   await visitor.context().close();
 });
 
-test("funcionario e leitor nao tem a area Personalizacao", async ({ page }) => {
+test("o endereco antigo /painel/personalizacao leva para as campanhas", async ({ page }) => {
+  await loginAs(page, CARLA.email);
+  await page.goto("/painel/personalizacao");
+  await expect(page).toHaveURL(/\/painel\/campanhas$/);
+});
+
+test("funcionario e leitor nao tem a area Campanhas", async ({ page }) => {
   await loginAs(page, PAULA.email);
   await expect(page.getByRole("link", { name: "Campanhas" })).toHaveCount(0);
-  await page.goto("/painel/personalizacao");
-  await expect(page).not.toHaveURL(/personalizacao/); // volta para a area dele
+  await page.goto("/painel/campanhas");
+  await expect(page).not.toHaveURL(/campanhas/); // volta para a area dele
   await page.context().clearCookies();
   await loginAs(page, ELISA.email);
   await expect(page.getByRole("link", { name: "Campanhas" })).toHaveCount(0);

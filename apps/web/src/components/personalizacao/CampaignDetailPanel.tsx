@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CheckboxField } from "@/components/ui/CheckboxField";
 import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { Modal } from "@/components/ui/Modal";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -13,6 +14,7 @@ import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { CampaignImage } from "./CampaignImage";
 import { CampaignItemRow } from "./CampaignItemRow";
 import { CampaignPreview } from "./CampaignPreview";
+import { CostField, MAX_COST_CENTS } from "./CostField";
 import { ImageButtons } from "./ImageButtons";
 
 interface Props {
@@ -243,6 +245,7 @@ function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale
   const [description, setDescription] = useState(detail.description ?? "");
   const [startsOn, setStartsOn] = useState(detail.startsOn ?? "");
   const [endsOn, setEndsOn] = useState(detail.endsOn ?? "");
+  const [askStudentClass, setAskStudentClass] = useState(detail.askStudentClass);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const period = describePeriod(detail.startsOn, detail.endsOn);
@@ -261,6 +264,7 @@ function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale
       description: description.trim() || null,
       startsOn: startsOn || null,
       endsOn: endsOn || null,
+      askStudentClass,
     });
     setBusy(false);
     if (result.ok) return onDetail(result.data, "Campanha salva.");
@@ -288,6 +292,10 @@ function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale
           <dt className="text-ink-2">À venda</dt>
           <dd className="text-ink">{period ?? "Sem datas: vale até a campanha ser encerrada."}</dd>
         </div>
+        <div>
+          <dt className="text-ink-2">Aluno e turma no pedido</dt>
+          <dd className="text-ink">{detail.askStudentClass ? "A família precisa dizer o aluno e a turma." : "Não pede."}</dd>
+        </div>
       </dl>
       {!disabled && (
         <Button variant="secondary" size="md" onClick={() => setOpen(true)} className="mt-4 rounded-full!">
@@ -311,6 +319,7 @@ function TextAndDates({ schoolId, detail, disabled, onDetail, onProblem, onStale
             <TextField label="Começa em" optional name="campaign-starts" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} error={errors.starts_on} />
             <TextField label="Termina em" optional name="campaign-ends" type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} hint="Depois desta data a campanha sai da página da escola." error={errors.ends_on} />
           </div>
+          <CheckboxField label="Pedir o aluno e a turma" hint="Assim você sabe a quem entregar cada pedido." checked={askStudentClass} onChange={(e) => setAskStudentClass(e.target.checked)} />
           <FormButtons onCancel={() => setOpen(false)} submitLabel="Salvar texto e datas" pendingLabel="Salvando…" pending={busy} />
         </form>
       </FormModal>
@@ -323,6 +332,7 @@ function AddItem({ schoolId, campaignId, onDetail, onProblem, onStale }: SharedP
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [cents, setCents] = useState(0);
+  const [cost, setCost] = useState<number | null>(null);
   const [limit, setLimit] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -332,13 +342,14 @@ function AddItem({ schoolId, campaignId, onDetail, onProblem, onStale }: SharedP
     const problems: Record<string, string> = {};
     if (!name.trim()) problems.name = "Escreva o nome do produto.";
     if (cents < MIN_PRICE_CENTS || cents > MAX_PRICE_CENTS) problems.price_cents = "O preço vai de R$ 1,00 a R$ 10.000,00.";
+    if (cost !== null && cost > MAX_COST_CENTS) problems.unit_cost_cents = "O custo vai de R$ 0,00 a R$ 10.000,00.";
     const max = limit.trim() === "" ? null : Number(limit);
     if (max !== null && (!Number.isInteger(max) || max < 1 || max > 99)) problems.max_per_order = "O limite por pedido vai de 1 a 99.";
     setErrors(problems);
     if (Object.keys(problems).length > 0) return;
     setBusy(true);
     onProblem(null);
-    const result = await api.campaigns.addItem(schoolId, campaignId, { name: name.trim(), description: description.trim() || undefined, priceCents: cents, maxPerOrder: max });
+    const result = await api.campaigns.addItem(schoolId, campaignId, { name: name.trim(), description: description.trim() || undefined, priceCents: cents, unitCostCents: cost, maxPerOrder: max });
     setBusy(false);
     if (result.ok) return onDetail(result.data, "Produto adicionado.");
     const text = describeCampaignError(result.error);
@@ -379,6 +390,7 @@ function AddItem({ schoolId, campaignId, onDetail, onProblem, onStale }: SharedP
             />
             <TextField label="Limite por pedido" optional name="new-item-limit" inputMode="numeric" autoComplete="off" placeholder="Sem limite" value={limit} onChange={(e) => setLimit(e.target.value.replace(/\D/g, "").slice(0, 2))} error={errors.max_per_order} />
           </div>
+          <CostField name="new-item-cost" value={cost} onChange={setCost} error={errors.unit_cost_cents} />
           <FormButtons onCancel={() => setOpen(false)} submitLabel="Adicionar produto" pendingLabel="Adicionando…" pending={busy} />
         </form>
       </FormModal>

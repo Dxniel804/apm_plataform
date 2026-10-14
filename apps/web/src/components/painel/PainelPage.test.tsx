@@ -20,7 +20,7 @@ vi.mock("@/components/status/ApiStatusChip", () => ({ ApiStatusChip: () => null 
 
 import { PainelPage } from "./PainelPage";
 
-async function render(state: ServerSession, area: "resumo" | "despesas" | "solicitacoes" | "personalizacao" | "fechamento" = "resumo") {
+async function render(state: ServerSession, area: "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento" = "resumo") {
   auth.current = state;
   const element = await PainelPage({ area });
   return renderToStaticMarkup(element);
@@ -70,15 +70,15 @@ describe("/painel no servidor", () => {
     await expect(render(viewer, "despesas")).rejects.toThrow("NEXT_REDIRECT:/painel");
   });
 
-  it("personalizacao: so a gestao (campaigns:manage) entra; os outros voltam para a sua area", async () => {
+  it("campanhas: so a gestao (campaigns:manage) entra; os outros voltam para a sua area", async () => {
     const manager = withPermissions(["statement:read", "campaigns:manage"]);
-    expect(await render(manager, "personalizacao")).toContain("Campanhas");
+    expect(await render(manager, "campanhas")).toContain("Campanhas");
     const staff = withPermissions(["expenses:read_own", "expenses:submit"]);
-    await expect(render(staff, "personalizacao")).rejects.toThrow("NEXT_REDIRECT:/painel/despesas");
+    await expect(render(staff, "campanhas")).rejects.toThrow("NEXT_REDIRECT:/painel/despesas");
     const viewer = withPermissions(["reports:read_aggregate"]);
-    await expect(render(viewer, "personalizacao")).rejects.toThrow("NEXT_REDIRECT:/painel");
+    await expect(render(viewer, "campanhas")).rejects.toThrow("NEXT_REDIRECT:/painel");
     const onlyCampaigns = withPermissions(["campaigns:manage"]);
-    await expect(render(onlyCampaigns, "resumo")).rejects.toThrow("NEXT_REDIRECT:/painel/personalizacao");
+    await expect(render(onlyCampaigns, "resumo")).rejects.toThrow("NEXT_REDIRECT:/painel/campanhas");
   });
 
   it("solicitacoes: o funcionario e a gestao entram; o leitor volta para o resumo; quem so tem solicitacoes cai nelas", async () => {

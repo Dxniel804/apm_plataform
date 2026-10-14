@@ -20,8 +20,8 @@ import {
 } from "./staff-requests";
 import { getPending, getStatement, getSummary, recordCashContribution } from "./statement";
 import {
-  activateCampaign, addCampaignItem, clearCampaignImage, createCampaign, downloadCampaignImage, endCampaign, getCampaign, listCampaigns,
-  setCampaignImage, updateCampaign, updateCampaignItem,
+  activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
+  endCampaign, getCampaign, getCampaignDashboard, listCampaignOrders, listCampaigns, setCampaignImage, updateCampaign, updateCampaignItem,
 } from "./campaigns";
 import {
   createContribution, createOrder, getContribution, getPublicCampaign, getPublicCampaigns, getPublicSchool, getReceipt, renewCharge, sandboxPay,
@@ -52,6 +52,10 @@ export const api: {
     setImage: typeof setCampaignImage;
     clearImage: typeof clearCampaignImage;
     image: typeof downloadCampaignImage;
+    dashboard: typeof getCampaignDashboard;
+    orders: typeof listCampaignOrders;
+    changeDelivery: typeof changeCampaignDelivery;
+    report: typeof downloadCampaignReport;
   };
   expenses: {
     categories: typeof listCategories;
@@ -127,6 +131,10 @@ export const api: {
     setImage: setCampaignImage,
     clearImage: clearCampaignImage,
     image: downloadCampaignImage,
+    dashboard: getCampaignDashboard,
+    orders: listCampaignOrders,
+    changeDelivery: changeCampaignDelivery,
+    report: downloadCampaignReport,
   },
   auth: { login, logout, me: getMe, switchContext, changePassword, acceptInvitation },
   expenses: {

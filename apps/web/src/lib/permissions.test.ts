@@ -29,13 +29,13 @@ describe("areasFor", () => {
     expect(areasFor([])).toMatchObject({ requests: false });
   });
 
-  it("personalizacao (campanhas): so quem tem campaigns:manage, ou seja, a gestao e o administrador; funcionario e leitor nao", () => {
+  it("campanhas: so quem tem campaigns:manage, ou seja, a gestao e o administrador; funcionario e leitor nao", () => {
     expect(areasFor(TREASURER).manageCampaigns).toBe(true);
     expect(areasFor(SCHOOL_ADMIN).manageCampaigns).toBe(true);
     expect(areasFor(STAFF).manageCampaigns).toBe(false);
     expect(areasFor(VIEWER).manageCampaigns).toBe(false);
     // quem so tem campanhas cai nelas (nao no resumo, que nao pode ver)
-    expect(homeArea(areasFor(["campaigns:manage"]))).toBe("personalizacao");
+    expect(homeArea(areasFor(["campaigns:manage"]))).toBe("campanhas");
   });
 
   it("reabrir mes so com months:reopen (ADR-020: so o administrador da escola)", () => {
@@ -62,7 +62,7 @@ describe("areaHref", () => {
     expect(areaHref("despesas", { tab: "minhas" })).toBe("/painel/despesas?aba=minhas");
     expect(areaHref("solicitacoes")).toBe("/painel/solicitacoes");
     expect(areaHref("solicitacoes", { tab: "minhas" })).toBe("/painel/solicitacoes?aba=minhas");
-    expect(areaHref("personalizacao")).toBe("/painel/personalizacao");
+    expect(areaHref("campanhas")).toBe("/painel/campanhas");
     expect(areaHref("fechamento", { period: "2026-09" })).toBe("/painel/fechamento?mes=2026-09");
     expect(areaHref("fechamento", { period: "2026-13" })).toBe("/painel/fechamento");
   });

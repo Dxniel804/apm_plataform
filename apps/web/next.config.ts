@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/apm/:slug", destination: "/escola/:slug", permanent: false },
       { source: "/apm/:slug/pedido/:token", destination: "/escola/:slug/pedido/:token", permanent: false },
+      // "Personalizacao" virou "Campanhas": o endereco antigo continua levando para o lugar certo.
+      { source: "/painel/personalizacao", destination: "/painel/campanhas", permanent: false },
     ];
   },
   async rewrites() {
