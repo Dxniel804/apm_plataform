@@ -241,9 +241,10 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
         Abra o app do seu banco e escolha pagar com Pix. Use o QR Code ou o código copia e cola.
       </p>
 
-      <div className="mt-5 flex items-center gap-4 rounded-[var(--r-lg)] border border-line-strong bg-white p-4 sm:gap-6 sm:p-5">
+      {/* celular: o QR vem inteiro em cima (precisa ter tamanho para a camera ler); do sm em diante fica ao lado do texto */}
+      <div className="mt-5 flex flex-col items-center gap-4 rounded-[var(--r-lg)] border border-line-strong bg-white p-4 sm:flex-row sm:gap-6 sm:p-5">
         <QrCode payload={payload} compact />
-        <div className="min-w-0 flex-1 space-y-3">
+        <div className="w-full min-w-0 flex-1 space-y-3">
           <div>
             <p className="flex items-center gap-1.5 text-foot font-medium text-ink-2">
               <ClockIcon size={16} />

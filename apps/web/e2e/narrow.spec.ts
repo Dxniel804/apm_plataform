@@ -96,9 +96,9 @@ for (const width of [320, 360]) {
             fits: el.getBoundingClientRect().right <= document.documentElement.clientWidth,
           })),
       );
-      // gestao: Dashboard, Lancamento do mes (com os 4 tipos), Despesas, Solicitacoes e Fechamento
+      // gestao: Dashboard, Lancamentos do mes (com os 4 tipos), Despesas, Solicitacoes, Campanhas e Fechamento
       const names = labels.map((l) => l.text);
-      expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamento do mês", "Despesas", "Solicitações", "Fechamento"]));
+      expect(names).toEqual(expect.arrayContaining(["Dashboard", "Lançamentos do mês", "Despesas", "Solicitações", "Campanhas", "Fechamento"]));
       for (const label of labels) {
         expect(label.truncated, `${label.text} truncado`).toBe(false);
         expect(label.fits, `${label.text} fora da tela`).toBe(true);

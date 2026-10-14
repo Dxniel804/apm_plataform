@@ -28,7 +28,7 @@ export function QrCode({ payload, compact = false }: { payload: string; compact?
   }
   const total = size + QUIET * 2;
   return (
-    <div className={`aspect-square w-full rounded-[var(--r-md)] bg-white p-2 shadow-[0_0_0_1px_var(--line)] ${compact ? "max-w-[8.75rem] shrink-0" : "mx-auto max-w-[17rem]"}`}>
+    <div className={`aspect-square w-full rounded-[var(--r-md)] bg-white p-2 shadow-[0_0_0_1px_var(--line)] ${compact ? "mx-auto max-w-[17rem] sm:mx-0 sm:max-w-[11rem] sm:shrink-0" : "mx-auto max-w-[17rem]"}`}>
       <svg
         viewBox={`0 0 ${total} ${total}`}
         className="size-full"
