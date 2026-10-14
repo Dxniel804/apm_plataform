@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, chipClass } from "@/components/ui/Button";
+import { ChevronDownThinIcon, ChevronUpThinIcon, ReceiptIcon } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { api } from "@/lib/api";
 import type { ApiResult, ExpenseCategory, ExpenseStatus, ExpenseSummary, Page } from "@/lib/api/types";
@@ -98,7 +99,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
   return (
     <div>
       {scope === "queue" && (
-        <div role="group" aria-label="Filtrar por situação" className="mb-6 flex flex-wrap gap-2.5">
+        <div role="group" aria-label="Filtrar por situação" className="mb-5 flex flex-wrap gap-2.5">
           {QUEUE_FILTERS.map((f) => (
             <button
               key={f.label}
@@ -112,6 +113,11 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
               className={chipClass(filter === f.status)}
             >
               {f.label}
+              {filter === f.status && res && res.ok && !next && (
+                <span aria-hidden="true" className="grid min-w-6 place-items-center rounded-full bg-brand-800 px-1.5 text-[0.75rem] font-semibold leading-6 text-white">
+                  {items.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -141,7 +147,7 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
       )}
 
       {banner && (
-        <p role="status" className="mb-4 rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">
+        <p role="status" className="mb-4 rounded-[var(--r-md)] bg-pill px-4 py-3 text-sub font-medium text-brand-800">
           {banner}
         </p>
       )}
@@ -171,27 +177,39 @@ export function ExpensesBoard({ schoolId, userId, permissions, scope }: Props) {
       )}
 
       {items.length > 0 && (
-        <ul aria-label={scope === "mine" ? "Minhas despesas" : "Despesas da escola"} className="space-y-4">
+        <ul aria-label={scope === "mine" ? "Minhas despesas" : "Despesas da escola"} className="divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
           {items.map((e) => {
             const status = expenseStatusView(e.status, e.paidBy);
             const open = openId === e.id;
             return (
-              <li key={e.id} className="overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
+              <li key={e.id}>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-[1.125rem]">
+                  <span aria-hidden="true" className="hidden size-11 shrink-0 place-items-center rounded-[0.875rem] bg-info-soft text-brand-600 sm:grid">
+                    <ReceiptIcon size={22} />
+                  </span>
                   <div className="min-w-0 flex-1 basis-56">
-                    <p className="text-[1.0625rem] font-semibold leading-snug text-brand-800 [overflow-wrap:anywhere] sm:text-[1.25rem]">{e.description}</p>
-                    <p className="mt-1 text-sub text-ink-2">
+                    <p className="text-[1rem] font-medium leading-snug text-ink [overflow-wrap:anywhere]">{e.description}</p>
+                    <p className="mt-0.5 text-foot text-ink-2">
                       {e.category.name} · {formatDateShort(e.occurredAt)} · nº {e.referenceCode}
                       {e.submittedByUserId === userId && scope === "queue" ? " · sua" : ""}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                    <p className="text-[1.25rem] font-bold tabular-nums text-brand-800 sm:text-[1.5rem]">{amountSummary(e.amountCents, e.approvedAmountCents)}</p>
+                  <div className="sm:w-44 sm:shrink-0">
                     <StatusPill tone={status.tone}>{status.label}</StatusPill>
                   </div>
-                  <Button variant="chip" size="md" aria-expanded={open} aria-label={`${open ? "Fechar" : "Abrir"} detalhes da despesa nº ${e.referenceCode}`} onClick={() => setOpenId(open ? null : e.id)} className="min-h-12 w-full px-8 sm:w-auto">
-                    {open ? "Fechar" : "Detalhes"}
-                  </Button>
+                  <p className="text-[1.375rem] font-semibold tabular-nums leading-none text-brand-800 sm:w-28 sm:shrink-0 sm:text-right">{amountSummary(e.amountCents, e.approvedAmountCents)}</p>
+                  <div className="flex w-full sm:w-[7.25rem] sm:shrink-0 sm:justify-end">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-label={`${open ? "Fechar" : "Abrir"} detalhes da despesa nº ${e.referenceCode}`}
+                      onClick={() => setOpenId(open ? null : e.id)}
+                      className={chipClass(open, "min-h-[2.375rem] w-full gap-2 sm:w-auto")}
+                    >
+                      {open ? "Fechar" : "Detalhes"}
+                      {open ? <ChevronUpThinIcon size={14} /> : <ChevronDownThinIcon size={14} />}
+                    </button>
+                  </div>
                 </div>
                 {open && (
                   <ExpenseDetailPanel

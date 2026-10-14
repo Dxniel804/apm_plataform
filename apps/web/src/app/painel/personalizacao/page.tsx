@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PainelPage } from "@/components/painel/PainelPage";
 
-export const metadata: Metadata = { title: "Personalização" };
+export const metadata: Metadata = { title: "Campanhas" };
 
 export default function Page() {
   return <PainelPage area="personalizacao" />;

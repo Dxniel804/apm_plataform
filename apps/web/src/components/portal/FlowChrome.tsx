@@ -15,13 +15,13 @@ export const STEP_LABELS: Record<Step, string> = {
 export function StepProgress({ steps, current, labels }: { steps: Step[]; current: Step; labels?: Partial<Record<Step, string>> }) {
   const index = Math.max(0, steps.indexOf(current));
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       <ol className="flex gap-1.5" aria-hidden="true">
         {steps.map((step, i) => (
-          <li key={step} className={`h-[5px] flex-1 rounded-full transition-colors ${i <= index ? "bg-brand-800" : "bg-[#a3a3a3]"}`} />
+          <li key={step} className={`h-[5px] flex-1 rounded-full transition-colors ${i <= index ? "bg-brand-800" : "bg-line-strong"}`} />
         ))}
       </ol>
-      <p className="mt-2.5 text-sub text-ink-3" aria-live="polite">
+      <p className="mt-2 text-foot text-ink-3" aria-live="polite">
         Etapa {index + 1} de {steps.length}: <span className="font-semibold text-brand-800">{labels?.[current] ?? STEP_LABELS[current]}</span>
       </p>
     </div>
@@ -54,11 +54,11 @@ export function SummaryCard({
   return (
     <aside
       aria-label={label}
-      className="rounded-[var(--r-lg)] border border-line bg-white p-6"
+      className="rounded-[var(--r-lg)] border border-line bg-[#f8fafe] p-6"
     >
       <p className="text-sub text-ink-2">{heading}</p>
       <p className="text-headline text-brand-800">{schoolName}</p>
-      <p className="mt-5 text-[2.25rem] font-bold leading-none tracking-[-0.035em] text-brand-800">
+      <p className="mt-5 text-[2.25rem] font-bold leading-none tracking-[-0.03em] text-brand-800">
         {amountCents === null ? "R$ —" : formatBRL(amountCents)}
       </p>
       <p className="mt-1.5 min-h-5 text-sub text-ink-2">{description ?? (lines ? "Escolha os produtos para começar." : "Escolha o valor para começar.")}</p>
@@ -92,7 +92,7 @@ export function SummaryCard({
 /** Barra de acao: fixa embaixo no celular (alcance do polegar), inline no desktop. */
 export function StickyActions({ children }: { children: ReactNode }) {
   return (
-    <div className="bar-material sticky bottom-0 z-20 -mx-5 mt-8 flex items-stretch gap-3 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-8 sm:justify-end sm:px-8 lg:static lg:mx-0 lg:bg-transparent lg:px-0 lg:py-0 lg:[backdrop-filter:none]">
+    <div className="sticky bottom-0 z-20 -mx-5 mt-8 flex items-stretch gap-3 border-t border-line bg-white px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3.5 sm:-mx-8 sm:justify-end sm:px-8 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
       {children}
     </div>
   );

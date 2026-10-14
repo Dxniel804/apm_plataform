@@ -24,7 +24,7 @@ describe("globals.css: animacoes sao melhoria progressiva", () => {
     walk(parseCss(css), (b) => {
       if (b.head.startsWith("@keyframes")) names.push(b.head.replace("@keyframes", "").trim());
     });
-    expect(names).toEqual(expect.arrayContaining(["rise-in", "pop", "stamp-in", "stamp-ring", "stamp-check", "stamp-ripple", "shimmer", "pulse-dot"]));
+    expect(names).toEqual(expect.arrayContaining(["rise-in", "pop", "shimmer", "pulse-dot"]));
   });
 
   it("nada esconde conteudo no keyframe inicial nem no estado base", () => {
@@ -38,11 +38,10 @@ describe("globals.css: animacoes sao melhoria progressiva", () => {
     expect(ungated.map((e) => e.split(" =>")[0]!.trim()).sort()).toEqual([".pulse-dot", ".skeleton"]);
   });
 
-  it("o carimbo e desenhado por escala, nunca por tracado (stroke-dashoffset sumiria o simbolo se congelasse)", () => {
+  it("nenhuma animacao desenha por tracado (stroke-dashoffset sumiria o simbolo se congelasse)", () => {
     const code = css.replace(/\/\*[\s\S]*?\*\//g, ""); // sem comentarios
     expect(code).not.toMatch(/stroke-dashoffset/);
     expect(code).not.toMatch(/stroke-dasharray/);
-    expect(code).toMatch(/\.stamp\s*\{[^}]*rotate\(-8deg\)/);
   });
 });
 
@@ -85,8 +84,8 @@ describe("N6: teste de mutacao: cada defeito reintroduzido e detectado", () => {
     expect(scanHiddenContent(ok)).toEqual([]);
   });
 
-  it("a allowlist cobre so decorativos: .stamp-ripple e .sr-only-live", () => {
-    expect(scanHiddenContent(".stamp-ripple { opacity: 0; } .sr-only-live { clip-path: inset(50%); }")).toEqual([]);
+  it("a allowlist cobre so decorativos: .sr-only-live", () => {
+    expect(scanHiddenContent(".sr-only-live { clip-path: inset(50%); }")).toEqual([]);
     expect(scanHiddenContent(".card { opacity: 0; }")).toHaveLength(1);
   });
 

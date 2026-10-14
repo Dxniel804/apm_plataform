@@ -127,15 +127,22 @@ usam mocks; o e2e com login real lê a senha só em tempo de execução (`E2E_DE
 Rotas: `/` · `/escola/[slug]` · `/escola/[slug]/pedido/[token]` · `/login` · `/accept-invitation?token=…` · `/painel` (exige sessão) · `/painel/despesas` · `/painel/fechamento` · `/painel/conta`.
 Escolas de demonstração (banco local): `demo-aurora`, `demo-horizonte`, `demo-central`.
 
-## Design (Figma "APM Digital")
+## Design (Figma "APM Digital" + Paper v2)
 
-O visual segue o arquivo do Figma (login, painel da gestão, janela de contribuição em dinheiro e fluxo das famílias).
-As telas que o Figma não tem (Fechamento, Alterar senha, Pix, comprovante, erro, 404, convite) usam o mesmo padrão.
+O visual atual é o **Paper v2** (arquivo "APM Digital" no Paper): menu lateral claro com o item ativo em azul claro,
+painel branco de cantos de 28 px sobre o fundo névoa, filtros e abas em pílula, cartões só com borda, números grandes
+com centavos menores, sem degradê, sem ilustração 3D e sem o ticket serrilhado do comprovante. Telas: login (computador
+e celular), Dashboard, Despesas e o fluxo das famílias no celular (Valor, Seus dados, Revisão, Pix e Comprovante).
+A paleta e a fonte continuam as do Figma (fknelo, 42dot Sans). O que o Paper desenhou e o código **não** tem, por
+falta de dado ou de API: o gráfico "Evolução do caixa" (não há série de meses anteriores), "Lembrar de mim" e
+"Esqueci minha senha" no login (sem recuperação de senha, ver `docs/auth.md`).
+Sucesso e informação usam o azul da marca (`--ok`, `--info`); o âmbar fica só para "pendente".
 
 - **Fonte:** 42dot Sans (SIL OFL, `src/app/fonts/OFL.txt`), arquivo variável servido pelo próprio site via
-  `next/font/local` (a CSP só aceita `font-src 'self'`; nada vem de terceiros). Pesos 300 a 800.
+  `next/font/local` (a CSP só aceita `font-src 'self'`; nada vem de terceiros). Pesos 300 a 800. **A fonte não tem
+  á é í ó ú â ê ç** (só ã, õ e à): essas letras caem na fonte de sistema.
 - **Tokens:** `src/app/globals.css`. Paleta da marca (`brand-900` … `brand-200`, a paleta "fknelo" do Figma), degradês
-  (`bg-grad-brand`, `bg-grad-chip`), raios (`--r-ctl` 18, `--r-lg` 26, `--r-xl` 34), escala tipográfica fluida
+  (`bg-grad-brand`, `bg-grad-chip`: hoje são o azul base chapado, nomes mantidos), raios (`--r-ctl` 12, `--r-lg` 24, `--r-xl` 28), escala tipográfica fluida
   (`text-display`, `text-title`, `text-kpi`…) e as cores do gráfico (`--series-*`, medidas no Figma).
 - **Tema:** o Figma só tem tema claro, então o site é claro de propósito (`color-scheme: light`), sem tema escuro.
   A cor da escola (`accentColor` da API) não pinta mais o portal: a escola aparece pelo nome.

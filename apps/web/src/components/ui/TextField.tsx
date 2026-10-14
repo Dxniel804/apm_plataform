@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { ChevronExpandIcon, InfoIcon } from "./icons";
 
 /**
@@ -15,31 +15,35 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id
   inputRef?: Ref<HTMLInputElement>;
   /** Texto fixo antes do valor (ex.: "R$"). */
   prefix?: string;
+  /** Icone decorativo dentro do campo, antes do valor. */
+  icon?: ReactNode;
+  /** Controle depois do valor, dentro do campo (ex.: mostrar/ocultar a senha). */
+  trailing?: ReactNode;
   variant?: FieldVariant;
 }
 
 const skin: Record<FieldVariant, string> = {
   outline: "bg-white",
-  filled: "bg-field",
+  filled: "bg-white",
 };
 
 function borderFor(variant: FieldVariant, error?: string) {
   if (error) return "border-bad";
-  return variant === "filled" ? "border-transparent" : "border-field-border";
+  return "border-field-border";
 }
 
 export function fieldClass(variant: FieldVariant = "outline") {
   return (
-    `block w-full min-h-14 sm:min-h-[3.75rem] rounded-ctl border px-4 text-[1rem] text-ink placeholder:text-ink-3 transition-colors ` +
+    `block w-full min-h-[3.375rem] rounded-ctl border-[1.5px] px-4 text-[1rem] text-ink placeholder:text-ink-3 transition-colors ` +
     `focus:border-brand-600 ${skin[variant]}`
   );
 }
 
-function Label({ htmlFor, label, optional, variant }: { htmlFor: string; label: string; optional?: boolean; variant: FieldVariant }) {
+function Label({ htmlFor, label, optional }: { htmlFor: string; label: string; optional?: boolean; variant?: FieldVariant }) {
   return (
     <label
       htmlFor={htmlFor}
-      className={`mb-2 block ${variant === "filled" ? "text-body font-semibold text-ink" : "text-sub font-bold text-brand-800"}`}
+      className="mb-2 block text-sub font-semibold text-ink"
     >
       {label}
       {optional && <span className="font-medium text-ink-3"> (opcional)</span>}
@@ -67,6 +71,8 @@ export function TextField({
   error,
   inputRef,
   prefix,
+  icon,
+  trailing,
   variant = "outline",
   className = "",
   ...rest
@@ -80,21 +86,29 @@ export function TextField({
   return (
     <div className={className}>
       <Label htmlFor={id} label={label} optional={optional} variant={variant} />
-      {prefix ? (
+      {prefix || icon || trailing ? (
         <div
-          className={`flex min-h-14 items-center gap-2 rounded-ctl border px-4 sm:min-h-[3.75rem] ${skin[variant]} ${border} focus-within:border-brand-600 focus-within:outline focus-within:outline-[3px] focus-within:outline-offset-2 focus-within:outline-[var(--focus)]`}
+          className={`flex min-h-[3.375rem] items-center gap-2 rounded-ctl border-[1.5px] px-4 ${skin[variant]} ${border} focus-within:border-brand-600 focus-within:outline focus-within:outline-[3px] focus-within:outline-offset-2 focus-within:outline-[var(--focus)]`}
         >
-          <span aria-hidden="true" className="text-[1rem] font-semibold text-ink-2">
-            {prefix}
-          </span>
+          {icon && (
+            <span aria-hidden="true" className="shrink-0 text-ink-3">
+              {icon}
+            </span>
+          )}
+          {prefix && (
+            <span aria-hidden="true" className="text-[1rem] font-semibold text-ink-2">
+              {prefix}
+            </span>
+          )}
           <input
             id={id}
             ref={inputRef}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            className="min-h-[52px] w-full bg-transparent text-[1rem] tabular-nums text-ink outline-none placeholder:text-ink-3"
+            className={`min-h-[48px] w-full bg-transparent text-[1rem] text-ink outline-none placeholder:text-ink-3 ${prefix ? "tabular-nums" : ""}`}
             {...rest}
           />
+          {trailing}
         </div>
       ) : (
         <input
@@ -138,7 +152,7 @@ export function TextAreaField({ label, optional, hint, error, variant = "outline
         rows={rows}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`block w-full resize-y rounded-ctl border px-4 py-3.5 text-[1rem] text-ink placeholder:text-ink-3 transition-colors focus:border-brand-600 ${skin[variant]} ${borderFor(variant, error)}`}
+        className={`block w-full resize-y rounded-ctl border-[1.5px] px-4 py-3.5 text-[1rem] text-ink placeholder:text-ink-3 transition-colors focus:border-brand-600 ${skin[variant]} ${borderFor(variant, error)}`}
         {...rest}
       />
       {hint && (

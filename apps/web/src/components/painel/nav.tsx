@@ -15,6 +15,8 @@ import type { MovementKind } from "@/lib/status";
 
 export interface NavChild {
   kind: MovementKind;
+  /** Quando o filho leva a outra area (ex.: "Despesas" abre a fila de despesas), a area dele. */
+  area?: PainelArea;
   label: string;
   href: string;
   icon: ReactNode;
@@ -45,6 +47,9 @@ const KIND_NAV: Array<{ kind: MovementKind; label: string; icon: ReactNode }> = 
  */
 export function navFor(areas: Areas, period?: string, options: { statement?: boolean } = {}): NavItem[] {
   const items: NavItem[] = [];
+  const hasExpenses = areas.manageExpenses || areas.myExpenses;
+  // "Lancamentos do mes" ja traz "Despesas": nesse caso o item solto de Despesas sai do menu (nada duplicado).
+  const expensesInGroup = areas.resumo && !!options.statement && hasExpenses;
   if (areas.resumo) {
     items.push({
       area: "resumo",
@@ -52,11 +57,15 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       href: areaHref("resumo", { period }),
       icon: <BarChartIcon size={22} />,
       children: options.statement
-        ? KIND_NAV.map((k) => ({ ...k, href: sectionHref(k.kind, period) }))
+        ? KIND_NAV.map((k) =>
+            k.kind === "EXPENSE" && expensesInGroup
+              ? { ...k, area: "despesas" as const, href: areaHref("despesas") }
+              : { ...k, href: sectionHref(k.kind, period) },
+          )
         : undefined,
     });
   }
-  if (areas.manageExpenses || areas.myExpenses) {
+  if (hasExpenses && !expensesInGroup) {
     items.push({
       area: "despesas",
       label: areas.manageExpenses ? "Despesas" : "Minhas despesas",
@@ -75,7 +84,7 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
   if (areas.manageCampaigns) {
     items.push({
       area: "personalizacao",
-      label: "Personalização",
+      label: "Campanhas",
       href: areaHref("personalizacao"),
       icon: <BagIcon size={22} />,
     });

@@ -296,3 +296,110 @@ export const PencilSquareIcon = (p: IconProps) => (
     <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
   </Bi>
 );
+
+/* ---- Icones do visual Paper v2 (tracos de 24px, no mesmo molde dos proprios acima) ---- */
+export const BankIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M2 10l10-6 10 6z" />
+  </Svg>
+);
+export const UserIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </Svg>
+);
+export const MailIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </Svg>
+);
+export const PhoneIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="2" width="14" height="20" rx="3" />
+    <path d="M12 18h.01" />
+  </Svg>
+);
+export const EyeIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Svg>
+);
+export const EyeOffIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3 8 10 8a9.7 9.7 0 0 0 5.39-1.61M2 2l20 20M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+  </Svg>
+);
+export const BellIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </Svg>
+);
+export const TrendUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M22 7 13.5 15.5l-5-5L2 17M16 7h6v6" />
+  </Svg>
+);
+export const TrendDownIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M22 17 13.5 8.5l-5 5L2 7M16 17h6v-6" />
+  </Svg>
+);
+export const ArrowRightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </Svg>
+);
+export const ArrowDownIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 5v14M19 12l-7 7-7-7" />
+  </Svg>
+);
+export const ArrowUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </Svg>
+);
+export const BuildingIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2 M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2 M10 6h4 M10 10h4 M10 14h4 M10 18h4" />
+  </Svg>
+);
+export const ChevronsUpDownIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
+  </Svg>
+);
+export const CalendarIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+  </Svg>
+);
+export const WalletIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+  </Svg>
+);
+export const ListIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+  </Svg>
+);
+export const PieIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z" />
+  </Svg>
+);
+export const ArrowLeftToLineIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 19V5M13 6l-6 6 6 6M7 12h14" />
+  </Svg>
+);
+export const ArrowLeftRightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4" />
+  </Svg>
+);

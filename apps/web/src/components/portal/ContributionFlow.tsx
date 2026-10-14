@@ -15,6 +15,8 @@ import {
 import { AmountStep, CUSTOM_CHOICE, suggestedCents } from "./AmountStep";
 import { CampaignShelf } from "./CampaignShelf";
 import { StepProgress, SummaryCard, type Step } from "./FlowChrome";
+import { PortalSchoolRow, PortalSheet } from "./PortalShell";
+import { BagIcon, CashCoinIcon } from "@/components/ui/icons";
 import { IdentificationStep } from "./IdentificationStep";
 import { PixPayment } from "./PixPayment";
 import { ReviewStep } from "./ReviewStep";
@@ -27,6 +29,7 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
   const fields = visibleFields(school.identification);
   const steps: Step[] = fields.length > 0 ? ["amount", "identification", "review", "pix"] : ["amount", "review", "pix"];
 
+  const [view, setView] = useState<"mensal" | "campanhas">("mensal");
   const [step, setStepState] = useState<Step>("amount");
   // A entrada animada so acontece depois de uma acao do usuario (nunca no carregamento da pagina).
   const [navigated, setNavigated] = useState(false);
@@ -140,16 +143,51 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
     attempt.current = null;
   }
 
+  const schoolLabel = school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`;
+  // O seletor "Contribuicao mensal | Campanhas" so aparece na primeira etapa e so se a escola tem campanhas a venda.
+  const showTabs = step === "amount" && campaigns.length > 0;
+  const onCampaigns = showTabs && view === "campanhas";
+  const tabs = [
+    { id: "mensal", label: "Contribuição mensal", icon: <CashCoinIcon size={16} /> },
+    { id: "campanhas", label: "Campanhas", icon: <BagIcon size={16} /> },
+  ] as const;
+
   return (
-    <div>
-      <h1 className="text-title sm:text-[2.25rem]">Contribuir com a APM</h1>
-      <p className="mb-8 mt-1.5 text-body text-ink-3">
-        {school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`}
-      </p>
+    <>
+      <PortalSchoolRow title={schoolLabel} caption="Contribuir com a APM" monogram={school.name} />
 
-      {/* As campanhas a venda (festa, kit, rifa): a familia que veio por elas as ve primeiro. */}
-      <CampaignShelf slug={school.slug} campaigns={campaigns} />
+      {showTabs && (
+        <div role="tablist" aria-label="O que você quer fazer" className="mb-4 flex gap-1 rounded-2xl bg-chip p-1">
+          {tabs.map((tab) => {
+            const active = view === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`tab-${tab.id}`}
+                aria-selected={active}
+                aria-controls="portal-panel"
+                onClick={() => setView(tab.id)}
+                className={`flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-2 text-[0.875rem] transition-colors ${
+                  active ? "border-pill-line bg-white font-semibold text-brand-800" : "border-transparent font-medium text-ink-2 hover:bg-white/60"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
+      <PortalSheet>
+      <div id="portal-panel" role={showTabs ? "tabpanel" : undefined} aria-labelledby={showTabs ? `tab-${view}` : undefined} className="flex flex-1 flex-col">
+      {/* As duas visoes ficam no HTML (a inativa so escondida): a vitrine existe mesmo antes do JavaScript. */}
+      <div hidden={!onCampaigns}>
+        <CampaignShelf slug={school.slug} campaigns={campaigns} />
+      </div>
+      <div hidden={onCampaigns}>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-14">
         <div className="min-w-0">
           <StepProgress steps={steps} current={step} />
@@ -227,6 +265,9 @@ export function ContributionFlow({ school, campaigns = [] }: { school: PublicSch
           </SummaryCard>
         </div>
       </div>
-    </div>
+      </div>
+      </div>
+      </PortalSheet>
+    </>
   );
 }

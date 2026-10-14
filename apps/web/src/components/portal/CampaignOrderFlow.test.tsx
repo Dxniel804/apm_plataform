@@ -37,7 +37,7 @@ describe("o carrinho", () => {
     render(<CampaignOrderFlow school={SCHOOL} campaign={publicCampaign()} />);
     const user = userEvent.setup();
 
-    expect(screen.getByRole("heading", { level: 1, name: "Festa Junina" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /Festa Junina/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Escolha os produtos" })).toBeInTheDocument();
     expect(screen.getByText((_, element) => element?.tagName === "P" && element.textContent === "Etapa 1 de 4: Produtos")).toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Produtos da campanha" });

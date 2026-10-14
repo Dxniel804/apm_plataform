@@ -30,9 +30,9 @@ async function axe(page: Page) {
 test("gestao: cria a campanha, poe os produtos e as imagens, confere a previa e poe a venda", async ({ page }) => {
   await loginAs(page, CARLA.email);
   await openMenuIfNeeded(page);
-  await page.getByRole("link", { name: "Personalização" }).first().click();
+  await page.getByRole("link", { name: "Campanhas" }).first().click();
   await expect(page).toHaveURL(/\/painel\/personalizacao$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Personalização" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Campanhas" })).toBeVisible();
 
   // titulo e obrigatorio: avisa sem falar com a API
   await page.getByRole("button", { name: "Nova campanha" }).click();
@@ -216,10 +216,10 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
 
 test("funcionario e leitor nao tem a area Personalizacao", async ({ page }) => {
   await loginAs(page, PAULA.email);
-  await expect(page.getByRole("link", { name: "Personalização" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Campanhas" })).toHaveCount(0);
   await page.goto("/painel/personalizacao");
   await expect(page).not.toHaveURL(/personalizacao/); // volta para a area dele
   await page.context().clearCookies();
   await loginAs(page, ELISA.email);
-  await expect(page.getByRole("link", { name: "Personalização" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Campanhas" })).toHaveCount(0);
 });

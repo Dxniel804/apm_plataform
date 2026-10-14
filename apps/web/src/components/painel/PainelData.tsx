@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Amount } from "@/components/ui/Amount";
 import { Button, buttonClass } from "@/components/ui/Button";
-import { ChevronDownThinIcon, ClockHistoryIcon, DownloadIcon, PencilSquareIcon, XLgIcon } from "@/components/ui/icons";
+import { CalendarIcon, CashCoinIcon, ChevronDownThinIcon, DownloadIcon, XLgIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import { contributionsPdfHref } from "@/lib/api/statement";
@@ -155,54 +154,45 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
   const effectivePeriod = summary.state === "ready" ? summary.data.period : (period ?? null);
   const periods = effectivePeriod ? Array.from(new Set([...recentPeriods(latest, 12), effectivePeriod])).sort().reverse() : [];
 
-  const divider = <span aria-hidden="true" className="hidden h-16 w-px self-center bg-line lg:block" />;
   const toolbar = (
-    <div className="mb-7 flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-8 sm:gap-y-5">
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       {effectivePeriod && (
-        <div>
-          <label htmlFor="period-select" className="mb-2 block text-[1.0625rem] font-light text-ink sm:text-[1.25rem]">
+        <div className="relative">
+          <label htmlFor="period-select" className="sr-only">
             Mês
           </label>
-          <div className="relative">
-            <select
-              id="period-select"
-              value={effectivePeriod}
-              onChange={(e) => onPeriodChange(e.target.value)}
-              className={buttonClass("chip", "md", "min-h-12 w-full cursor-pointer appearance-none justify-start pl-6 pr-12 font-medium sm:w-64")}
-            >
-              {periods.map((p) => (
-                <option key={p} value={p} className="bg-white text-ink">
-                  {periodLabel(p)}
-                </option>
-              ))}
-            </select>
-            <ChevronDownThinIcon size={18} className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-white" />
-          </div>
+          <CalendarIcon size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-800" />
+          <select
+            id="period-select"
+            value={effectivePeriod}
+            onChange={(e) => onPeriodChange(e.target.value)}
+            className="min-h-10 w-full cursor-pointer appearance-none rounded-full border border-pill-line bg-pill pl-10 pr-10 text-sub font-semibold text-brand-800 sm:w-auto"
+          >
+            {periods.map((p) => (
+              <option key={p} value={p} className="bg-white text-ink">
+                {periodLabel(p)}
+              </option>
+            ))}
+          </select>
+          <ChevronDownThinIcon size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-brand-800" />
         </div>
       )}
       {canRecordCash && (
-        <>
-          {divider}
-          <div>
-            <p className="mb-2 text-[1.0625rem] font-light text-ink sm:text-[1.25rem]">Contribuição</p>
-            <Button variant="chip" size="md" aria-haspopup="dialog" onClick={() => setCashOpen(true)} className="min-h-12 w-full px-7 font-medium sm:w-auto">
-              Contribuição em dinheiro
-            </Button>
-          </div>
-        </>
+        <Button variant="secondary" size="md" aria-haspopup="dialog" onClick={() => setCashOpen(true)} className="min-h-10 rounded-full px-4 text-ink-2! font-normal">
+          <CashCoinIcon size={16} />
+          Contribuição em dinheiro
+        </Button>
       )}
       {canReadReports && summary.state === "ready" && (
         <>
-          {divider}
           {/* Navegacao comum (o navegador baixa o PDF com o cookie de sessao); sem fetch nem blob. */}
           <a
             href={contributionsPdfHref(schoolId, summary.data.period)}
             download
-            className={buttonClass("chip", "md", "min-h-12 px-7 font-medium sm:ml-auto")}
+            className={buttonClass("chip", "md", "min-h-10 px-5 sm:ml-auto")}
           >
-            Baixar PDF{" "}
-            <span className="sr-only">das contribuições do mês</span>
             <DownloadIcon size={16} />
+            Baixar PDF <span className="sr-only">das contribuições do mês</span>
           </a>
         </>
       )}
@@ -224,7 +214,9 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
       {section === "resumo" && (
         <div className="space-y-8">
           {summary.state === "loading" && <Skeleton label="Carregando o resumo do mês…" />}
-          {summary.state === "ready" && <StatementIndicators summary={summary.data} />}
+          {summary.state === "ready" && (
+            <StatementIndicators summary={summary.data} pendings={canReadStatement ? <PendingBlock pending={pending} /> : undefined} />
+          )}
           {summary.state === "forbidden" && <Notice tone="info">O seu perfil não tem acesso aos números desta escola.</Notice>}
           {summary.state === "error" && <Notice tone="bad">{summary.message}</Notice>}
 
@@ -234,7 +226,7 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
             </Notice>
           )}
 
-          {canReadStatement && <PendingBlock pending={pending} />}
+          {canReadStatement && summary.state !== "ready" && <PendingBlock pending={pending} />}
         </div>
       )}
 
@@ -281,23 +273,6 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
   );
 }
 
-/** Ilustracao de cada tipo de pendencia (Figma); sem ilustracao, um icone no mesmo molde. */
-const PENDING_MEDIA: Record<string, ReactNode> = {
-  PAYABLE: <Image src="/brand/3d-cash.webp" alt="" width={256} height={197} className="h-auto w-12" />,
-  AWAITING_APPROVAL: <Image src="/brand/3d-check.webp" alt="" width={256} height={261} className="h-auto w-12" />,
-  AWAITING_CORRECTION: (
-    <span className="grid size-12 place-items-center rounded-full bg-warn-soft text-warn">
-      <PencilSquareIcon size={22} />
-    </span>
-  ),
-  REVIEW: <Image src="/brand/3d-analysis.webp" alt="" width={256} height={256} className="h-auto w-12" />,
-  RECEIVABLE: (
-    <span className="grid size-12 place-items-center rounded-full bg-info-soft text-brand-800">
-      <ClockHistoryIcon size={22} />
-    </span>
-  ),
-};
-
 function PendingBlock({ pending }: { pending: Res<Page<PendingEntry>> }) {
   const [openSection, setOpenSection] = useState<string | null>(null);
   if (pending.state === "loading") return <Skeleton label="Carregando as pendências…" />;
@@ -315,13 +290,13 @@ function PendingBlock({ pending }: { pending: Res<Page<PendingEntry>> }) {
   const opened = cards.find((c) => c.section === openSection) ?? null;
 
   return (
-    <section aria-labelledby="pending-title" className="rounded-[var(--r-lg)] border border-line p-5 sm:p-7">
-      <h2 id="pending-title" className="text-[1.125rem] font-normal tracking-normal text-ink-2 sm:text-[1.375rem]">
+    <section aria-labelledby="pending-title" className="rounded-[var(--r-lg)] border border-line p-6">
+      <h2 id="pending-title" className="text-[1rem] font-medium text-ink">
         Pendências (fora do saldo)
       </h2>
       <p className="mt-0.5 text-foot text-ink-2">Nada daqui entra no saldo em caixa até ser pago ou confirmado.</p>
 
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <ul className="mt-3 divide-y divide-line">
         {cards.map((card) => {
           const total = card.rows.reduce((sum, row) => sum + row.amountCents, 0);
           const count = card.rows.length;
@@ -332,17 +307,12 @@ function PendingBlock({ pending }: { pending: Res<Page<PendingEntry>> }) {
                 disabled={count === 0}
                 aria-haspopup="dialog"
                 onClick={() => setOpenSection(card.section)}
-                className="flex w-full items-center gap-3 rounded-[1.25rem] border border-line-strong bg-white p-4 text-left transition-colors enabled:hover:bg-info-soft/50 disabled:cursor-default"
+                className="flex min-h-[3.25rem] w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors enabled:hover:bg-info-soft/60 disabled:cursor-default"
               >
-                <span aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center">
-                  {PENDING_MEDIA[card.section]}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sub font-light leading-tight text-ink">{card.title}</span>
-                  <span className="mt-0.5 block text-[1.125rem] font-bold leading-tight text-brand-800 sm:text-[1.25rem]">
-                    <Amount cents={total} symbolClassName="text-brand-800" />
-                  </span>
-                  <span className="block text-[0.75rem] text-ink-2">{count === 0 ? "Nenhum item" : count === 1 ? "1 item" : `${count} itens`}</span>
+                <span className="min-w-0 flex-1 text-sub text-ink">{card.title}</span>
+                <span className="shrink-0 text-foot text-ink-2">{count === 0 ? "Nenhum item" : count === 1 ? "1 item" : `${count} itens`}</span>
+                <span className="w-28 shrink-0 text-right text-[0.9375rem] font-semibold tabular-nums text-brand-800">
+                  <Amount cents={total} />
                 </span>
               </button>
             </li>

@@ -1,8 +1,10 @@
+import { Amount } from "@/components/ui/Amount";
 import { StatusPill } from "@/components/ui/StatusPill";
 import type { Receipt } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { pixStatusView } from "@/lib/status";
+import { SchoolMonogram } from "./SchoolMonogram";
 
 const METHOD_LABELS: Record<string, string> = {
   PIX: "Pix",
@@ -11,133 +13,88 @@ const METHOD_LABELS: Record<string, string> = {
   OTHER: "Outra forma",
 };
 
-/** Selo "Pago": so aparece quando o status devolvido pela camada de dados e PAID. */
-export function PaidStamp({ animate = false, size = 112 }: { animate?: boolean; size?: number }) {
+/**
+ * Selo de confirmacao: circulo azul base com o check, num halo claro. So aparece quando o status
+ * devolvido pela camada de dados e PAID. As duas partes (`data-part`) sao tracos visiveis em qualquer
+ * momento (nenhuma animacao parte de algo invisivel; ver os detectores em e2e/).
+ */
+export function PaidStamp({ animate = false, size = 84 }: { animate?: boolean; size?: number }) {
   return (
-    <div
-      aria-hidden="true"
-      data-testid="paid-stamp"
-      className={animate ? "stamp" : "-rotate-[8deg]"}
-      style={{ width: size, height: size, color: "var(--ok)" }}
-    >
-      <svg viewBox="0 0 120 120" width={size} height={size} fill="none">
-        {animate && (
-          <circle
-            className="stamp-ripple"
-            data-decorative="true"
-            cx="60"
-            cy="60"
-            r="50"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-        )}
-        <circle
-          data-part="ring"
-          className={animate ? "stamp-ring" : undefined}
-          cx="60"
-          cy="60"
-          r="52"
-          stroke="currentColor"
-          strokeWidth="3.5"
-        />
-        <circle cx="60" cy="60" r="44" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 5" opacity=".7" />
-        <path
-          data-part="check"
-          className={animate ? "stamp-check" : undefined}
-          d="M38 62l14 14 30-33"
-          stroke="currentColor"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+    <div aria-hidden="true" data-testid="paid-stamp" className={animate ? "pop" : undefined} style={{ width: size, height: size }}>
+      <svg viewBox="0 0 84 84" width={size} height={size} fill="none">
+        <circle data-part="ring" cx="42" cy="42" r="41" fill="var(--pill)" stroke="var(--pill-line)" strokeWidth="1" />
+        <circle cx="42" cy="42" r="30" fill="var(--color-brand-800)" />
+        <path data-part="check" d="M30 42.5 38.5 51 54 34" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   );
 }
 
-function ZigzagEdge() {
-  return (
-    <svg className="receipt-edge" width="100%" height="10" aria-hidden="true" focusable="false">
-      <defs>
-        <pattern id="receipt-teeth" width="16" height="10" patternUnits="userSpaceOnUse">
-          <path d="M0 0H16L8 10Z" fill="currentColor" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="10" fill="url(#receipt-teeth)" />
-    </svg>
-  );
-}
-
-/** Comprovante de contribuicao, na cor da marca (--accent). */
+/** Comprovante de contribuicao: cartao sobrio com o valor em destaque e os dados em linhas separadas. */
 export function ReceiptCard({ receipt, headingLevel = 2 }: { receipt: Receipt; headingLevel?: 2 | 3 }) {
   const status = pixStatusView(receipt.status);
   const Heading = `h${headingLevel}` as "h2" | "h3";
   const rows: Array<[string, string]> = [
+    ["Número", receipt.referenceCode],
     ["Forma de pagamento", METHOD_LABELS[receipt.method] ?? receipt.method],
     ["Pago em", formatDateTime(receipt.paidAt)],
   ];
 
   return (
-    <div className="receipt-wrap">
-      <article className="receipt-sheet relative overflow-hidden" aria-label={`Comprovante número ${receipt.referenceCode}`}>
-        <div className="h-2 bg-accent" aria-hidden="true" />
-        <div className="px-6 pb-7 pt-6 sm:px-8">
-          <header className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Heading className="text-headline">{receipt.schoolName}</Heading>
-              <p className="mt-0.5 text-foot text-ink-2">{receipt.campaignTitle ? `Comprovante de pedido · ${receipt.campaignTitle}` : "Comprovante de contribuição"}</p>
-            </div>
-            <p className="shrink-0 text-right text-foot text-ink-2">
-              Nº
-              <br />
-              <span className="font-semibold tabular-nums text-ink">{receipt.referenceCode}</span>
-            </p>
-          </header>
-
-          <div className="my-5 border-t border-dashed border-line" aria-hidden="true" />
-
-          <p className="text-foot text-ink-2">Valor</p>
-          <p className="mt-1 text-[2.5rem] font-bold leading-none tracking-[-0.04em] text-brand-800">
-            {formatBRL(receipt.amountCents)}
+    <article
+      className="rounded-[var(--r-lg)] border border-line bg-white p-[1.375rem]"
+      aria-label={`Comprovante número ${receipt.referenceCode}`}
+    >
+      <header className="flex items-center gap-3">
+        <SchoolMonogram name={receipt.schoolName} size={42} />
+        <div className="min-w-0">
+          <Heading className="text-[1rem] font-semibold leading-snug text-brand-800 [overflow-wrap:anywhere]">{receipt.schoolName}</Heading>
+          <p className="text-[0.75rem] leading-snug text-ink-2">
+            {receipt.campaignTitle ? `Comprovante de pedido · ${receipt.campaignTitle}` : "Comprovante de contribuição"}
           </p>
-
-          {receipt.items.length > 0 && (
-            <ul aria-label="Produtos do pedido" className="mt-5 space-y-2 border-t border-dashed border-line pt-4 text-sub">
-              {receipt.items.map((line) => (
-                <li key={line.name} className="flex items-baseline justify-between gap-4">
-                  <span className="min-w-0 text-ink-2 [overflow-wrap:anywhere]">
-                    {line.quantity} × {line.name}
-                  </span>
-                  <span className="shrink-0 font-medium tabular-nums text-ink">{formatBRL(line.unitPriceCents * line.quantity)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <dl className="mt-6 space-y-3 text-sub">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex items-baseline justify-between gap-5">
-                <dt className="shrink-0 text-ink-2">{label}</dt>
-                <dd className="min-w-0 text-right font-medium text-ink">{value}</dd>
-              </div>
-            ))}
-            <div className="flex items-center justify-between gap-5 pt-1">
-              <dt className="text-ink-2">Situação</dt>
-              <dd>
-                <StatusPill tone={status.tone}>{status.label}</StatusPill>
-              </dd>
-            </div>
-          </dl>
-
-          {receipt.status === "PAID" && (
-            <div className="pointer-events-none absolute right-4 top-[5.6rem] opacity-90 sm:right-6">
-              <PaidStamp size={96} />
-            </div>
-          )}
         </div>
-      </article>
-      <ZigzagEdge />
-    </div>
+      </header>
+
+      <div className="my-4 border-t border-line" aria-hidden="true" />
+
+      <p className="text-foot text-ink-2">Valor</p>
+      <p className="mt-0.5">
+        <Amount
+          cents={receipt.amountCents}
+          className="text-[2.75rem] font-bold leading-none tracking-[-0.02em] text-brand-800"
+          centsClassName="text-[1.375rem] font-semibold"
+        />
+      </p>
+
+      {receipt.items.length > 0 && (
+        <ul aria-label="Produtos do pedido" className="mt-5 space-y-2 border-t border-line pt-4 text-sub">
+          {receipt.items.map((line) => (
+            <li key={line.name} className="flex items-baseline justify-between gap-4">
+              <span className="min-w-0 text-ink-2 [overflow-wrap:anywhere]">
+                {line.quantity} × {line.name}
+              </span>
+              <span className="shrink-0 font-medium tabular-nums text-ink">{formatBRL(line.unitPriceCents * line.quantity)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="my-4 border-t border-line" aria-hidden="true" />
+
+      <dl className="space-y-3.5 text-sub">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-baseline justify-between gap-5">
+            <dt className="shrink-0 text-ink-2">{label}</dt>
+            <dd className="min-w-0 text-right font-semibold text-ink [overflow-wrap:anywhere]">{value}</dd>
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-5">
+          <dt className="text-ink-2">Situação</dt>
+          <dd>
+            <StatusPill tone={status.tone}>{status.label}</StatusPill>
+          </dd>
+        </div>
+      </dl>
+    </article>
   );
 }

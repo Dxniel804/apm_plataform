@@ -68,8 +68,8 @@ describe("PainelShell com sessao real", () => {
 
     const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage", "campaigns:manage"] } });
     const t = renderShell(treasurer);
-    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Personalização", "Fechamento"]));
-    expect(screen.getAllByRole("link", { name: "Personalização" })[0]).toHaveAttribute("href", "/painel/personalizacao");
+    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Campanhas", "Fechamento"]));
+    expect(screen.getAllByRole("link", { name: "Campanhas" })[0]).toHaveAttribute("href", "/painel/personalizacao");
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Minhas solicitações" })).not.toBeInTheDocument();
     t.unmount();
@@ -80,13 +80,13 @@ describe("PainelShell com sessao real", () => {
     expect(screen.queryByRole("link", { name: "Despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Contribuições" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Solicitações/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Personalização" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Campanhas" })).not.toBeInTheDocument();
   });
 
   it("a area Personalizacao tem o proprio titulo e recebe a escola do vinculo ativo", () => {
     const manager = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "campaigns:manage"] } });
     renderShell(manager, { area: "personalizacao" });
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Personalização");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Campanhas");
     expect(screen.getByTestId("campaigns-area")).toHaveTextContent(SCHOOL_MEMBERSHIP.school.id);
   });
 
@@ -106,9 +106,9 @@ describe("PainelShell com sessao real", () => {
     renderShell(session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:read_all"] } }), { period: "2026-09" });
     expect(screen.getAllByRole("link", { name: "Dashboard" })[0]).toHaveAttribute("href", "/painel?mes=2026-09");
     expect(screen.getAllByRole("link", { name: "Fechamento" })[0]).toHaveAttribute("href", "/painel/fechamento?mes=2026-09");
-    // "Despesas" existe duas vezes: o tipo de lancamento (dentro de "Lancamento do mes") e a area de despesas.
+    // "Despesas" aparece uma vez so: dentro de "Lancamentos do mes", e leva a area de despesas (sem item duplicado).
     const expenseHrefs = screen.getAllByRole("link", { name: "Despesas" }).map((l) => l.getAttribute("href"));
-    expect(expenseHrefs).toEqual(["/painel?tipo=despesas&mes=2026-09", "/painel/despesas"]);
+    expect(expenseHrefs).toEqual(["/painel/despesas"]);
     expect(screen.getByRole("link", { name: "Contribuições" })).toHaveAttribute("href", "/painel?tipo=contribuicoes&mes=2026-09");
   });
 
@@ -203,9 +203,9 @@ describe("menu (Figma Gestao)", () => {
   const treasurer = () =>
     session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close"] } });
 
-  it("o grupo 'Lançamento do mês' abre e fecha e lista os 4 tipos de lançamento", async () => {
+  it("o grupo 'Lançamentos do mês' abre e fecha e lista os 4 tipos de lançamento", async () => {
     renderShell(treasurer());
-    const group = screen.getByRole("button", { name: "Lançamento do mês" });
+    const group = screen.getByRole("button", { name: "Lançamentos do mês" });
     expect(group).toHaveAttribute("aria-expanded", "true"); // o dashboard abre o grupo
     expect(screen.getByRole("link", { name: "Reembolsos" })).toHaveAttribute("href", "/painel?tipo=reembolsos");
     expect(screen.getByRole("link", { name: "Devoluções" })).toHaveAttribute("href", "/painel?tipo=devolucoes");
@@ -251,7 +251,7 @@ describe("menu (Figma Gestao)", () => {
     // recolhido, os links continuam com nome (so o texto fica fora da tela)
     expect(screen.getByRole("link", { name: "Fechamento" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Contribuições" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Lançamento do mês" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lançamentos do mês" })).not.toBeInTheDocument();
     expect(window.localStorage.getItem("apm.sidebar.collapsed")).toBe("1");
     unmount();
     renderShell(treasurer());

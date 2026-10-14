@@ -11,7 +11,7 @@ const tones: Record<StatusTone, string> = {
 export function StatusPill({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-foot font-bold leading-none ${tones[tone]}`}
+      className={`inline-flex items-center rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold leading-none ${tones[tone]}`}
     >
       {children}
     </span>

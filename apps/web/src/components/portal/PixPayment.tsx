@@ -133,8 +133,8 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
   if (phase === "paid") {
     return (
       <div className="step-in rounded-[var(--r-lg)] border border-line bg-white p-6 text-center  sm:p-10">
-        <div className="relative mx-auto grid size-32 place-items-center">
-          <PaidStamp animate size={128} />
+        <div className="relative mx-auto grid size-24 place-items-center">
+          <PaidStamp animate size={96} />
         </div>
         <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-title outline-none">
           Pagamento confirmado
@@ -231,103 +231,101 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
   const timeUp = remaining <= 0;
   return (
     <div>
-      <div className="rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
-            Pague com Pix
-          </h2>
-          <p className="text-heading font-bold tabular-nums text-brand-800">{formatBRL(state.amountCents)}</p>
-        </div>
-
-        <p className="mt-1 text-sub text-ink-2">
-          Abra o app do seu banco e escolha pagar com Pix. Use o QR Code ou o código copia e cola.
-        </p>
-
-        <div className="mt-6">
-          <QrCode payload={payload} />
-          {txid && (
-            <p className="mx-auto mt-3 max-w-[34ch] text-center text-foot text-ink-2">
-              Pix de teste (sandbox). Nenhum pagamento real é feito e nenhum app de banco lê este código.
-            </p>
-          )}
-        </div>
-
-        <div className="mt-6">
-          <label htmlFor="pix-code" className="mb-2 block text-sub font-bold text-brand-800">
-            Pix copia e cola
-          </label>
-          <textarea
-            id="pix-code"
-            ref={codeRef}
-            readOnly
-            rows={3}
-            value={payload}
-            onFocus={(e) => e.currentTarget.select()}
-            className="block w-full resize-none rounded-ctl border border-field-border bg-[#f7f7f7] px-4 py-3 font-mono text-foot leading-relaxed text-ink [overflow-wrap:anywhere]"
-          />
-          <Button
-            variant={copy === "copied" ? "secondary" : "solid"}
-            className="mt-3 w-full"
-            onClick={copyCode}
-            aria-describedby="pix-copy-status"
-          >
-            {copy === "copied" ? <CheckIcon size={20} className="pop" /> : <CopyIcon size={20} />}
-            {copy === "copied" ? "Código copiado" : "Copiar código"}
-          </Button>
-          <p id="pix-copy-status" role="status" className="mt-2 min-h-5 text-foot text-ink-2">
-            {copy === "copied" && "Código copiado. Cole no app do seu banco."}
-            {copy === "manual" && "O navegador não permitiu copiar. O código está selecionado: use Ctrl+C ou Cmd+C."}
-          </p>
-        </div>
-
-        {txid && (
-          <div className="mt-4 border-t border-dashed border-line pt-4">
-            <Button variant="secondary" size="md" onClick={simulatePayment} disabled={simulating} aria-busy={simulating}>
-              {simulating ? "Simulando…" : "Simular pagamento (somente desenvolvimento)"}
-            </Button>
-            <div aria-live="polite">
-              {simulateMessage && <p className="mt-2 text-sub font-medium text-bad">{simulateMessage}</p>}
-            </div>
-          </div>
-        )}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 ref={headingRef} tabIndex={-1} className="text-title outline-none">
+          Pague com Pix
+        </h2>
+        <p className="text-[1.375rem] font-bold tabular-nums leading-tight text-brand-800">{formatBRL(state.amountCents)}</p>
       </div>
+      <p className="mt-2 text-sub text-ink-2">
+        Abra o app do seu banco e escolha pagar com Pix. Use o QR Code ou o código copia e cola.
+      </p>
 
-      <div className="mt-4 rounded-[var(--r-lg)] border border-line bg-white p-5">
-        <div className="flex items-center justify-between gap-4">
-          <p className="flex items-center gap-2 text-sub font-semibold text-ink">
-            <ClockIcon size={18} className="text-ink-2" />
-            {timeUp ? "Prazo encerrado" : "Expira em"}
-          </p>
-          <p
-            role="timer"
-            aria-label={timeUp ? "Prazo encerrado" : `Tempo restante ${formatCountdown(remaining)}`}
-            className="text-heading font-bold tabular-nums text-brand-800"
-          >
-            {formatCountdown(remaining)}
-          </p>
-        </div>
-        <div className="mt-4 flex items-start gap-3 border-t border-line pt-4">
-          <span aria-hidden="true" className="pulse-dot mt-2 size-2.5 shrink-0 rounded-full bg-brand-600" />
-          <div role="status" aria-live="polite" className="text-sub text-ink">
-            <p className="font-semibold">Aguardando pagamento</p>
-            <p className="text-ink-2">
+      <div className="mt-5 flex items-center gap-4 rounded-[var(--r-lg)] border border-line-strong bg-white p-4 sm:gap-6 sm:p-5">
+        <QrCode payload={payload} compact />
+        <div className="min-w-0 flex-1 space-y-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-foot font-medium text-ink-2">
+              <ClockIcon size={16} />
+              {timeUp ? "Prazo encerrado" : "Expira em"}
+            </p>
+            <p
+              role="timer"
+              aria-label={timeUp ? "Prazo encerrado" : `Tempo restante ${formatCountdown(remaining)}`}
+              className="mt-0.5 text-[2.25rem] font-bold leading-none tracking-[-0.02em] tabular-nums text-brand-800"
+            >
+              {formatCountdown(remaining)}
+            </p>
+          </div>
+          <div className="border-t border-line pt-3" role="status" aria-live="polite">
+            <p className="flex items-center gap-2 text-sub font-semibold text-ink">
+              <span aria-hidden="true" className="grid size-4 shrink-0 place-items-center rounded-full bg-pill">
+                <span className="pulse-dot size-2 rounded-full bg-brand-600" />
+              </span>
+              Aguardando pagamento
+            </p>
+            <p className="mt-0.5 text-[0.75rem] leading-snug text-ink-2">
               {timeUp ? "Conferindo com o banco se o pagamento chegou…" : "Aguardando a confirmação do pagamento."}
             </p>
             {connectionIssue && (
-              <p className="mt-1 flex items-start gap-1.5 text-warn">
-                <InfoIcon size={16} className="mt-0.5 shrink-0" />
+              <p className="mt-1 flex items-start gap-1.5 text-[0.75rem] text-warn">
+                <InfoIcon size={14} className="mt-0.5 shrink-0" />
                 Sem conexão para atualizar o status. Tentando de novo.
               </p>
             )}
           </div>
         </div>
       </div>
+      {txid && (
+        <p className="mt-2 text-center text-foot text-ink-2">
+          Pix de teste (sandbox). Nenhum pagamento real é feito e nenhum app de banco lê este código.
+        </p>
+      )}
 
-      <p className="mx-auto mt-4 max-w-[44ch] text-center text-foot text-ink-2">
-        Esta tela atualiza sozinha quando o banco confirmar. Se precisar mudar algo, comece de novo: o Pix atual expira
-        sozinho.
+      <div className="mt-5">
+        <label htmlFor="pix-code" className="mb-2 block text-sub font-semibold text-brand-800">
+          Pix copia e cola
+        </label>
+        <textarea
+          id="pix-code"
+          ref={codeRef}
+          readOnly
+          rows={3}
+          value={payload}
+          onFocus={(e) => e.currentTarget.select()}
+          className="block w-full resize-none rounded-[var(--r-md)] border border-line-strong bg-field px-3.5 py-3 font-mono text-[0.75rem] leading-[1.5] text-ink [overflow-wrap:anywhere]"
+        />
+        <Button
+          variant={copy === "copied" ? "secondary" : "solid"}
+          className="mt-3 w-full"
+          onClick={copyCode}
+          aria-describedby="pix-copy-status"
+        >
+          {copy === "copied" ? <CheckIcon size={20} className="pop" /> : <CopyIcon size={20} />}
+          {copy === "copied" ? "Código copiado" : "Copiar código"}
+        </Button>
+        <p id="pix-copy-status" role="status" className="mt-2 min-h-5 text-foot text-ink-2">
+          {copy === "copied" && "Código copiado. Cole no app do seu banco."}
+          {copy === "manual" && "O navegador não permitiu copiar. O código está selecionado: use Ctrl+C ou Cmd+C."}
+        </p>
+      </div>
+
+      {txid && (
+        <div className="mt-2 border-t border-dashed border-line pt-4">
+          <Button variant="secondary" size="md" onClick={simulatePayment} disabled={simulating} aria-busy={simulating}>
+            {simulating ? "Simulando…" : "Simular pagamento (somente desenvolvimento)"}
+          </Button>
+          <div aria-live="polite">
+            {simulateMessage && <p className="mt-2 text-sub font-medium text-bad">{simulateMessage}</p>}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-4 flex items-start gap-3 rounded-[var(--r-md)] bg-info-soft p-3.5 text-foot leading-snug text-ink">
+        <RefreshIcon size={20} className="mt-px shrink-0 text-brand-800" />
+        Esta tela atualiza sozinha quando o banco confirmar. Se precisar mudar algo, comece de novo: o Pix atual expira sozinho.
       </p>
-      <div className="mt-1 text-center">
+      <div className="mt-2 text-center">
         <Button variant="plain" size="md" onClick={onRestart}>
           Começar de novo
         </Button>

@@ -16,10 +16,10 @@ describe("BalanceChart (Composicao do saldo)", () => {
     expect(items.map((li) => li.textContent)).toEqual([
       "Saldo inicial397,10",
       "Entradas+465,00",
-      "Saídas pagas-178,00",
+      "Saídas-178,00",
       "Saldo em caixa684,10",
-      "Reembolsos pend.-45,00",
-      "Após pend.639,10",
+      "A reembolsar-45,00",
+      "Após pendências639,10",
     ]);
   });
 

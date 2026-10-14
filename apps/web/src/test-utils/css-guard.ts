@@ -100,7 +100,6 @@ export function hidesContent(prop: string, value: string, where: "keyframe-start
 
 /** Seletores de base que escondem de proposito (decorativos / so leitor de tela). */
 export const BASE_ALLOWLIST: Record<string, string> = {
-  ".stamp-ripple": "ondulacao decorativa do carimbo: invisivel por padrao, so existe durante a animacao",
   ".sr-only-live": "texto so para leitor de tela",
   ".paper-grid::before": "textura decorativa do fundo (mascara)",
 };

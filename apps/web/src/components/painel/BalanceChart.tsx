@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { StatementSummary } from "@/lib/api/types";
+import { TrendUpIcon } from "@/components/ui/icons";
 import { formatBRLNumber } from "@/lib/money";
 
 interface Bar {
@@ -11,6 +12,8 @@ interface Bar {
   from: number;
   to: number;
   color: string;
+  /** Onde a linha de ligacao com a proxima barra encosta (so desenho). */
+  carry?: number;
 }
 
 /**
@@ -31,7 +34,7 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
     },
     {
       key: "out",
-      label: "Saídas pagas",
+      label: "Saídas",
       text: `-${formatBRLNumber(s.totalOutCents)}`,
       from: s.closingBalanceCents,
       to: s.closingBalanceCents + s.totalOutCents,
@@ -40,14 +43,23 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
     { key: "close", label: "Saldo em caixa", text: formatBRLNumber(s.closingBalanceCents), from: 0, to: s.closingBalanceCents, color: "var(--series-base)" },
     {
       key: "pending",
-      label: "Reembolsos pend.",
+      label: "A reembolsar",
       text: `-${formatBRLNumber(s.pendingReimbursementsCents)}`,
       from: s.balanceAfterPendingCents,
       to: s.closingBalanceCents,
       color: "var(--series-out)",
     },
-    { key: "after", label: "Após pend.", text: formatBRLNumber(s.balanceAfterPendingCents), from: 0, to: s.balanceAfterPendingCents, color: "var(--series-after)" },
+    { key: "after", label: "Após pendências", text: formatBRLNumber(s.balanceAfterPendingCents), from: 0, to: s.balanceAfterPendingCents, color: "var(--series-after)" },
   ];
+
+  // Linha de ligacao: o nivel em que cada barra termina e a seguinte comeca (so posicao no desenho).
+  const carries: Record<string, number> = {
+    open: s.openingBalanceCents,
+    in: s.openingBalanceCents + s.totalInCents,
+    out: s.closingBalanceCents,
+    close: s.closingBalanceCents,
+    pending: s.balanceAfterPendingCents,
+  };
 
   const ends = bars.flatMap((b) => [b.from, b.to]);
   const min = Math.min(0, ...ends);
@@ -55,17 +67,20 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
   const place = (v: number) => ((v - min) / (max - min)) * 100;
 
   return (
-    <section aria-labelledby="balance-chart-title" className="@container rounded-[var(--r-lg)] border border-line p-5 sm:p-7">
-      <h3 id="balance-chart-title" className="text-[1.125rem] font-normal tracking-normal text-ink-2 sm:text-[1.375rem]">
+    <section aria-labelledby="balance-chart-title" className="@container rounded-[var(--r-lg)] border border-line p-6">
+      <h3 id="balance-chart-title" className="flex items-center gap-2.5 text-[1rem] font-medium text-ink">
+        <TrendUpIcon size={20} className="text-ink-2" aria-hidden="true" />
         Composição do saldo
       </h3>
-      <p className="mt-0.5 text-foot text-ink-2">Do saldo inicial até o caixa final, em reais</p>
+      <p className="mt-0.5 text-foot text-ink-2 @[26rem]:pl-[1.875rem]">Do saldo inicial até o caixa final, em reais</p>
 
-      <ul className="mt-6 grid gap-3 @[26rem]:grid-cols-6 @[26rem]:gap-0">
+      <ul className="mt-6 grid gap-3 @[26rem]:grid-cols-6 @[26rem]:gap-0 @[26rem]:pt-4">
         {bars.map((bar) => {
           const lo = Math.min(bar.from, bar.to);
           const hi = Math.max(bar.from, bar.to);
           const style = { "--lo": place(lo), "--hi": place(hi), background: bar.color } as CSSProperties;
+          const carry = carries[bar.key];
+          const total = bar.from === 0;
           return (
             <li
               key={bar.key}
@@ -78,10 +93,16 @@ export function BalanceChart({ summary: s }: { summary: StatementSummary }) {
               >
                 <span
                   style={style}
-                  className="absolute inset-y-0 left-[calc(var(--lo)*1%)] w-[calc((var(--hi)-var(--lo))*1%)] min-w-1 rounded-full @[26rem]:inset-y-auto @[26rem]:bottom-[calc(var(--lo)*1%)] @[26rem]:left-[24%] @[26rem]:h-[calc((var(--hi)-var(--lo))*1%)] @[26rem]:min-h-[3px] @[26rem]:w-auto @[26rem]:min-w-0 @[26rem]:right-[24%] @[26rem]:rounded-b-none @[26rem]:rounded-t-[6px]"
+                  className={`absolute inset-y-0 left-[calc(var(--lo)*1%)] w-[calc((var(--hi)-var(--lo))*1%)] min-w-1 rounded-full @[26rem]:inset-y-auto @[26rem]:bottom-[calc(var(--lo)*1%)] @[26rem]:left-[24%] @[26rem]:h-[calc((var(--hi)-var(--lo))*1%)] @[26rem]:min-h-[3px] @[26rem]:w-auto @[26rem]:min-w-0 @[26rem]:right-[24%] ${total ? "@[26rem]:rounded-b-none @[26rem]:rounded-t-[8px]" : "@[26rem]:rounded-[8px]"}`}
                 />
+                {carry !== undefined && (
+                  <span
+                    style={{ "--lvl": place(carry) } as CSSProperties}
+                    className="absolute hidden h-px bg-[#9aa7c7] @[26rem]:block @[26rem]:bottom-[calc(var(--lvl)*1%)] @[26rem]:left-[76%] @[26rem]:w-[48%]"
+                  />
+                )}
               </span>
-              <span className="col-start-1 row-start-1 text-sub leading-tight text-ink-3 @[26rem]:order-2 @[26rem]:mt-3 @[26rem]:px-1 @[26rem]:text-center @[26rem]:text-[0.8125rem]">
+              <span className="col-start-1 row-start-1 text-sub leading-tight text-ink-3 @[26rem]:order-2 @[26rem]:mt-3 @[26rem]:min-h-[2.25rem] @[26rem]:px-1 @[26rem]:text-center @[26rem]:text-[0.8125rem]">
                 {bar.label}
               </span>
               <span className="col-start-3 row-start-1 text-right text-sub font-bold tabular-nums text-ink @[26rem]:order-3 @[26rem]:mt-1.5 @[26rem]:text-center @[26rem]:text-[0.9375rem]">

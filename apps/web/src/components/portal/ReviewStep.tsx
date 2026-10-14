@@ -2,7 +2,7 @@
 
 import type { Ref } from "react";
 import { Button } from "@/components/ui/Button";
-import { BagIcon } from "@/components/ui/icons";
+import { BankIcon } from "@/components/ui/icons";
 import { formatBRL } from "@/lib/money";
 import { FIELD_LABELS, IDENTIFICATION_FIELDS, type IdentificationValues } from "@/lib/validation";
 import { StickyActions } from "./FlowChrome";
@@ -25,19 +25,19 @@ interface ReviewStepProps {
   editLabel?: string;
 }
 
-function Row({ label, value, onEdit, editLabel }: { label: string; value: string; onEdit?: (() => void) | null; editLabel?: string }) {
+function Row({ label, value, onEdit, editLabel, strong }: { label: string; value: string; onEdit?: (() => void) | null; editLabel?: string; strong?: boolean }) {
   return (
-    <li className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-field-border bg-white px-4 py-2.5">
+    <li className="flex min-h-[3.875rem] items-center justify-between gap-3 border-b border-line py-2.5 last:border-b-0">
       <div className="min-w-0">
-        <span className="block text-foot text-ink-2">{label}</span>
-        <span className="block text-body font-medium text-brand-800 [overflow-wrap:anywhere]">{value}</span>
+        <span className="block text-[0.75rem] text-ink-2">{label}</span>
+        <span className={`block font-medium text-brand-800 [overflow-wrap:anywhere] ${strong ? "text-[1.5rem] font-bold leading-tight tracking-[-0.01em]" : "text-body"}`}>{value}</span>
       </div>
       {onEdit && (
         <button
           type="button"
           onClick={onEdit}
           aria-label={editLabel}
-          className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sub font-bold text-brand-800 hover:bg-info-soft"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 text-sub font-semibold text-brand-600 hover:bg-info-soft"
         >
           Alterar
         </button>
@@ -71,8 +71,8 @@ export function ReviewStep({
         Se estiver tudo certo, vamos gerar o Pix. Você só paga depois de abrir o app do seu banco.
       </p>
 
-      <p className="mt-6 text-sub font-bold text-brand-800">Informações</p>
-      <ul aria-label="Resumo da contribuição" className="mt-2 space-y-2.5 rounded-[var(--r-lg)] border border-field-border p-3 sm:p-4">
+      <p className="mt-6 text-sub font-semibold text-brand-800">Informações</p>
+      <ul aria-label="Resumo da contribuição" className="mt-2 rounded-[var(--r-lg)] border border-line-strong px-[1.125rem]">
         <Row label="Escola" value={schoolName} />
         {lines ? (
           lines.map((line, index) => (
@@ -87,7 +87,7 @@ export function ReviewStep({
         ) : (
           <Row label="Contribuição" value={description} onEdit={onEditAmount} editLabel={editLabel} />
         )}
-        <Row label={lines ? "Total" : "Valor"} value={formatBRL(amountCents)} />
+        <Row label={lines ? "Total" : "Valor"} value={formatBRL(amountCents)} strong />
         {filled.map((field) => (
           <Row
             key={field}
@@ -99,8 +99,8 @@ export function ReviewStep({
         ))}
       </ul>
 
-      <p className="mt-4 flex items-start gap-2.5 text-sub text-ink-2">
-        <BagIcon size={18} className="mt-0.5 shrink-0" />
+      <p className="mt-4 flex items-start gap-3 rounded-[var(--r-md)] bg-info-soft p-3.5 text-foot leading-snug text-ink">
+        <BankIcon size={20} className="mt-px shrink-0 text-brand-800" />
         O Pix vai direto para a conta da APM. A plataforma não guarda o dinheiro e quem confirma o pagamento é o banco.
       </p>
 
@@ -113,7 +113,7 @@ export function ReviewStep({
       </div>
 
       <StickyActions>
-        <Button variant="secondary" className="shrink-0 sm:min-w-32" onClick={onBack} disabled={submitting}>
+        <Button variant="secondary" className="w-28 shrink-0 sm:w-auto sm:min-w-32" onClick={onBack} disabled={submitting}>
           Voltar
         </Button>
         <Button variant="solid" className="flex-1 sm:min-w-56 sm:flex-none" onClick={onSubmit} disabled={submitting} aria-busy={submitting}>

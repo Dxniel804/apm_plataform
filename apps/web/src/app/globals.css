@@ -18,36 +18,39 @@
 :root {
   color-scheme: light;
 
-  --bg: #e9e9e9; /* fundo da area da gestao (fora do painel branco) */
+  --bg: #f3f5fa; /* fundo da area autenticada e do portal (nevoa azulada) */
   --surface: #ffffff;
   --raised: #ffffff;
-  --field: #f0f0f0; /* campo "cheio" do login */
-  --line: rgb(0 0 0 / 0.16); /* borda de cartao (preto a 20% no Figma) */
-  --line-strong: #bdbdbd;
-  --field-border: #d1d1d1;
+  --field: #f6f8fc; /* campo "cheio" */
+  --line: #dfe6f3; /* borda de cartao e divisoria */
+  --line-strong: #d3dbec; /* borda de campo, pilula e botao secundario */
+  --field-border: #d3dbec;
 
-  --ink: #161616;
-  --ink-2: #414141;
-  --ink-3: #5c5c5c;
+  --ink: #101a3f;
+  --ink-2: #4a5578;
+  --ink-3: #66719a;
 
-  --ok: #0f7a52;
-  --ok-soft: #dff5ec;
-  --warn: #7a4100;
-  --warn-soft: #ffd9b0; /* o laranja do Figma ("Reembolso pendente") */
+  /* Sucesso e info usam o azul da marca (o desenho nao tem verde); o ambar fica so para "pendente". */
+  --ok: #182c7a;
+  --ok-soft: #dceaff;
+  --warn: #8a5a00;
+  --warn-soft: #fff1d1;
   --bad: #b3232f;
   --bad-soft: #fde6e8;
   --info: var(--color-brand-800);
-  --info-soft: #e6ecfb;
-  --neutral-soft: #ececec;
-  --chip: #e1e1e1; /* filtro inativo */
+  --info-soft: #eaf1ff;
+  --neutral-soft: #eef2fa;
+  --chip: #e6ecf8; /* trilho das abas segmentadas */
+  --pill: #e1ecff; /* pilula ativa */
+  --pill-line: #b7d1ff;
 
   --focus: var(--color-brand-600);
 
-  /* Series do grafico "Composicao do saldo" (cores medidas no Figma) */
-  --series-base: #1e2a84; /* saldo inicial / saldo em caixa */
-  --series-in: #1baf7a; /* entradas */
-  --series-out: #eb6834; /* saidas pagas / reembolsos pendentes */
-  --series-after: #9aa4e0; /* apos pendencias */
+  /* Series do grafico "Composicao do saldo": so a paleta fknelo */
+  --series-base: #182c7a; /* saldo inicial / saldo em caixa */
+  --series-in: #346ae3; /* entradas */
+  --series-out: #98c7ff; /* saidas / reembolsos a pagar */
+  --series-after: #7bb3ff; /* apos pendencias */
 
   --accent: var(--color-brand-800);
   --accent-contrast: #ffffff;
@@ -60,10 +63,10 @@
   --shadow-sheet: 0 1px 1px rgb(16 20 40 / 0.05), 0 24px 60px -16px rgb(16 20 40 / 0.35);
 
   --r-sm: 10px;
-  --r-ctl: 18px; /* campos e botoes retangulares */
+  --r-ctl: 12px; /* campos e botoes retangulares */
   --r-md: 16px;
-  --r-lg: 26px; /* cartoes e paineis */
-  --r-xl: 34px; /* janela modal */
+  --r-lg: 24px; /* cartoes */
+  --r-xl: 28px; /* painel branco e janela modal */
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --spring: linear(
@@ -98,6 +101,8 @@
   --color-info-soft: var(--info-soft);
   --color-neutral-soft: var(--neutral-soft);
   --color-chip: var(--chip);
+  --color-pill: var(--pill);
+  --color-pill-line: var(--pill-line);
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
   --color-accent-ink: var(--accent-ink);
@@ -108,9 +113,9 @@
   --radius-xl: var(--r-xl);
   --radius-ctl: var(--r-ctl);
 
-  /* Degrades da marca (Figma): botao principal, item ativo do menu, filtros e chips. */
-  --background-image-grad-brand: linear-gradient(90deg, var(--color-brand-800), var(--color-brand-500));
-  --background-image-grad-chip: linear-gradient(90deg, var(--color-brand-800), var(--color-brand-700));
+  /* Sem degrade: o visual novo usa o azul base chapado. Os nomes ficam por compatibilidade. */
+  --background-image-grad-brand: linear-gradient(var(--color-brand-800), var(--color-brand-800));
+  --background-image-grad-chip: linear-gradient(var(--color-brand-800), var(--color-brand-800));
 
   /* Escala tipografica (fluida: o Figma foi desenhado em quadros de 580 e 1712 px de largura). */
   --text-display: clamp(2.5rem, 1.3rem + 3.6vw, 4rem);
@@ -234,21 +239,6 @@
     overflow: clip;
   }
 
-  /* Recibo: folha com borda serrilhada embaixo */
-  .receipt-sheet {
-    background: var(--surface);
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
-  }
-  .receipt-wrap {
-    filter: drop-shadow(0 1px 1px rgb(16 20 40 / 0.08)) drop-shadow(0 14px 22px rgb(16 20 40 / 0.14));
-  }
-  .receipt-edge {
-    display: block;
-    width: 100%;
-    height: 10px;
-    color: var(--surface);
-  }
-
   /*
    * ANIMACOES DE ENTRADA = melhoria progressiva. O estado base de TODO conteudo e visivel.
    * Regras (testadas em src/app/motion-css.test.ts e e2e/):
@@ -277,60 +267,16 @@
     animation: pop 320ms var(--spring);
   }
 
-  /*
-   * Carimbo (o unico momento orquestrado: confirmacao do pagamento). Estado base = desenho final.
-   * Anel e check ENTRAM por escala (nunca por tracado com stroke-dashoffset, que sumiria o desenho
-   * se a animacao congelasse): em qualquer ponto da animacao, inclusive t=0, o simbolo esta visivel.
-   */
-  @keyframes stamp-in {
-    from {
-      transform: scale(1.7) rotate(-18deg);
+  /* Casca do painel: menu lateral fixo + conteudo (so a partir de 1024 px; abaixo, o menu e a gaveta). Em CSS fixo
+     de proposito: se a grade nao fosse aplicada, o menu ocuparia a tela toda. */
+  @media (min-width: 64rem) {
+    .painel-grid {
+      display: grid;
+      grid-template-columns: clamp(16.5rem, 17vw, 18rem) minmax(0, 1fr);
     }
-  }
-  @keyframes stamp-ring {
-    from {
-      transform: scale(0.86);
+    .painel-grid[data-collapsed="true"] {
+      grid-template-columns: 5.5rem minmax(0, 1fr);
     }
-  }
-  @keyframes stamp-check {
-    from {
-      transform: scale(0.55);
-    }
-  }
-  @keyframes stamp-ripple {
-    from {
-      opacity: 0.45;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 0;
-      transform: scale(1.5);
-    }
-  }
-  .stamp {
-    transform: rotate(-8deg);
-  }
-  .stamp-ring,
-  .stamp-check {
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-  .stamp-ripple {
-    transform-box: fill-box;
-    transform-origin: center;
-    opacity: 0; /* decorativo: so existe durante a animacao */
-  }
-  [data-motion="on"] .stamp {
-    animation: stamp-in 620ms var(--spring);
-  }
-  [data-motion="on"] .stamp-ring {
-    animation: stamp-ring 520ms var(--spring) 60ms;
-  }
-  [data-motion="on"] .stamp-check {
-    animation: stamp-check 480ms var(--spring) 260ms;
-  }
-  [data-motion="on"] .stamp-ripple {
-    animation: stamp-ripple 900ms var(--ease-out) 280ms;
   }
 
   /* Carregamento */

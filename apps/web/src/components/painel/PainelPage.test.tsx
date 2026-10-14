@@ -72,7 +72,7 @@ describe("/painel no servidor", () => {
 
   it("personalizacao: so a gestao (campaigns:manage) entra; os outros voltam para a sua area", async () => {
     const manager = withPermissions(["statement:read", "campaigns:manage"]);
-    expect(await render(manager, "personalizacao")).toContain("Personalização");
+    expect(await render(manager, "personalizacao")).toContain("Campanhas");
     const staff = withPermissions(["expenses:read_own", "expenses:submit"]);
     await expect(render(staff, "personalizacao")).rejects.toThrow("NEXT_REDIRECT:/painel/despesas");
     const viewer = withPermissions(["reports:read_aggregate"]);

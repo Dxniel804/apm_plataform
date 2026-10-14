@@ -1,13 +1,14 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { CheckIcon, CopyIcon, LockIcon } from "@/components/ui/icons";
 import { api } from "@/lib/api";
 import type { Receipt } from "@/lib/api/types";
 import { formatWait } from "@/lib/auth-messages";
-import { ReceiptCard } from "./ReceiptCard";
+import { PortalSheet } from "./PortalShell";
+import { PaidStamp, ReceiptCard } from "./ReceiptCard";
 
 type ViewState =
   | { kind: "checking" }
@@ -74,11 +75,13 @@ export function ReceiptView({
     }
   }
 
+  const sheet = (node: ReactNode) => <PortalSheet>{node}</PortalSheet>;
+
   // A mesma 404 estilizada para "nunca existiu" e "ainda nao existe" (sem enumeracao, ADR-010).
   if (view.kind === "not-found") notFound();
 
   if (view.kind === "checking") {
-    return (
+    return sheet(
       <div role="status" aria-live="polite" aria-busy="true" className="max-w-xl">
         <h1 className="text-title">Conferindo seu comprovante</h1>
         <p className="mt-3 text-body text-ink-2">Estamos conferindo este link. Isso leva só um instante.</p>
@@ -94,7 +97,7 @@ export function ReceiptView({
   }
 
   if (view.kind === "error") {
-    return (
+    return sheet(
       <div className="max-w-xl">
         <h1 className="text-title">Não conseguimos conferir agora</h1>
         <p role="alert" className="mt-3 text-body text-ink-2">{view.message}</p>
@@ -106,7 +109,7 @@ export function ReceiptView({
   }
 
   if (view.kind === "unconfirmed") {
-    return (
+    return sheet(
       <div className="max-w-xl">
         <h1 className="text-title">Este pagamento ainda não foi confirmado</h1>
         <p className="mt-3 text-body text-ink-2">
@@ -125,35 +128,41 @@ export function ReceiptView({
 
   const confirmed = view.receipt.status === "PAID";
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-16">
-      <div className="mx-auto w-full max-w-[26rem] lg:mx-0">
-        <ReceiptCard receipt={view.receipt} />
-      </div>
-      <div className="max-w-xl">
-        <h1 className="text-title sm:text-[2.25rem]">
+    <div className="mx-auto flex w-full max-w-[28rem] flex-1 flex-col gap-5 pb-6 pt-2">
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        {confirmed && (
+          <div className="mb-2">
+            <PaidStamp animate size={84} />
+          </div>
+        )}
+        <h1 className="text-[1.625rem] font-bold leading-tight tracking-[-0.015em] text-brand-800">
           {confirmed ? "Contribuição confirmada" : "Comprovante da contribuição"}
         </h1>
-        <p className="mt-3 text-body text-ink-2">
+        <p className="text-sub text-ink-2">
           {confirmed
             ? "Obrigado por apoiar a escola. Este é o seu comprovante: guarde o link, porque é ele que dá acesso a esta página."
             : "Acompanhe a situação do pagamento por este link."}
         </p>
-        <p className="mt-4 flex items-start gap-2.5 text-sub text-ink-2">
-          <LockIcon size={18} className="mt-0.5 shrink-0" />
-          Não pedimos login. Quem tem o link vê este comprovante, então compartilhe com cuidado.
-        </p>
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <Button variant="secondary" onClick={copyLink} aria-describedby="receipt-copy-status" aria-label={copied ? undefined : "Copiar link do comprovante"}>
-            {copied ? <CheckIcon size={20} className="pop" /> : <CopyIcon size={20} />}
-            {copied ? "Link copiado" : "Copiar link"}
-          </Button>
-          <ButtonLink href={`/escola/${slug}`} variant="plain">
-            Fazer outra contribuição
-          </ButtonLink>
-        </div>
-        <p id="receipt-copy-status" role="status" className="mt-2 min-h-5 text-foot text-ink-2">
+      </div>
+
+      <ReceiptCard receipt={view.receipt} />
+
+      <p className="flex items-start gap-3 rounded-[var(--r-md)] bg-info-soft p-3.5 text-foot leading-snug text-ink">
+        <LockIcon size={20} className="mt-px shrink-0 text-brand-800" />
+        Não pedimos login. Quem tem o link vê este comprovante, então compartilhe com cuidado.
+      </p>
+
+      <div className="mt-auto flex flex-col gap-1">
+        <Button variant="solid" onClick={copyLink} aria-describedby="receipt-copy-status" aria-label={copied ? undefined : "Copiar link do comprovante"}>
+          {copied ? <CheckIcon size={20} className="pop" /> : <CopyIcon size={20} />}
+          {copied ? "Link copiado" : "Copiar link"}
+        </Button>
+        <p id="receipt-copy-status" role="status" className="min-h-5 text-center text-foot text-ink-2">
           {copied && "Link copiado para a área de transferência."}
         </p>
+        <ButtonLink href={`/escola/${slug}`} variant="plain">
+          Fazer outra contribuição
+        </ButtonLink>
       </div>
     </div>
   );

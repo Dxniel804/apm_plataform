@@ -231,9 +231,9 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
 
   const fact = (label: string, value: React.ReactNode, big = false) => (
     <div className="min-w-0">
-      <dt className={big ? "text-[1.0625rem] text-ink-2 sm:text-[1.25rem]" : "text-sub text-ink-2"}>{label}:</dt>
+      <dt className="text-foot text-ink-2">{label}</dt>
       <dd
-        className={`mt-0.5 font-bold text-brand-800 [overflow-wrap:anywhere] ${big ? "text-[1.5rem] sm:text-[2rem]" : "text-[1.0625rem] sm:text-[1.25rem]"}`}
+        className={`mt-0.5 [overflow-wrap:anywhere] ${big ? "text-[1.375rem] font-semibold text-brand-800" : "text-[1rem] font-medium text-ink"}`}
       >
         {value}
       </dd>
@@ -241,7 +241,7 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
   );
 
   return (
-    <div className="border-t border-line px-5 py-6 sm:px-8 sm:py-8" data-testid="expense-detail">
+    <div className="border-t border-line bg-[#f8fafe] px-5 py-6 sm:py-7 sm:pl-[5.25rem] sm:pr-6" data-testid="expense-detail">
       {mode === "edit" && (
         <ExpenseForm
           schoolId={schoolId}
@@ -263,11 +263,11 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             <span className="text-foot text-ink-2">nº {d.referenceCode}</span>
           </div>
 
-          <dl className="mt-5 grid gap-5 sm:grid-cols-2 sm:gap-0 sm:divide-x sm:divide-line [&>div]:sm:px-8 [&>div:first-child]:sm:pl-0">
+          <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-3">
             {fact("Valor", amountSummary(d.amountCents, d.approvedAmountCents), true)}
             {fact("Data", <span className="text-ink">{formatDateShort(d.occurredAt)}</span>, true)}
           </dl>
-          <hr className="my-6 border-line" />
+          <hr className="my-5 border-line" />
           <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
             {d.paymentMethod && fact("Forma", PAYMENT_METHOD_LABELS[d.paymentMethod])}
             {fact("Categoria", d.category.name)}
@@ -276,14 +276,14 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
             {own && fact("Enviada por", "você")}
           </dl>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[1.25rem] border border-field-border bg-white px-5 py-4">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-[var(--r-md)] border border-line bg-white px-5 py-4">
             <div className="flex items-center gap-4">
               <span aria-hidden="true" className="text-ink-2">
                 <CashCoinIcon size={30} />
               </span>
               <div>
-                <p className="text-sub text-ink-2">Pagamento:</p>
-                <p className="text-[1.0625rem] font-bold text-brand-800 sm:text-[1.25rem]">{PAID_BY_LABELS[d.paidBy]}</p>
+                <p className="text-foot text-ink-2">Pagamento</p>
+                <p className="text-[1rem] font-semibold text-brand-800">{PAID_BY_LABELS[d.paidBy]}</p>
               </div>
             </div>
             {d.paidBy === "COLLABORATOR" && (

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { ApiStatusChip } from "@/components/status/ApiStatusChip";
 import {
-  BoxArrowInLeftIcon,
+  ArrowLeftRightIcon,
+  ArrowLeftToLineIcon,
   BoxArrowInRightIcon,
-  CashCoinIcon,
   ChevronDownThinIcon,
   ChevronUpThinIcon,
   KeyIcon,
@@ -35,12 +35,13 @@ interface SidebarProps {
   signingOut: boolean;
 }
 
-const itemBase = "flex min-h-[3.25rem] w-full items-center gap-3 rounded-[1.125rem] px-4 text-left text-[1.0625rem] transition-colors";
-const itemIdle = "text-[#363636] hover:bg-info-soft";
-const itemCurrent = "bg-grad-brand font-medium text-white";
+const itemBase = "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-[0.9375rem] font-medium transition-colors";
+const itemIdle = "text-ink hover:bg-white/80";
+const itemCurrent = "bg-brand-200 font-semibold text-brand-800";
 
 /**
- * Menu do painel (Figma "Gestao"): Dashboard, "Lancamento do mes" com os 4 tipos, Despesas e Fechamento;
+ * Menu do painel (visual Paper v2): Dashboard, "Lancamentos do mes" com os 4 tipos (Despesas e um deles), Solicitacoes,
+ * Personalizacao e Fechamento;
  * embaixo o nome de quem esta logado e "Sair". Serve a barra fixa do desktop e a gaveta do celular.
  */
 export function Sidebar({
@@ -58,15 +59,16 @@ export function Sidebar({
   signingOut,
 }: SidebarProps) {
   const groupId = useId();
-  const [groupOpen, setGroupOpen] = useState(area === "resumo");
+  const hasGroup = items.some((item) => item.children);
+  const [groupOpen, setGroupOpen] = useState(area === "resumo" || (hasGroup && area === "despesas"));
   const label = (text: string) => <span className={collapsed ? "sr-only" : "truncate"}>{text}</span>;
   const layout = collapsed ? "justify-center px-0" : "";
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 px-4 py-5">
+    <div className="flex h-full min-h-0 flex-col gap-5 px-3.5 py-5">
       <div className={`flex items-center gap-2 ${collapsed ? "flex-col" : "justify-between"}`}>
         <Link href="/painel" onClick={onClose} className="inline-flex min-h-11 items-center rounded-lg px-1.5">
-          {collapsed ? <Wordmark width={64} /> : <Wordmark width={112} />}
+          {collapsed ? <Wordmark width={64} /> : <Wordmark width={104} />}
         </Link>
         {onClose ? (
           <button
@@ -83,9 +85,9 @@ export function Sidebar({
             onClick={onToggleCollapsed}
             aria-label={collapsed ? "Expandir o menu" : "Recolher o menu"}
             aria-expanded={!collapsed}
-            className="hidden size-11 items-center justify-center rounded-full text-ink-2 hover:bg-info-soft lg:inline-flex"
+            className="hidden size-11 items-center justify-center rounded-full text-ink-2 hover:bg-white/80 lg:inline-flex"
           >
-            {collapsed ? <BoxArrowInRightIcon size={24} /> : <BoxArrowInLeftIcon size={24} />}
+            {collapsed ? <BoxArrowInRightIcon size={22} /> : <ArrowLeftToLineIcon size={20} />}
           </button>
         )}
       </div>
@@ -93,7 +95,7 @@ export function Sidebar({
       {switcher}
 
       <nav aria-label="Seções do painel" className="min-h-0 flex-1 overflow-y-auto">
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {items.map((item) => {
             const current = item.area === area && (item.area !== "resumo" || section === "resumo");
             const children = item.children;
@@ -111,7 +113,7 @@ export function Sidebar({
                 </Link>
 
                 {children && !collapsed && (
-                  <div className="mt-1.5">
+                  <div className="mt-1">
                     <button
                       type="button"
                       aria-expanded={groupOpen}
@@ -120,22 +122,22 @@ export function Sidebar({
                       className={`${itemBase} ${itemIdle} justify-between`}
                     >
                       <span className="flex min-w-0 items-center gap-3">
-                        <CashCoinIcon size={22} />
-                        <span className="truncate">Lançamento do mês</span>
+                        <ArrowLeftRightIcon size={22} />
+                        <span className="truncate">Lançamentos do mês</span>
                       </span>
-                      {groupOpen ? <ChevronUpThinIcon size={18} /> : <ChevronDownThinIcon size={18} />}
+                      {groupOpen ? <ChevronUpThinIcon size={16} /> : <ChevronDownThinIcon size={16} />}
                     </button>
                     {groupOpen && (
-                      <ul id={groupId} className="mt-1 space-y-1 pl-4">
+                      <ul id={groupId} className="mt-0.5 space-y-0.5 border-b border-line-strong pb-2 pl-4">
                         {children.map((child) => {
-                          const childCurrent = area === "resumo" && section === child.kind;
+                          const childCurrent = child.area ? area === child.area : area === "resumo" && section === child.kind;
                           return (
                             <li key={child.kind}>
                               <Link
                                 href={child.href}
                                 onClick={onClose}
                                 aria-current={childCurrent ? "page" : undefined}
-                                className={`${itemBase} min-h-12 ${childCurrent ? "bg-info-soft font-semibold text-brand-800" : itemIdle}`}
+                                className={`${itemBase} min-h-10 pl-4 text-sub font-normal ${childCurrent ? itemCurrent : itemIdle}`}
                               >
                                 {child.icon}
                                 <span className="truncate">{child.label}</span>
@@ -152,14 +154,14 @@ export function Sidebar({
                 {children && collapsed && (
                   <ul className="mt-1.5 space-y-1.5">
                     {children.map((child) => {
-                      const childCurrent = area === "resumo" && section === child.kind;
+                      const childCurrent = child.area ? area === child.area : area === "resumo" && section === child.kind;
                       return (
                         <li key={child.kind}>
                           <Link
                             href={child.href}
                             title={child.label}
                             aria-current={childCurrent ? "page" : undefined}
-                            className={`${itemBase} justify-center px-0 ${childCurrent ? "bg-info-soft text-brand-800" : itemIdle}`}
+                            className={`${itemBase} justify-center px-0 ${childCurrent ? itemCurrent : itemIdle}`}
                           >
                             {child.icon}
                             <span className="sr-only">{child.label}</span>
@@ -175,17 +177,22 @@ export function Sidebar({
         </ul>
       </nav>
 
-      <div className={`space-y-3 border-t border-line pt-4 ${collapsed ? "text-center" : ""}`}>
-        <div className={collapsed ? "sr-only" : "min-w-0 px-1"}>
-          <p className="truncate text-body font-medium text-[#363636]">{userName}</p>
-          <p className="truncate text-foot text-ink-3">{roleLabel}</p>
+      <div className={`space-y-1 border-t border-line-strong pt-4 ${collapsed ? "text-center" : ""}`}>
+        <div className={collapsed ? "sr-only" : "flex min-w-0 items-center gap-3 px-2 pb-2"}>
+          <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-800 text-sub font-semibold text-white">
+            {userName.trim().charAt(0).toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sub font-medium text-ink">{userName}</span>
+            <span className="block truncate text-[0.75rem] text-ink-3">{roleLabel}</span>
+          </span>
         </div>
         <Link
           href={accountHref}
           onClick={onClose}
           aria-current={area === "conta" ? "page" : undefined}
           title={collapsed ? "Alterar senha" : undefined}
-          className={`${itemBase} min-h-12 ${layout} ${area === "conta" ? "bg-info-soft font-semibold text-brand-800" : itemIdle}`}
+          className={`${itemBase} ${layout} ${area === "conta" ? itemCurrent : itemIdle}`}
         >
           <KeyIcon size={20} />
           {label("Alterar senha")}
@@ -195,9 +202,9 @@ export function Sidebar({
           onClick={onSignOut}
           disabled={signingOut}
           title={collapsed ? "Sair" : undefined}
-          className={`${itemBase} min-h-12 ${layout} ${itemIdle} disabled:opacity-60`}
+          className={`${itemBase} ${layout} ${itemIdle} disabled:opacity-60`}
         >
-          <BoxArrowInRightIcon size={22} />
+          <BoxArrowInRightIcon size={20} />
           {label(signingOut ? "Saindo…" : "Sair")}
         </button>
         {!collapsed && <ApiStatusChip />}

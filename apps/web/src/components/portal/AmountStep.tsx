@@ -29,7 +29,7 @@ interface ChoiceRowProps {
 function ChoiceRow({ value, checked, title, description, trailing, onSelect }: ChoiceRowProps) {
   return (
     <label
-      className="group relative flex min-h-[5.25rem] cursor-pointer items-center gap-4 rounded-ctl border border-field-border bg-white px-5 py-4 transition-colors duration-150 has-[:checked]:border-brand-800 has-[:checked]:bg-info-soft/50 has-[:checked]:shadow-[0_0_0_1px_var(--color-brand-800)] has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]"
+      className="group relative flex min-h-[4.5rem] cursor-pointer items-center gap-3.5 rounded-[var(--r-md)] border-[1.5px] border-line-strong bg-white px-[1.125rem] py-3 transition-colors duration-150 has-[:checked]:border-brand-800 has-[:checked]:bg-[#f3f7ff] has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)]"
     >
       <input
         type="radio"
@@ -40,12 +40,12 @@ function ChoiceRow({ value, checked, title, description, trailing, onSelect }: C
         className="sr-only"
       />
       <span aria-hidden="true" className="relative grid size-8 shrink-0 place-items-center">
-        <CircleIcon size={30} className="text-ink-3 group-has-[:checked]:opacity-0" />
-        <CheckCircleFillIcon size={30} className="absolute text-brand-800 opacity-0 group-has-[:checked]:opacity-100" />
+        <CircleIcon size={26} className="text-[#b5c0da] group-has-[:checked]:opacity-0" />
+        <CheckCircleFillIcon size={26} className="absolute text-brand-800 opacity-0 group-has-[:checked]:opacity-100" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[1.25rem] font-bold leading-snug text-brand-800 sm:text-[1.5rem]">{title}</span>
-        <span className="mt-0.5 block text-sub font-medium text-ink-2">{description}</span>
+        <span className="block text-[1.25rem] font-bold leading-snug text-brand-800">{title}</span>
+        <span className="mt-0.5 block text-foot text-ink-2">{description}</span>
       </span>
       {trailing && <span className="shrink-0 text-body font-semibold tabular-nums text-ink">{trailing}</span>}
     </label>
@@ -125,7 +125,7 @@ export function AmountStep({
         O dinheiro vai direto para a conta da APM.
       </p>
 
-      <div role="radiogroup" aria-labelledby="amount-heading" className="mt-6 space-y-3.5">
+      <div role="radiogroup" aria-labelledby="amount-heading" className="mt-6 space-y-3">
         {school.suggestedAmountsCents.map((cents) => (
           <ChoiceRow
             key={cents}

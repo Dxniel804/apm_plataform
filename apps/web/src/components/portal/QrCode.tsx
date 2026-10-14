@@ -6,7 +6,7 @@ const QUIET = 4; // faixa branca de 4 modulos ao redor (minimo da norma)
  * Desenha o QR Code no proprio navegador (e no servidor) a partir do texto do Pix. Sem chamada
  * externa e sem innerHTML: so um <path> SVG com os modulos escuros. O texto nunca sai da pagina.
  */
-export function QrCode({ payload }: { payload: string }) {
+export function QrCode({ payload, compact = false }: { payload: string; compact?: boolean }) {
   let size = 0;
   let path = "";
   try {
@@ -28,7 +28,7 @@ export function QrCode({ payload }: { payload: string }) {
   }
   const total = size + QUIET * 2;
   return (
-    <div className="mx-auto aspect-square w-full max-w-[17rem] rounded-[var(--r-lg)] bg-white p-2 shadow-[0_0_0_1px_var(--line)]">
+    <div className={`aspect-square w-full rounded-[var(--r-md)] bg-white p-2 shadow-[0_0_0_1px_var(--line)] ${compact ? "max-w-[8.75rem] shrink-0" : "mx-auto max-w-[17rem]"}`}>
       <svg
         viewBox={`0 0 ${total} ${total}`}
         className="size-full"
@@ -36,7 +36,7 @@ export function QrCode({ payload }: { payload: string }) {
         aria-label="QR Code do Pix. Aponte a câmera do app do seu banco para pagar."
         shapeRendering="crispEdges"
       >
-        <path d={path} fill="#14171c" />
+        <path d={path} fill="#101a3f" />
       </svg>
     </div>
   );

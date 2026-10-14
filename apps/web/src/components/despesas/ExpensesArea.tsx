@@ -30,10 +30,6 @@ export function ExpensesArea({ schoolId, userId, permissions, tab }: Props) {
   const scope = both ? (tab === "minhas" ? "mine" : "queue") : areas.manageExpenses ? "queue" : "mine";
   return (
     <div>
-      {/* O Figma repete o titulo da pagina dentro do painel; para leitor de tela ele ja e o h1 do cabecalho. */}
-      <p aria-hidden="true" className="mb-6 text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] font-semibold leading-tight text-brand-800">
-        {scope === "mine" ? "Minhas despesas" : "Despesas"}
-      </p>
       {both && (
         <nav aria-label="Despesas" className="mb-6 flex flex-wrap gap-2.5">
           {([["fila", "Fila de análise", areaHref("despesas")], ["minhas", "Minhas despesas", areaHref("despesas", { tab: "minhas" })]] as const).map(([id, label, href]) => (

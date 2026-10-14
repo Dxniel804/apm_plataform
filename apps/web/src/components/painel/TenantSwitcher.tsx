@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { SchoolMonogram } from "@/components/portal/SchoolMonogram";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import { ChevronsUpDownIcon } from "@/components/ui/icons";
 import type { ActiveMembership, Membership } from "@/lib/api/types";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { MembershipList } from "./MembershipList";
@@ -57,7 +57,7 @@ export function TenantSwitcher({ memberships, active, onSelect, busy = false, ic
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         title={iconOnly ? membershipTitle(active) : undefined}
-        className={`flex w-full min-h-12 items-center gap-3 rounded-[1.125rem] border border-line bg-white py-2 text-left transition-colors hover:bg-info-soft ${iconOnly ? "justify-center px-0" : "px-3"}`}
+        className={`flex w-full min-h-12 items-center gap-3 rounded-[0.875rem] border border-line-strong bg-white py-2 text-left transition-colors hover:bg-info-soft ${iconOnly ? "justify-center px-0" : "px-3"}`}
       >
         <SchoolMonogram name={membershipTitle(active)} size={36} />
         <span className={iconOnly ? "sr-only" : "min-w-0 flex-1"}>
@@ -65,7 +65,7 @@ export function TenantSwitcher({ memberships, active, onSelect, busy = false, ic
           <span className="block truncate text-foot text-ink-3">{ROLE_LABELS[active.role]}</span>
         </span>
         {!iconOnly && (
-          <ChevronDownIcon size={18} className={`shrink-0 text-ink-2 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          <ChevronsUpDownIcon size={16} className="shrink-0 text-ink-2" />
         )}
       </button>
 

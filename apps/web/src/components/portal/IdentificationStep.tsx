@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, type Ref } from "react";
+import { useRef, type ReactNode, type Ref } from "react";
 import { Button } from "@/components/ui/Button";
+import { BuildingIcon, MailIcon, PhoneIcon, UserIcon } from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import type { PublicSchool } from "@/lib/api/types";
 import {
@@ -28,6 +29,14 @@ const PLACEHOLDERS: Record<IdentificationField, string> = {
   classroom: "Ex.: 4º ano B",
   contributorEmail: "voce@exemplo.com.br",
   contributorPhone: "(11) 91234-5678",
+};
+
+const FIELD_ICONS: Record<IdentificationField, ReactNode> = {
+  guardianName: <UserIcon size={18} />,
+  studentName: <UserIcon size={18} />,
+  classroom: <BuildingIcon size={18} />,
+  contributorEmail: <MailIcon size={18} />,
+  contributorPhone: <PhoneIcon size={18} />,
 };
 
 const INPUT_TYPE: Partial<Record<IdentificationField, { type: string; inputMode: "email" | "tel" }>> = {
@@ -81,11 +90,12 @@ export function IdentificationStep({
         {hasOptional && " Campos marcados como opcionais podem ficar em branco."}
       </p>
 
-      <div className="mt-6 space-y-5">
+      <div className="mt-6 space-y-[1.125rem]">
         {fields.map((field) => (
           <TextField
             key={field}
             name={field}
+            icon={FIELD_ICONS[field]}
             label={FIELD_LABELS[field]}
             optional={school.identification[field] === "OPTIONAL"}
             autoComplete={AUTOCOMPLETE[field]}
@@ -106,7 +116,7 @@ export function IdentificationStep({
       </div>
 
       <StickyActions>
-        <Button variant="secondary" className="shrink-0 sm:min-w-32" onClick={onBack}>
+        <Button variant="secondary" className="w-28 shrink-0 sm:w-auto sm:min-w-32" onClick={onBack}>
           Voltar
         </Button>
         <Button type="submit" variant="solid" className="flex-1 sm:min-w-56 sm:flex-none">

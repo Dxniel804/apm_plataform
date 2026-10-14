@@ -144,18 +144,14 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
   );
 
   return (
-    <div
-      className={`min-h-dvh bg-bg lg:grid ${
-        collapsed ? "lg:grid-cols-[5.5rem_minmax(0,1fr)]" : "lg:grid-cols-[clamp(16rem,21vw,19rem)_minmax(0,1fr)]"
-      }`}
-    >
+    <div className="painel-grid min-h-dvh bg-bg" data-collapsed={collapsed ? "true" : "false"}>
       {/* barra lateral (desktop) */}
-      <aside className="sticky top-0 hidden h-dvh bg-white lg:block">{sidebar("bar")}</aside>
+      <aside className="sticky top-0 hidden h-dvh bg-bg lg:block">{sidebar("bar")}</aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 bg-bg px-5 pb-3 pt-4 sm:px-8 lg:static lg:px-10 lg:pb-5 lg:pt-8">
-          <h1 className="flex min-w-0 items-center gap-3 text-[1.25rem] font-normal leading-tight tracking-normal text-ink-2 lg:text-[1.5rem]">
-            <span aria-hidden="true" className="shrink-0 text-ink-2">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 bg-bg px-5 pb-3 pt-4 sm:px-8 lg:static lg:px-4 lg:pb-3 lg:pt-5">
+          <h1 className="flex min-w-0 items-center gap-3 text-[1rem] font-medium leading-tight tracking-normal text-ink">
+            <span aria-hidden="true" className="shrink-0 text-ink">
               {icon}
             </span>
             <span className="truncate">{title}</span>
@@ -165,16 +161,16 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             onClick={() => setMenuOpen(true)}
             aria-label="Abrir o menu"
             aria-haspopup="dialog"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-white/70 lg:hidden"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-white/80 lg:hidden"
           >
-            <BoxArrowInRightIcon size={26} />
+            <BoxArrowInRightIcon size={20} />
           </button>
         </header>
 
         <main
           id="conteudo"
           tabIndex={-1}
-          className="mx-3 mb-6 flex-1 rounded-[var(--r-lg)] bg-white p-5 outline-none sm:mx-5 sm:p-8 lg:mx-8 lg:mb-8 lg:p-10"
+          className="mx-3 mb-6 flex-1 rounded-[var(--r-xl)] bg-white p-5 outline-none sm:mx-5 sm:p-6 lg:mb-5 lg:ml-0 lg:mr-5 lg:p-6"
         >
           {/* No celular o menu fica numa gaveta: o contexto (escola, papel, quem esta conectado) precisa estar sempre a vista.
               No desktop isso ja esta na barra lateral. */}
@@ -223,11 +219,11 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
 /** Titulo e icone do cabecalho, por area e por tipo de lancamento. */
 function titleFor(area: PainelArea, section: PainelSection, manageExpenses: boolean, manageRequests: boolean): { title: string; icon: ReactNode } {
-  if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={26} /> };
-  if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={26} /> };
-  if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={26} /> };
-  if (area === "personalizacao") return { title: "Personalização", icon: <BagIcon size={26} /> };
-  if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={26} /> };
-  if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={26} /> };
+  if (area === "conta") return { title: "Alterar senha", icon: <KeyIcon size={20} /> };
+  if (area === "despesas") return { title: manageExpenses ? "Despesas" : "Minhas despesas", icon: <Cart4Icon size={20} /> };
+  if (area === "solicitacoes") return { title: manageRequests ? "Solicitações" : "Minhas solicitações", icon: <ChatLeftTextIcon size={20} /> };
+  if (area === "personalizacao") return { title: "Campanhas", icon: <BagIcon size={20} /> };
+  if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={20} /> };
+  if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={20} /> };
   return { title: KIND_META[section].plural, icon: KIND_META[section].icon };
 }

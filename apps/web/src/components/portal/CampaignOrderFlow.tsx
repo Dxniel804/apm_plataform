@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation";
 import { CampaignCartStep } from "./CampaignCartStep";
 import { StepProgress, SummaryCard, type Step } from "./FlowChrome";
+import { PortalSchoolRow, PortalSheet } from "./PortalShell";
 import { IdentificationStep } from "./IdentificationStep";
 import { PixPayment } from "./PixPayment";
 import { ReviewStep } from "./ReviewStep";
@@ -152,12 +153,13 @@ export function CampaignOrderFlow({ school, campaign }: { school: PublicSchool; 
   }
 
   return (
-    <div>
-      <h1 className="text-title sm:text-[2.25rem] [overflow-wrap:anywhere]">{campaign.title}</h1>
-      <p className="mb-8 mt-1.5 text-body text-ink-3">
-        {school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`}
-      </p>
-
+    <>
+      <PortalSchoolRow
+        title={campaign.title}
+        caption={school.apmName.includes(school.name) ? school.apmName : `${school.name} · ${school.apmName}`}
+        monogram={school.name}
+      />
+      <PortalSheet>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-14">
         <div className="min-w-0">
           <StepProgress steps={steps} current={step} labels={STEP_NAMES} />
@@ -238,6 +240,7 @@ export function CampaignOrderFlow({ school, campaign }: { school: PublicSchool; 
           </SummaryCard>
         </div>
       </div>
-    </div>
+      </PortalSheet>
+    </>
   );
 }

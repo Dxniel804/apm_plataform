@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { InfoIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, EyeIcon, EyeOffIcon, InfoIcon, LockIcon, MailIcon } from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import { describeAuthError } from "@/lib/auth-messages";
@@ -62,7 +62,7 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
   }
 
   return (
-    <form method="post" noValidate onSubmit={onSubmit} aria-busy={pending} className="mt-8 space-y-6">
+    <form method="post" noValidate onSubmit={onSubmit} aria-busy={pending} className="mt-8 space-y-5">
       <TextField
         variant="filled"
         label="Seu e-mail"
@@ -74,33 +74,33 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
         autoCapitalize="none"
         autoCorrect="off"
         placeholder="voce@escola.com.br"
+        icon={<MailIcon size={18} />}
         inputRef={emailRef}
         error={fieldErrors.email}
       />
-      <div>
-        <TextField
-          variant="filled"
-          label="Sua senha"
-          name="password"
-          type={showPassword ? "text" : "password"}
-          autoComplete="current-password"
-          placeholder="Digite a sua senha"
-          inputRef={passwordRef}
-          error={fieldErrors.password}
-        />
-        {/* No Figma, "Esqueceu sua senha?" fica neste lugar. Ainda nao existe recuperacao de senha na API
-            (docs/auth.md), entao o espaco serve ao botao de mostrar/ocultar. */}
-        <div className="mt-1 flex justify-end">
+      <TextField
+        variant="filled"
+        label="Sua senha"
+        name="password"
+        type={showPassword ? "text" : "password"}
+        autoComplete="current-password"
+        placeholder="Digite a sua senha"
+        icon={<LockIcon size={18} />}
+        // Ainda nao existe recuperacao de senha na API (docs/auth.md): o espaco serve ao mostrar/ocultar.
+        trailing={
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
             aria-pressed={showPassword}
-            className="inline-flex min-h-11 items-center rounded-full px-1 text-sub font-semibold text-brand-800 hover:underline"
+            className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-info-soft hover:text-brand-800"
           >
-            {showPassword ? "Ocultar a senha" : "Mostrar a senha"}
+            {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+            <span className="sr-only">{showPassword ? "Ocultar a senha" : "Mostrar a senha"}</span>
           </button>
-        </div>
-      </div>
+        }
+        inputRef={passwordRef}
+        error={fieldErrors.password}
+      />
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
           <InfoIcon size={18} className="mt-0.5 shrink-0" />
@@ -109,6 +109,7 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
       )}
       <Button type="submit" disabled={pending || blockedForMs !== null} className="w-full">
         {pending ? "Entrando…" : "Entrar"}
+        {!pending && <ArrowRightIcon size={18} />}
       </Button>
     </form>
   );
