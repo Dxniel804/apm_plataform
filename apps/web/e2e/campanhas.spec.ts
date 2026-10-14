@@ -195,6 +195,7 @@ test("gestao: ve o pedido pago na campanha; um preco novo vale so para os proxim
 
   const visitor = await (await browser.newContext({ baseURL: process.env.E2E_BASE_URL })).newPage();
   await visitor.goto(SCHOOL);
+  await visitor.getByRole("tab", { name: "Campanhas" }).click();
   await visitor.getByRole("listitem").filter({ hasText: title }).getByRole("link").click();
   await expect(visitor.getByRole("list", { name: "Produtos da campanha" })).toContainText("R$ 10,00");
 
