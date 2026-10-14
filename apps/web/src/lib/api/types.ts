@@ -224,6 +224,8 @@ export interface StatementSummary {
   /** Saldo SECUNDARIO: o de caixa menos os reembolsos ainda a pagar. */
   balanceAfterPendingCents: Cents;
   entriesCount: number;
+  /** O que o gateway ficou das contribuicoes do mes. O caixa mostra o valor BRUTO; o banco recebe isto a menos. */
+  gatewayFeesCents: Cents;
 }
 
 export interface StatementEntry {
@@ -246,6 +248,9 @@ export interface StatementEntry {
   beneficiaryLabel: string | null;
   /** O mes a que uma contribuicao se refere (YYYY-MM), quando a familia o disse. */
   referenceMonth: string | null;
+  /** A tarifa do gateway e o liquido que a escola recebe, numa contribuicao paga por Pix. */
+  gatewayFeeCents: Cents | null;
+  netCents: Cents | null;
   categoryKey: string;
   description: string | null;
   runningBalanceCents: Cents;

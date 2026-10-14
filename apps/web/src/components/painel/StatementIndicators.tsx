@@ -100,6 +100,13 @@ export function StatementIndicators({ summary, pendings }: { summary: StatementS
         />
       </dl>
 
+      {summary.gatewayFeesCents > 0 && (
+        <p role="note" className="rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
+          <strong className="font-semibold">Tarifas do gateway em {periodLabel(summary.period)}: {formatBRL(summary.gatewayFeesCents)}.</strong> Os valores do
+          caixa são os brutos, o que a família pagou. O banco recebe essa tarifa a menos. Na conciliação ela vira despesa.
+        </p>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <BalanceChart summary={summary} />
         <OutflowSplit summary={summary} />

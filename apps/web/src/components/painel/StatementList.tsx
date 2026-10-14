@@ -29,6 +29,7 @@ function EntryRow({ entry }: { entry: StatementEntry }) {
             <span className="font-medium text-ink">{KIND_LABELS[entry.kind]}</span>
             {counterparty ? ` · ${counterparty}` : ""} · {formatLocalDateShort(entry.localDate)} · nº {entry.referenceCode}
             {entry.referenceMonth ? ` · ref. ${formatMonthShort(entry.referenceMonth)}` : ""}
+            {entry.gatewayFeeCents !== null && entry.netCents !== null ? ` · tarifa ${formatBRL(entry.gatewayFeeCents)} · líquido ${formatBRL(entry.netCents)}` : ""}
             {entry.lateAdjustment ? " · ajuste tardio" : ""}
           </p>
         </div>

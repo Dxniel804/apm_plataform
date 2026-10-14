@@ -20,6 +20,7 @@ export const SUMMARY_BODY = {
   pending_reimbursements_cents: 4500,
   balance_after_pending_cents: 63910,
   entries_count: 14,
+  gateway_fees_cents: 0,
 };
 
 export const SUMMARY: StatementSummary = {
@@ -39,6 +40,7 @@ export const SUMMARY: StatementSummary = {
   pendingReimbursementsCents: 4500,
   balanceAfterPendingCents: 63910,
   entriesCount: 14,
+  gatewayFeesCents: 0,
 };
 
 export function entryBody(overrides: Record<string, unknown> = {}) {
@@ -66,6 +68,8 @@ export function entryBody(overrides: Record<string, unknown> = {}) {
     beneficiary_user_id: null,
     beneficiary_label: null,
     reference_month: null,
+    gateway_fee_cents: null,
+    net_cents: null,
     opening_balance_cents: 39710,
     running_balance_cents: 42710,
     ...overrides,
@@ -89,6 +93,8 @@ export function entry(overrides: Partial<StatementEntry> = {}): StatementEntry {
     originLabel: "Maria Teste",
     beneficiaryLabel: null,
     referenceMonth: null,
+    gatewayFeeCents: null,
+    netCents: null,
     categoryKey: "parent_contribution",
     description: "Contribuição de pais",
     runningBalanceCents: 42710,

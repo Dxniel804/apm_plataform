@@ -58,3 +58,23 @@ describe("Evolucao do caixa", () => {
     expect(screen.getByText(/Ainda não há movimento/)).toBeInTheDocument();
   });
 });
+
+describe("tarifas do gateway (M4)", () => {
+  it("o resumo traz as tarifas do mes; uma API antiga, sem o campo, vira zero", async () => {
+    const { parseSummary } = await import("@/lib/api/statement");
+    const { SUMMARY_BODY } = await import("@/test-utils/statement-fixtures");
+    expect(parseSummary({ ...SUMMARY_BODY, gateway_fees_cents: 160 })).toMatchObject({ gatewayFeesCents: 160 });
+    const { gateway_fees_cents: _ignored, ...old } = { ...SUMMARY_BODY, gateway_fees_cents: 0 };
+    void _ignored;
+    expect(parseSummary(old)).toMatchObject({ gatewayFeesCents: 0 });
+    expect(parseSummary({ ...SUMMARY_BODY, gateway_fees_cents: "x" })).toBeNull();
+  });
+
+  it("o lancamento mostra a tarifa e o liquido quando existem", async () => {
+    const { render: r, screen: s } = await import("@testing-library/react");
+    const { entry } = await import("@/test-utils/statement-fixtures");
+    const { StatementList } = await import("./StatementList");
+    r(<StatementList entries={[entry({ gatewayFeeCents: 80, netCents: 2920 })]} label="Contribuições" />);
+    expect(s.getByText(/tarifa R\$\s?0,80 · líquido R\$\s?29,20/)).toBeInTheDocument();
+  });
+});

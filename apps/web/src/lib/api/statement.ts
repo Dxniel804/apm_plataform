@@ -57,7 +57,10 @@ export function parseSummary(body: unknown): StatementSummary | null {
   };
   if (!period || !PERIOD_PATTERN.test(period) || !periodStart || !periodEnd || !timezone) return null;
   if (Object.values(numbers).some((v) => v === null)) return null;
-  return { period, periodStart, periodEnd, timezone, ...(numbers as Record<keyof typeof numbers, number>) };
+  // Uma API antiga nao manda as tarifas: vira zero (nada a mostrar).
+  const gatewayFeesCents = body.gateway_fees_cents === undefined ? 0 : int(body.gateway_fees_cents);
+  if (gatewayFeesCents === null) return null;
+  return { period, periodStart, periodEnd, timezone, gatewayFeesCents, ...(numbers as Record<keyof typeof numbers, number>) };
 }
 
 function parseEntry(value: unknown): StatementEntry | null {
@@ -89,7 +92,7 @@ function parseEntry(value: unknown): StatementEntry | null {
   }
   return {
     transactionId, referenceCode, kind, displayType, direction, occurredAt, localDate, amountCents, signedAmountCents,
-    lateAdjustment: value.late_adjustment === true, status, statusLabel: statusLabel ?? status, originLabel, beneficiaryLabel, referenceMonth, categoryKey, description,
+    lateAdjustment: value.late_adjustment === true, status, statusLabel: statusLabel ?? status, originLabel, beneficiaryLabel, referenceMonth, gatewayFeeCents: int(value.gateway_fee_cents), netCents: int(value.net_cents), categoryKey, description,
     runningBalanceCents: running,
   };
 }
