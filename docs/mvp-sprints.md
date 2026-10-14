@@ -15,7 +15,7 @@ Base: `docs/thelastversion.md`, `docs/arquiteturasystemforklin.md`, as decisões
 ## 1. Regras que valem para todos os sprints
 
 1. **R1. O dinheiro das contribuições vai direto para a conta da APM e nunca passa por conta da Forklin.** Decisão do dono, 14/10. Ela filtra a escolha do gateway (sprint G).
-2. **R2. O gateway fica em espera.** O MVP é construído "pronto para split e tarifas" sobre o provedor de teste que já existe.
+2. **R2. O gateway fica em espera.** O MVP é construído "pronto para registrar tarifas" sobre o provedor de teste que já existe. **Decisão do dono, 14/10: a Forklin NÃO fica com porcentagem nem valor por Pix.** Não há split. A família paga, o gateway desconta a tarifa dele e o resto vai para a conta da APM. A receita da Forklin é a mensalidade do produto, cobrada pela Central.
 3. **R3. Só Pix.** Boleto, cartão, cobrança recorrente de verdade e rifas ficam fora.
 4. **R4. Login próprio, sem SSO**, até o dono decidir o contrário (padrão da seção 11.1).
 5. **R5. Sem papel `accountant`.** A gestão baixa o "pacote do mês" (padrão da seção 11.6).
@@ -107,10 +107,10 @@ Ordem proposta: M0, M1, M2, M3, M4, M5, M6, M7, M8, M9. **G entra assim que o ga
 - Fora: inadimplência por pessoa.
 
 ### M4. Pagamentos prontos para split e tarifas, sem gateway (G)
-**Objetivo:** o sistema sabe registrar e mostrar valor bruto, tarifas e líquido. Quando o gateway chegar, entra só um adaptador.
+**Objetivo:** o sistema sabe registrar e mostrar valor bruto, tarifa do gateway e líquido. Quando o gateway chegar, entra só um adaptador. **Sem split e sem tarifa da plataforma** (decisão de 14/10).
 - **Portão de decisão antes da migração:** quem paga a taxa (A escola, B o responsável, C a Forklin).
-- Migração 0016, tabela de detalhe 1:1 com a contribuição Pix: tarifa do gateway, tarifa da plataforma, quem paga, valor cobrado do pagador e líquido da escola. **Gravada no mesmo instante em que o pagamento vira PAGO**, e depois não muda.
-- Interface `PixProvider`: a cobrança recebe um **plano de split** (valor da plataforma e destino); `fetch_payment` devolve tarifa e identificador fim a fim. O `SandboxPixProvider` simula tarifa fixa e split.
+- Migração 0016, tabela de detalhe 1:1 com a contribuição Pix: tarifa do gateway, quem paga a tarifa, valor cobrado do pagador e líquido da escola. (A "tarifa da plataforma" saiu do desenho.) **Gravada no mesmo instante em que o pagamento vira PAGO**, e depois não muda.
+- Interface `PixProvider`: a cobrança usa a **chave do gateway da própria APM**; `fetch_payment` devolve tarifa e identificador fim a fim. O `SandboxPixProvider` simula uma tarifa fixa.
 - **Webhook amarrado pela cobrança**, não pelo segredo da conta. Alternativa preferida: o identificador de correlação que a gente gera carrega a escola **assinada com HMAC**, então a escola vem de um dado nosso e a regra de isolamento (RLS) continua valendo, sem busca entre escolas. Alternativa: rota por conta de pagamento. **Revisão de segurança obrigatória.** Sem função `SECURITY DEFINER` nova.
 - **Valor mínimo** `min_contribution_cents` [HOJE] passa a ser validado contra as tarifas, para a escola nunca receber valor negativo ou irrisório.
 - Telas e relatórios: entrada bruta, tarifas e líquido no detalhe da contribuição, no extrato, no fechamento e no PDF ("Tarifas de recebimento").
@@ -186,7 +186,7 @@ Só começa quando o gateway for escolhido. **Critérios obrigatórios**, na ord
 | 9 | PDF idêntico ao FNDE ou relatório para o SiGPC | M8a | decidir com os modelos |
 | 10 | Recuperação de senha e e-mail real | M9 | fora do MVP até haver e-mail |
 | 11 | **Gateway** | G | em espera |
-| 12 | Receita da Forklin: split por Pix ou mensalidade | G | em aberto |
+| 12 | Receita da Forklin | G | **decidido 14/10: mensalidade pela Central, sem split** |
 | 13 | SSO com a Central | fora | login próprio |
 
 ## 7. O que preciso de você, por sprint
