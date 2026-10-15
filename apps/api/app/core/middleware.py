@@ -89,3 +89,37 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
                     ),
                 )
         return await call_next(request)
+
+
+# The most a request may DECLARE before the route even reads it. A webhook is a few hundred bytes of
+# JSON; everything else is at most a file (a statement PDF is the largest, 5 MiB) plus its form.
+WEBHOOK_BODY_LIMIT = 64 * 1024
+BODY_LIMIT = 24 * 1024 * 1024  # the database ceiling for one attachment is 20 MiB, plus the form
+
+
+class BodyLimitMiddleware(BaseHTTPMiddleware):
+    """Refuses a request that DECLARES a body larger than any route accepts, before the body is
+    read: without it, an unauthenticated caller could make the API parse a huge JSON (the webhook
+    routes are public). A body that does not declare its length is still bounded by each route and
+    by the reverse proxy in front of the API (set its maximum body size there too)."""
+
+    def __init__(self, app: Callable[..., Awaitable[None]]) -> None:
+        super().__init__(app)
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        declared = request.headers.get("content-length")
+        if declared is not None:
+            limit = WEBHOOK_BODY_LIMIT if request.url.path in ORIGIN_EXEMPT_PATHS else BODY_LIMIT
+            # Plain ASCII digits only (int() also reads "¹²" and refuses a huge string); a number
+            # with more than 12 digits is larger than any limit without converting it.
+            if (
+                declared.isascii()
+                and declared.isdigit()
+                and (len(declared) > 12 or int(declared) > limit)
+            ):
+                return problem_response(
+                    request, ProblemError(413, "payload_too_large", "The request is too large")
+                )
+        return await call_next(request)

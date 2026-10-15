@@ -10,7 +10,7 @@ from app.campaigns.router import router as campaigns_router
 from app.closing.routes import router as closing_router
 from app.core.config import ApiSettings, get_api_settings
 from app.core.errors import install_error_handlers
-from app.core.middleware import OriginCheckMiddleware, RequestIdMiddleware
+from app.core.middleware import BodyLimitMiddleware, OriginCheckMiddleware, RequestIdMiddleware
 from app.db.posture import PostureError, assert_posture
 from app.db.session import build_engine, build_session_factory
 from app.expenses.router import router as expenses_router
@@ -61,6 +61,7 @@ def create_app(
     install_error_handlers(app)
     # Added last = outermost: the request id exists before the Origin check can answer with it.
     app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.allowed_origins)
+    app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(api_router)
     # The OCR routes come BEFORE the expenses ones, so `/expenses/ocr` is never read as an id.
