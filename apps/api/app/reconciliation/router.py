@@ -5,6 +5,7 @@ One permission (`reconciliation:manage`, through `school_scope`). The file is bo
 read (the declared length) and again while it is read; the form is parsed after the permission and
 the school were checked."""
 
+from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -15,7 +16,9 @@ from starlette.datastructures import UploadFile
 
 from app.auth.permissions import Permission
 from app.auth.responses import problem_responses
+from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, school_scope
+from app.ocr.limits import UserRateLimiter
 from app.reconciliation import service
 from app.reconciliation.schemas import (
     AccountCreate,
@@ -35,6 +38,28 @@ from app.storage.uploads import check_declared_length
 
 router = APIRouter(prefix="/schools/{school_id}/reconciliation", tags=["reconciliation"])
 
+UPLOADS_PER_MINUTE = 10
+
+
+@lru_cache
+def get_upload_limiter() -> UserRateLimiter:
+    """At most `UPLOADS_PER_MINUTE` statement files (sent or looked at) per person: reading a PDF
+    costs CPU. In the memory of this process, like the one of the receipt reading. Tests replace
+    it with `app.dependency_overrides`."""
+    return UserRateLimiter(UPLOADS_PER_MINUTE)
+
+
+UploadLimiter = Annotated[UserRateLimiter, Depends(get_upload_limiter)]
+
+
+def _take(limiter: UserRateLimiter, scope: SchoolScope) -> None:
+    wait = limiter.take(scope.user_id)
+    if wait:
+        raise ProblemError(
+            429, "rate_limited", "Too many files in a row", headers={"Retry-After": str(wait)}
+        )
+
+
 TenantDb = Annotated[Session, Depends(get_tenant_db)]
 Manage = Annotated[SchoolScope, Depends(school_scope(Permission.RECONCILIATION_MANAGE))]
 _PERMISSION: dict[str, Any] = {"x-permission": Permission.RECONCILIATION_MANAGE.value}
@@ -44,6 +69,7 @@ _UPLOAD_ERRORS = problem_responses(
     extra={
         411: {"description": "length_required: the request must declare its size"},
         413: {"description": "payload_too_large: OFX and CSV are at most 2 MiB, a PDF 5 MiB"},
+        429: {"description": "rate_limited: at most 10 files a minute per person"},
     },
 )  # fmt: skip
 _UPLOAD_BODY: dict[str, Any] = {
@@ -104,8 +130,11 @@ def list_imports(scope: Manage, db: TenantDb) -> ImportList:
              response_model=ImportOut, summary="Import a statement: OFX, CSV or PDF (multipart)",
              responses=_UPLOAD_ERRORS,
              openapi_extra={**_PERMISSION, **_UPLOAD_BODY})  # fmt: skip
-async def import_statement(request: Request, scope: Manage, db: TenantDb) -> ImportOut:
+async def import_statement(
+    request: Request, scope: Manage, db: TenantDb, limiter: UploadLimiter
+) -> ImportOut:
     check_declared_length(request, UPLOAD_MAX_BYTES)
+    _take(limiter, scope)
     form = await request.form(max_files=1, max_fields=4)
     try:
         upload = form.get("file")
@@ -153,8 +182,11 @@ def closing_balance(
 @router.post("/imports/preview", operation_id="reconciliation_import_preview", response_model=CsvPreviewOut,
              summary="Look at a file before importing it: the first rows of a CSV and the columns it looks like",
              responses=_UPLOAD_ERRORS, openapi_extra={**_PERMISSION, **_UPLOAD_BODY})  # fmt: skip
-async def preview_statement(request: Request, scope: Manage, db: TenantDb) -> CsvPreviewOut:
+async def preview_statement(
+    request: Request, scope: Manage, db: TenantDb, limiter: UploadLimiter
+) -> CsvPreviewOut:
     check_declared_length(request, UPLOAD_MAX_BYTES)
+    _take(limiter, scope)
     form = await request.form(max_files=1, max_fields=4)
     try:
         upload = form.get("file")

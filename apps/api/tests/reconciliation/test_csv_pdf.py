@@ -237,3 +237,24 @@ def test_a_scanned_pdf_is_refused_with_a_clear_code(
     answer = _send(gestao, _account(gestao), _pdf([]), "escaneado.pdf")
 
     assert answer.status_code == 422 and answer.json()["code"] == "pdf_without_text"
+
+
+def test_too_many_files_in_a_minute_wait(
+    apis: ApiFactory,
+    school: PublicSchool,
+    admin_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.reconciliation import router
+
+    monkeypatch.setattr(router, "UPLOADS_PER_MINUTE", 2)
+    router.get_upload_limiter.cache_clear()
+    try:
+        gestao = committed_manager(apis, admin_engine, school)
+        account = _account(gestao)
+        answers = [_send(gestao, account, b"a;b\nx;y\n", f"n{i}.csv") for i in range(3)]
+    finally:
+        router.get_upload_limiter.cache_clear()
+
+    assert [a.status_code for a in answers] == [422, 422, 429]
+    assert answers[2].json()["code"] == "rate_limited" and "retry-after" in answers[2].headers

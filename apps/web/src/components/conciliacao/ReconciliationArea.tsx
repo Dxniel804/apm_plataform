@@ -17,7 +17,8 @@ const KIND_LABELS: Record<string, string> = { CONTRIBUTION: "Contribuição", EX
 /** Os textos de erro do envio do extrato (a API manda so o codigo). */
 function describeError(error: ApiError, fallback = "Não foi possível concluir. Tente de novo."): string {
   if (error.kind === "network" || error.kind === "timeout") return NETWORK;
-  if (error.status === 413) return "O arquivo é grande demais. O limite é de 2 MB.";
+  if (error.status === 413) return "O arquivo é grande demais. O limite é de 2 MB (5 MB para PDF).";
+  if (error.status === 429) return "Muitos arquivos seguidos. Espere um minuto e tente de novo.";
   switch (error.code) {
     case "not_an_ofx_file":
       return "Este arquivo não é um extrato OFX. No site do seu banco, exporte o extrato no formato OFX.";
