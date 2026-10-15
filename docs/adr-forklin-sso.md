@@ -13,6 +13,8 @@ Hoje o APM tem login próprio (e-mail e senha, sessão em cookie HttpOnly, convi
 3. **`/sso/callback`:** confere o `state` quando o cookie existe (fluxo iniciado no App não tem `state`: risco aceito, igual ao Diário; o código é de uso único e vive 60 s), troca o código na Central (`POST /launch-codes/exchange-product` com `Authorization: Bearer <segredo do produto>`, 5 s), verifica o JWT (**só EdDSA**, JWKS da Central em cache de 5 min, `iss=forklin`, `aud=apm-digital`, `exp`, `iat`; `none` e HS256 recusados) e cria a **sessão local do mesmo jeito do login por senha** (mesmo cookie, mesmo CSRF, mesma tabela `sessions`; uma sessão que o navegador já trazia é encerrada, nunca adotada). Depois vai a `/painel`.
 4. **Toda falha** volta a `/login?erro=<palavra>` (`org`, `acesso`, `cargo`, `conflito`, `expirado`, `indisponivel`), com frase em português; o motivo vai só ao log, **sem e-mail, nome, token ou segredo**.
 
+**Os três casos do botão ENTRAR COM FORKLIN** (é o `/entrar` do App, o mesmo do Diário): **com sessão no App e com acesso** entra direto, sem pedir senha; **com sessão e sem acesso ao APM** volta ao login do APM com `?erro=acesso` (frase "sem acesso", sem ir ao App); **sem sessão** vai ao login do App e segue ao APM depois de entrar. Quem entra pelo **App** (login direto em `localhost:3100`) cai na Visão Geral, com os produtos, e o **Acessar** do produto leva ao APM sem login.
+
 Onde mora: as rotas são da API (`/api/v1/forklin/sso/start|callback`, `GET`) e o site as expõe como `/sso/start` e `/sso/callback` por dois route handlers do Next que só repassam (cookies, query, `Location` e `Set-Cookie`), sem seguir o redirecionamento. Fora de desenvolvimento, `FORKLIN_APP_URL` e `API_CENTRAL_URL` têm de ser `https`.
 
 ### 2. Dados novos (migração 0023)
@@ -55,11 +57,12 @@ Hoje a Secretaria cria funcionário em `/painel/equipe` (`/api/v1/employees`; po
 ## O que falta para produção (a Forklin precisa responder)
 1. **Várias escolas por produto.** O ADR 0011 da Central diz que cada instalação pertence a **uma organização** e que a credencial do produto é **por (produto, organização)**; "vários tenants por organização×produto" está adiado. O APM é **uma instalação para muitas escolas**. A **entrada (SSO)** funciona com uma credencial **sem organização**; o **cadastro de funcionários pela Central** (`/product-api/v1`, que exige credencial com organização, `credential_org_required`) não. Preciso de uma saída: (a) a credencial sem organização valer também na API de produto, com a organização no corpo; (b) uma credencial por escola; (c) a Central aceitar organização = escola de outro modo.
 2. **Cadastro do APM em "Novo sistema":** Nome `APM Digital`, Slug `apm-digital` (é o `aud`), URL base = **domínio público do APM**, Descrição, e os cargos `secretaria` e `funcionario`. Mais o **destino de eventos** do produto (`set-product-events-url`; o Admin ainda não tem o campo).
-3. **URL da API Central**, o **segredo do produto** (só no ambiente, nunca no chat) e o JWKS acessível do servidor do APM.
-4. Decidir se **a mudança na Central** (migração 0012, fila generalizada, aviso na contratação, claim `org_name`, os dois comandos) entra no repositório `api` dela.
-5. Rodar `resend-product-notices` uma vez, para as organizações que já contrataram o produto antes do aviso existir.
-6. Decidir se **cada escola é uma organização** (a regra do APM é uma escola por conta: a resposta natural é sim).
-7. **Revisão de segurança independente** do fluxo de login antes de ligar com dinheiro real.
+3. **No servidor do App:** acrescentar `"apm-digital": "https://<dominio-do-apm>/login"` em `PRODUCT_LOGIN_URLS`. É para onde o App devolve quem tem sessão no App mas **não tem acesso ao APM** (o APM mostra "sem acesso, fale com a secretaria"; a pessoa não é levada ao App). Sem a entrada, o App mostra um aviso genérico na própria Visão Geral.
+4. **URL da API Central**, o **segredo do produto** (só no ambiente, nunca no chat) e o JWKS acessível do servidor do APM.
+5. Decidir se **a mudança na Central** (migração 0012, fila generalizada, aviso na contratação, claim `org_name`, os dois comandos) entra no repositório `api` dela.
+6. Rodar `resend-product-notices` uma vez, para as organizações que já contrataram o produto antes do aviso existir.
+7. Decidir se **cada escola é uma organização** (a regra do APM é uma escola por conta: a resposta natural é sim).
+8. **Revisão de segurança independente** do fluxo de login antes de ligar com dinheiro real.
 
 ## Fora do escopo
 2FA (decidido no ADR-016 para antes de produção com dinheiro real), receptor de eventos de revogação (fase 3), desligar a senha local, importar usuários antigos em lote.
