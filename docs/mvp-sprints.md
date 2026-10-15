@@ -14,7 +14,7 @@ Atualizado em 2026-10-14. **Ordem aprovada pelo dono em 14/10** ("go ahead nas s
 | **M5** | **Concluído em 2026-10-14**, branch `feat/m5-reconciliation` (local). Migração 0017; contas bancárias, importar OFX 1.x e 2.x, pareamento (id do Pix, depois valor e data) e tela `/painel/conciliacao`. Só leitura. Falta validar com um OFX **real** do banco da escola |
 | **M6** | **Concluído em 2026-10-14**, branch `feat/m6-actions-cashbook` (local). Migração 0018; ações por linha (registrar entrada, registrar tarifa, ignorar com motivo), saldo do extrato no fechamento, Livro Caixa (CSV e PDF) e pacote do mês (ZIP). Pulado: abrir despesa pré-preenchida |
 | **M7** | **Concluído em 2026-10-14**, branch `feat/m7-csv-pdf` (local). Migração 0019; leitor de CSV (colunas detectadas e guardadas por conta), leitor de PDF com texto (toda linha exige conferência), tela de confirmação das colunas. **Validado só com arquivos de exemplo**: falta 1 CSV e 1 PDF reais. Faltam taxa de envio e retenção (M9). PDF escaneado (OCR) não entrou |
-| M8 a M9 | Aguardando |
+| M8 a M10 | Aguardando (M10 = e-mail com Resend: recuperação de senha e avisos) |
 
 Base: `docs/thelastversion.md`, `docs/arquiteturasystemforklin.md`, as decisões da conversa de 14/10 e o código verificado no mesmo dia. Etiquetas, como no documento da arquitetura: **[HOJE]** existe e foi verificado, **[PLANEJADO]** foi desenhado e não existe, **[ABERTO]** depende de decisão do dono.
 
@@ -190,7 +190,7 @@ Só começa quando o gateway for escolhido. **Critérios obrigatórios**, na ord
 | 7 | Tarifa da Forklin: classificação contábil | M4 | pergunta ao contador |
 | 8 | Contador humano revisa o que for ao governo? | M6, M8 | sem resposta |
 | 9 | PDF idêntico ao FNDE ou relatório para o SiGPC | M8a | decidir com os modelos |
-| 10 | Recuperação de senha e e-mail real | M9 | fora do MVP até haver e-mail |
+| 10 | Recuperação de senha e e-mail real | M10 | **decidido 14/10: Resend**, padrão do mailer da Central (chave só no ambiente); entra em sprint própria |
 | 11 | **Gateway** | G | em espera |
 | 12 | Receita da Forklin | G | **decidido 14/10: mensalidade pela Central, sem split** |
 | 13 | SSO com a Central | fora | login próprio |
