@@ -29,6 +29,7 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
     const areas = areasFor(active.permissions);
     const allowed =
       area === "conta" ||
+      area === "configuracoes" ||
       (area === "resumo"
         ? areas.resumo
         : area === "fechamento"
@@ -37,11 +38,9 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
             ? areas.requests
             : area === "campanhas"
               ? areas.manageCampaigns
-              : area === "configuracoes"
-                ? areas.manageSettings
-                : area === "conciliacao"
-                  ? areas.manageReconciliation
-                  : areas.manageExpenses || areas.myExpenses);
+              : area === "conciliacao"
+                ? areas.manageReconciliation
+                : areas.manageExpenses || areas.myExpenses);
     const home = homeArea(areas);
     if (!allowed && home !== area) redirect(areaHref(home));
   }

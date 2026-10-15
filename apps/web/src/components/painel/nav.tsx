@@ -107,13 +107,12 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       icon: <BankIcon size={22} />,
     });
   }
-  if (areas.manageSettings) {
-    items.push({
-      area: "configuracoes",
-      label: "Configurações",
-      href: areaHref("configuracoes"),
-      icon: <SettingsIcon size={22} />,
-    });
-  }
+  // Para todos: a troca de senha mora aqui. As configuracoes da escola so aparecem para quem pode mexer.
+  items.push({
+    area: "configuracoes",
+    label: "Configurações",
+    href: areaHref("configuracoes"),
+    icon: <SettingsIcon size={22} />,
+  });
   return items;
 }

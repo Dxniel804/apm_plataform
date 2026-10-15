@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/Button";
 import { FormButtons } from "@/components/ui/FormModal";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -12,12 +13,13 @@ const MAX = 128;
 type Field = "current" | "next" | "confirm";
 
 /**
- * Troca de senha (POST /api/v1/auth/password), para ficar dentro de uma `FormModal` (o titulo e da janela). A API
+ * Troca de senha (POST /api/v1/auth/password), direto na pagina Configuracoes (sem `onClose`, so o botao de trocar)
+ * ou dentro de uma janela (com `onClose`, ganha o botao de cancelar). A API
  * confere a senha atual, exige de 12 a 128 caracteres e uma senha diferente da atual, ENCERRA todas as outras sessoes e abre uma nova neste navegador (cookies
  * novos na mesma resposta). As senhas so existem nos campos e no corpo do pedido: nao entram em estado do
  * React, URL, log nem storage, e os campos sao limpos depois.
  */
-export function PasswordForm({ onClose }: { onClose: () => void }) {
+export function PasswordForm({ onClose }: { onClose?: () => void }) {
   const currentRef = useRef<HTMLInputElement>(null);
   const nextRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -98,13 +100,19 @@ export function PasswordForm({ onClose }: { onClose: () => void }) {
         {done && <p role="status" className="rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">Senha alterada. As outras sessões foram encerradas.</p>}
       </div>
 
-      <FormButtons
-        onCancel={onClose}
-        cancelLabel={done ? "Fechar" : "Cancelar"}
-        submitLabel="Alterar senha"
-        pendingLabel="Alterando…"
-        pending={pending}
-      />
+      {onClose ? (
+        <FormButtons
+          onCancel={onClose}
+          cancelLabel={done ? "Fechar" : "Cancelar"}
+          submitLabel="Alterar senha"
+          pendingLabel="Alterando…"
+          pending={pending}
+        />
+      ) : (
+        <Button type="submit" disabled={pending} aria-busy={pending} className="rounded-full! w-full sm:w-auto sm:min-w-56">
+          {pending ? "Alterando…" : "Alterar senha"}
+        </Button>
+      )}
     </form>
   );
 }

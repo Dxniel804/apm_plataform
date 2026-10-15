@@ -3,14 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ExpensesArea } from "@/components/despesas/ExpensesArea";
-import { PasswordForm } from "@/components/conta/PasswordForm";
 import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
 import { ReconciliationArea } from "@/components/conciliacao/ReconciliationArea";
 import { SettingsArea } from "@/components/configuracoes/SettingsArea";
 import { CampaignsArea } from "@/components/personalizacao/CampaignsArea";
 import { RequestsArea } from "@/components/solicitacoes/RequestsArea";
 import { BagIcon, BarChartIcon, BoxArrowInRightIcon, BankIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, SettingsIcon } from "@/components/ui/icons";
-import { FormModal } from "@/components/ui/FormModal";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
@@ -70,8 +68,6 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
   const [signingOut, setSigningOut] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  // "Alterar senha" e uma janela por cima do painel. O endereco antigo /painel/conta continua valendo: abre o resumo ja com a janela.
-  const [passwordOpen, setPasswordOpen] = useState(area === "conta");
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   async function selectMembership(membershipId: string) {
@@ -120,17 +116,12 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
 
   const areas = areasFor(active.permissions);
   const navItems = navFor(areas, period, { statement: active.permissions.includes("statement:read") });
-  // /painel/conta mostra o resumo por baixo da janela.
-  const shownArea: PainelArea = area === "conta" ? "resumo" : area;
+  // /painel/conta redireciona para Configuracoes; aqui so por seguranca.
+  const shownArea: PainelArea = area === "conta" ? "configuracoes" : area;
   const { title, icon } = titleFor(shownArea, section, areas.manageExpenses, areas.manageRequests);
   // O painel e da ESCOLA do vinculo ativo (todo vinculo tem uma, ADR-020). O id vem da sessao; a API ainda
   // confere contra o contexto.
   const schoolId = active.school.id;
-
-  function closePassword() {
-    setPasswordOpen(false);
-    if (area === "conta") router.replace("/painel"); // o endereco volta ao do resumo
-  }
 
   const sidebar = (variant: "bar" | "drawer") => (
     <Sidebar
@@ -152,8 +143,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
       }
       userName={session.user.fullName}
       roleLabel={ROLE_LABELS[active.role]}
-      onChangePassword={() => setPasswordOpen(true)}
-      passwordOpen={passwordOpen}
+      onChangePassword={() => router.push("/painel/configuracoes#senha")}
+      passwordOpen={false}
       onSignOut={signOut}
       signingOut={signingOut}
     />
@@ -226,12 +217,6 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
           )}
         </main>
       </div>
-
-      {passwordOpen && (
-        <FormModal title="Alterar senha" intro="Ao trocar, as outras sessões abertas com a sua conta são encerradas. Você continua conectado neste navegador." onClose={closePassword}>
-          <PasswordForm onClose={closePassword} />
-        </FormModal>
-      )}
 
       {/* gaveta do menu (celular) */}
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} label="Menu do painel" placement="drawer">

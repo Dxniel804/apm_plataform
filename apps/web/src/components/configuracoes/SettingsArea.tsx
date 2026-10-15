@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PasswordForm } from "@/components/conta/PasswordForm";
 import { QrCode, qrSvgFile } from "@/components/portal/QrCode";
 import { Button } from "@/components/ui/Button";
 import { CheckboxField } from "@/components/ui/CheckboxField";
@@ -41,11 +42,42 @@ const Card = ({ title, children, action }: { title: string; children: React.Reac
  */
 export function SettingsArea({ schoolId, permissions }: { schoolId: string; permissions: string[] }) {
   const allowed = areasFor(permissions).manageSettings;
+  // Grade: as configuracoes da escola na coluna larga e a senha numa coluna ao lado, sempre a vista ao abrir a pagina.
+  // No celular a senha vem primeiro.
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="order-2 min-w-0 space-y-6 lg:order-1">
+        {allowed ? (
+          <SchoolSettings schoolId={schoolId} />
+        ) : (
+          <p role="note" className="rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-info">
+            O seu perfil não mexe nas configurações desta escola. Ao lado você pode trocar a sua senha.
+          </p>
+        )}
+      </div>
+      <div className="order-1 lg:sticky lg:top-6 lg:order-2">
+        <AccountSection />
+      </div>
+    </div>
+  );
+}
+
+/** A senha de quem esta logado: direto na pagina, sem janela. Vale para qualquer perfil. */
+function AccountSection() {
+  return (
+    <section id="senha" aria-labelledby="senha-title" className="scroll-mt-6 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
+      <h2 id="senha-title" className="text-heading">Alterar senha</h2>
+      <p className="mb-5 mt-1 max-w-[62ch] text-sub text-ink-2">Ao trocar, as outras sessões abertas com a sua conta são encerradas. Você continua conectado neste navegador.</p>
+      <PasswordForm />
+    </section>
+  );
+}
+
+function SchoolSettings({ schoolId }: { schoolId: string }) {
   const [version, setVersion] = useState(0);
   const key = `${schoolId}|${version}`;
   const [loaded, setLoaded] = useState<{ key: string; settings: ApiResult<SchoolSettings>; link: ApiResult<PublicLink> } | null>(null);
   useEffect(() => {
-    if (!allowed) return;
     let cancelled = false;
     void Promise.all([api.schoolSettings.get(schoolId), api.schoolSettings.publicLink(schoolId)]).then(([settings, link]) => {
       if (!cancelled) setLoaded({ key, settings, link });
@@ -53,15 +85,8 @@ export function SettingsArea({ schoolId, permissions }: { schoolId: string; perm
     return () => {
       cancelled = true;
     };
-  }, [schoolId, key, allowed]);
+  }, [schoolId, key]);
 
-  if (!allowed) {
-    return (
-      <p role="note" className="rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-info">
-        O seu perfil não mexe nas configurações desta escola.
-      </p>
-    );
-  }
   if (!loaded) {
     return (
       <div role="status" aria-busy="true">

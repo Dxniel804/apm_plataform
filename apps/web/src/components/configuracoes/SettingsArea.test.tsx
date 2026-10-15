@@ -118,4 +118,12 @@ describe("Configuracoes", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Nada foi alterado");
   });
+
+  it("qualquer perfil troca a propria senha ali mesmo, sem janela", () => {
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={["expenses:submit"]} />);
+    expect(screen.getByRole("heading", { name: "Alterar senha" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+  });
 });
