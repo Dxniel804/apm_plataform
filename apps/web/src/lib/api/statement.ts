@@ -173,6 +173,15 @@ export function contributionsPdfHref(schoolId: string, period: string): string {
   return `${school(schoolId)}/reports/contributions.pdf${query({ period })}`;
 }
 
+/** Links do Livro Caixa (planilha CSV ou PDF) e do pacote do mes (ZIP, so gestao). Sao navegacoes, nao fetch. */
+export function cashBookHref(schoolId: string, period: string, format: "csv" | "pdf"): string {
+  return `${school(schoolId)}/reports/cash-book.${format}${query({ period })}`;
+}
+
+export function monthPackageHref(schoolId: string, period: string): string {
+  return `${school(schoolId)}/reports/month-package.zip${query({ period })}`;
+}
+
 function parseCash(body: unknown, status: number): CashContributionResult | null {
   if ((status !== 201 && status !== 200) || !isRecord(body)) return null;
   const id = str(body.id);

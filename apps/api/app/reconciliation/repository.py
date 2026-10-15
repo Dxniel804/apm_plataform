@@ -207,3 +207,181 @@ def ledger_items(db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date
         .mappings()
         .all()
     )
+
+
+# --- what the management decides about a line (0018) -------------------------------------------
+
+
+def line_by_id(db: Session, school_id: uuid.UUID, line_id: uuid.UUID) -> Row | None:
+    """The line with the resolution it already has (if any). Two people acting at once are told
+    apart by the unique key of the resolution, not by a lock."""
+    return (
+        db.execute(
+            text(
+                "SELECT l.id, l.posted_on, l.amount_cents, l.memo, l.end_to_end_id, "
+                "(SELECT r.action FROM bank_line_resolutions r WHERE r.school_id = l.school_id "
+                "AND r.line_id = l.id) AS resolution "
+                "FROM bank_statement_lines l WHERE l.id = :id AND l.school_id = :school_id"
+            ),
+            {"id": line_id, "school_id": school_id},
+        )
+        .mappings()
+        .first()
+    )
+
+
+def resolutions(db: Session, school_id: uuid.UUID, line_ids: Sequence[uuid.UUID]) -> Sequence[Row]:
+    return (
+        db.execute(
+            text(
+                "SELECT line_id, action, reason, created_at FROM bank_line_resolutions "
+                "WHERE school_id = :school_id AND line_id = ANY(:ids)"
+            ),
+            {"school_id": school_id, "ids": list(line_ids)},
+        )
+        .mappings()
+        .all()
+    )
+
+
+def income_category(db: Session, school_id: uuid.UUID, key: str) -> uuid.UUID | None:
+    found: uuid.UUID | None = db.execute(
+        text(
+            "SELECT id FROM categories WHERE school_id = :school AND key = :key "
+            "AND applies_to = 'IN' AND is_active"
+        ),
+        {"school": school_id, "key": key},
+    ).scalar_one_or_none()
+    return found
+
+
+def bank_fees_category(db: Session, school_id: uuid.UUID) -> uuid.UUID | None:
+    found: uuid.UUID | None = db.execute(
+        text(
+            "SELECT id FROM categories WHERE school_id = :school AND key = 'bank_fees' "
+            "AND applies_to = 'OUT' AND is_active"
+        ),
+        {"school": school_id},
+    ).scalar_one_or_none()
+    return found
+
+
+def bank_moment(db: Session, school_id: uuid.UUID, day: dt.date) -> dt.datetime:
+    """The moment a line counts in the ledger: noon of the day the bank says, in the school's time
+    zone (never in the future). The statement has a day, not a time."""
+    moment: dt.datetime = db.execute(
+        text(
+            "SELECT least((CAST(:day AS date) + time '12:00') AT TIME ZONE st.timezone, "
+            "clock_timestamp()) FROM school_settings st WHERE st.school_id = :school"
+        ),
+        {"day": day, "school": school_id},
+    ).scalar_one()
+    return moment
+
+
+def insert_income(
+    db: Session, *, organization_id: uuid.UUID, school_id: uuid.UUID, user_id: uuid.UUID,
+    category_id: uuid.UUID, amount_cents: int, moment: dt.datetime, method: str,
+    external_reference: str | None, guardian_name: str | None,
+) -> tuple[uuid.UUID, int]:  # fmt: skip
+    """A contribution the bank shows and the ledger did not know: PAID, on the day of the bank."""
+    row = db.execute(
+        text(
+            "INSERT INTO financial_transactions (organization_id, school_id, kind, direction, "
+            "amount_cents, status, category_id, origin_type, created_by_user_id, occurred_at, "
+            "settled_at) VALUES (:org, :school, 'CONTRIBUTION', 'IN', :amount, 'PAID', :category, "
+            "'GUARDIAN', :user, :moment, :moment) RETURNING id, reference_code"
+        ),
+        {
+            "org": organization_id, "school": school_id, "amount": amount_cents,
+            "category": category_id, "user": user_id, "moment": moment,
+        },
+    ).one()  # fmt: skip
+    db.execute(
+        text(
+            "INSERT INTO contributions (transaction_id, organization_id, school_id, method, "
+            "external_reference, guardian_name) VALUES (:tx, :org, :school, :method, :ref, :guardian)"
+        ),
+        {
+            "tx": row[0], "org": organization_id, "school": school_id, "method": method,
+            "ref": external_reference, "guardian": guardian_name,
+        },
+    )  # fmt: skip
+    return row[0], int(row[1])
+
+
+def insert_fee_expense(
+    db: Session, *, organization_id: uuid.UUID, school_id: uuid.UUID, user_id: uuid.UUID,
+    category_id: uuid.UUID, amount_cents: int, moment: dt.datetime, description: str,
+) -> tuple[uuid.UUID, int]:  # fmt: skip
+    """A bank fee the ledger did not know: an expense of the APM in the category without approval,
+    born APPROVED (the bank already took the money) and settled on the day of the bank."""
+    row = db.execute(
+        text(
+            "INSERT INTO financial_transactions (organization_id, school_id, kind, direction, "
+            "amount_cents, status, category_id, origin_type, origin_name, created_by_user_id, "
+            "occurred_at) VALUES (:org, :school, 'EXPENSE', 'OUT', :amount, 'APPROVED', :category, "
+            "'BANK', 'Banco', :user, :moment) RETURNING id, reference_code"
+        ),
+        {
+            "org": organization_id, "school": school_id, "amount": amount_cents,
+            "category": category_id, "user": user_id, "moment": moment,
+        },
+    ).one()  # fmt: skip
+    db.execute(
+        text(
+            "INSERT INTO expenses (transaction_id, organization_id, school_id, description, "
+            "paid_by, submitted_by_user_id) VALUES (:tx, :org, :school, :description, 'APM', :user)"
+        ),
+        {
+            "tx": row[0], "org": organization_id, "school": school_id,
+            "description": description, "user": user_id,
+        },
+    )  # fmt: skip
+    db.execute(
+        text(
+            "UPDATE financial_transactions SET status = 'PAID', settled_at = :moment, "
+            "updated_at = now() WHERE id = :id AND school_id = :school AND status = 'APPROVED'"
+        ),
+        {"id": row[0], "school": school_id, "moment": moment},
+    )
+    return row[0], int(row[1])
+
+
+def insert_resolution(
+    db: Session, *, organization_id: uuid.UUID, school_id: uuid.UUID, user_id: uuid.UUID,
+    line_id: uuid.UUID, action: str, reason: str | None, transaction_id: uuid.UUID | None,
+    transaction_kind: str | None,
+) -> None:  # fmt: skip
+    db.execute(
+        text(
+            "INSERT INTO bank_line_resolutions (organization_id, school_id, line_id, action, "
+            "reason, transaction_id, transaction_kind, resolved_by_user_id) "
+            "VALUES (:org, :school, :line, :action, :reason, :tx, :kind, :user)"
+        ),
+        {
+            "org": organization_id, "school": school_id, "line": line_id, "action": action,
+            "reason": reason, "tx": transaction_id, "kind": transaction_kind, "user": user_id,
+        },
+    )  # fmt: skip
+
+
+def closing_balances(db: Session, school_id: uuid.UUID, month_end: dt.date) -> Sequence[Row]:
+    """For each active general account, the balance the bank gave in the last statement that ends
+    on or before the end of the month."""
+    return (
+        db.execute(
+            text(
+                "SELECT DISTINCT ON (a.id) a.id AS bank_account_id, a.nickname, "
+                "i.closing_balance_cents, i.period_end AS as_of "
+                "FROM bank_accounts a JOIN bank_statement_imports i ON i.bank_account_id = a.id "
+                "AND i.school_id = a.school_id "
+                "WHERE a.school_id = :school_id AND a.is_active AND a.purpose = 'GENERAL' "
+                "AND i.period_end <= :month_end AND i.closing_balance_cents IS NOT NULL "
+                "ORDER BY a.id, i.period_end DESC, i.created_at DESC"
+            ),
+            {"school_id": school_id, "month_end": month_end},
+        )
+        .mappings()
+        .all()
+    )

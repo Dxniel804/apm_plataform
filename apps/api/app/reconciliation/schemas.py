@@ -86,11 +86,67 @@ class DivergenceOut(BaseModel):
     reason: Literal["ambiguous", "amount_differs"]
 
 
+class ResolvedOut(BaseModel):
+    """A line the management ignored, and why."""
+
+    line: BankLineOut
+    reason: str
+
+
 class ReconciliationOut(BaseModel):
-    """The four lists of the screen. Nothing is written: the ledger and the bank, side by side."""
+    """The lists of the screen: the ledger and the bank, side by side. The comparison itself writes
+    nothing; the actions on a line (below) do, and only when the management asks."""
 
     statement: ImportOut
     matched: list[MatchedOut]
     missing_in_system: list[BankLineOut]
     missing_in_bank: list[LedgerEntryOut]
     divergences: list[DivergenceOut]
+    ignored: list[ResolvedOut] = []
+
+
+Reason = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=200),
+    AfterValidator(_storable),
+]
+Person = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
+    AfterValidator(_storable),
+]
+
+
+class LineAction(Strict):
+    """What the management decides about a line that is in the bank and not in the ledger."""
+
+    action: Literal["REGISTER_INCOME", "REGISTER_FEE", "IGNORE"]
+    # REGISTER_INCOME: a Pix straight to the key (needs the id of the line) or a transfer.
+    method: Literal["PIX_DIRECT", "TRANSFER"] | None = None
+    category_key: Literal["parent_contribution", "donation", "other_income", "apm_revenue"] = (
+        "parent_contribution"
+    )
+    guardian_name: Person | None = None
+    # IGNORE: required, and kept.
+    reason: Reason | None = None
+
+
+class LineActionOut(BaseModel):
+    line_id: uuid.UUID
+    action: Literal["IGNORED", "REGISTERED"]
+    transaction_id: uuid.UUID | None
+    reference_code: str | None
+
+
+class ClosingBalanceItem(BaseModel):
+    bank_account_id: uuid.UUID
+    nickname: str
+    closing_balance_cents: int
+    as_of: dt.date
+
+
+class ClosingBalanceOut(BaseModel):
+    """What the bank's last statements say the money is, to fill in the closing of the month."""
+
+    items: list[ClosingBalanceItem]
+    total_cents: int | None  # the sum of the general accounts; none when there is no statement

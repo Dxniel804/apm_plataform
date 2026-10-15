@@ -496,6 +496,27 @@ export interface Reconciliation {
   missingInSystem: BankLine[];
   missingInBank: LedgerEntry[];
   divergences: Divergence[];
+  /** Linhas que a gestao decidiu ignorar, com o motivo (migracao 0018). */
+  ignored: Array<{ line: BankLine; reason: string }>;
+}
+
+/** O que a gestao decide sobre uma linha que esta no banco e nao no caixa. Sempre confirmado por uma pessoa. */
+export type LineActionInput =
+  | { action: "REGISTER_INCOME"; method?: "PIX_DIRECT" | "TRANSFER"; categoryKey?: "parent_contribution" | "donation" | "other_income" | "apm_revenue"; guardianName?: string }
+  | { action: "REGISTER_FEE" }
+  | { action: "IGNORE"; reason: string };
+
+export interface LineActionResult {
+  lineId: string;
+  action: "IGNORED" | "REGISTERED";
+  transactionId: string | null;
+  referenceCode: string | null;
+}
+
+/** O saldo que os ultimos extratos dizem ate o fim de um mes (para preencher o fechamento). */
+export interface ClosingBalance {
+  items: Array<{ bankAccountId: string; nickname: string; closingBalanceCents: Cents; asOf: string }>;
+  totalCents: Cents | null;
 }
 
 // ---------------------------------------------------------------- REAL: configuracoes da escola e link publico

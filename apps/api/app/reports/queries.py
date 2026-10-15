@@ -117,3 +117,25 @@ def unsettled_contributions(
         {"school_id": school_id, "start": start, "end": end},
     ).mappings()
     return [dict(row) for row in rows]
+
+
+def expense_attachments(
+    db: Session, school_id: UUID, start: date, end: date
+) -> list[dict[str, Any]]:
+    """The files kept for the expenses that left the cash in the period (a reimbursement carries
+    the files of the expense it pays)."""
+    rows = db.execute(
+        text(
+            "SELECT DISTINCT a.id, a.storage_key, a.file_name, a.size_bytes, a.created_at, "
+            "x.reference_code "
+            "FROM statement_entries(:school_id, :start, :end) e "
+            "JOIN financial_transactions f ON f.id = e.transaction_id AND f.school_id = :school_id "
+            "JOIN financial_transactions x ON x.school_id = :school_id "
+            "AND x.id = coalesce(f.parent_transaction_id, f.id) "
+            "JOIN expense_attachments a ON a.school_id = :school_id AND a.transaction_id = x.id "
+            "WHERE e.kind IN ('EXPENSE', 'REIMBURSEMENT') "
+            "ORDER BY x.reference_code, a.created_at, a.id"
+        ),
+        {"school_id": school_id, "start": start, "end": end},
+    ).mappings()
+    return [dict(row) for row in rows]

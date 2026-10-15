@@ -4,10 +4,12 @@ Nothing here writes to the ledger. An import stores what the bank says (the line
 data masked) and the comparison is computed each time it is read, by a pure function, from the lines
 and from the ledger as it is now."""
 
+import datetime as dt
 import hashlib
 import uuid
 from typing import BinaryIO
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import ProblemError
@@ -21,12 +23,17 @@ from app.reconciliation.schemas import (
     AccountOut,
     AccountPatch,
     BankLineOut,
+    ClosingBalanceItem,
+    ClosingBalanceOut,
     DivergenceOut,
     ImportList,
     ImportOut,
     LedgerEntryOut,
+    LineAction,
+    LineActionOut,
     MatchedOut,
     ReconciliationOut,
+    ResolvedOut,
 )
 
 OFX_PROBLEMS = {
@@ -187,6 +194,10 @@ def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> Reconcilia
         )
     ]
     result = pair(lines, items)
+    decided = {
+        r["line_id"]: r
+        for r in repository.resolutions(db, scope.school_id, [ln.line_id for ln in lines])
+    }
 
     def divergence(d: Divergence) -> DivergenceOut:
         return DivergenceOut(
@@ -199,7 +210,123 @@ def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> Reconcilia
         matched=[
             MatchedOut(line=_line_out(ln, memos), entry=_entry_out(it)) for ln, it in result.matched
         ],
-        missing_in_system=[_line_out(ln, memos) for ln in result.missing_in_system],
+        missing_in_system=[
+            _line_out(ln, memos) for ln in result.missing_in_system if ln.line_id not in decided
+        ],
         missing_in_bank=[_entry_out(i) for i in result.missing_in_bank],
         divergences=[divergence(d) for d in result.divergences],
+        ignored=[
+            ResolvedOut(line=_line_out(ln, memos), reason=str(decided[ln.line_id]["reason"]))
+            for ln in result.missing_in_system
+            if ln.line_id in decided and decided[ln.line_id]["action"] == "IGNORED"
+        ],
+    )
+
+
+# --- acting on a line -----------------------------------------------------------------------------
+
+
+def act_on_line(
+    db: Session, scope: SchoolScope, line_id: uuid.UUID, body: LineAction
+) -> LineActionOut:
+    """The management decides about a line that is in the bank and not in the ledger: register the
+    money (a Pix straight to the key, a transfer, a bank fee) or ignore it, with a reason.
+
+    Everything happens in ONE transaction and a line is resolved once (a unique key in the
+    database), so a double click or two people at once never book the money twice. What is
+    registered is dated on the day of the bank; the next comparison pairs it with its line."""
+    try:
+        return _act_on_line(db, scope, line_id, body)
+    except IntegrityError:  # the same line resolved at the same moment by someone else
+        db.rollback()
+        raise ProblemError(409, "already_resolved", "This line was already resolved") from None
+
+
+def _act_on_line(
+    db: Session, scope: SchoolScope, line_id: uuid.UUID, body: LineAction
+) -> LineActionOut:
+    with database_rules(db):
+        line = repository.line_by_id(db, scope.school_id, line_id)
+        if line is None:
+            raise not_found()
+        if line["resolution"] is not None:
+            raise ProblemError(409, "already_resolved", "This line was already resolved")
+        amount = int(line["amount_cents"])
+        transaction_id: uuid.UUID | None = None
+        reference_code: int | None = None
+        kind: str | None = None
+        reason: str | None = None
+        if body.action == "IGNORE":
+            if body.reason is None:
+                raise _invalid("reason", "required")
+            reason = body.reason
+        elif body.action == "REGISTER_INCOME":
+            if amount <= 0:
+                raise _invalid("action", "line_is_not_an_income")
+            e2e = line["end_to_end_id"]
+            method = body.method or ("PIX_DIRECT" if e2e else "TRANSFER")
+            if method == "PIX_DIRECT" and e2e is None:
+                raise _invalid("method", "needs_an_end_to_end_id")
+            category = repository.income_category(db, scope.school_id, body.category_key)
+            if category is None:
+                raise _invalid("category_key", "unknown")
+            moment = repository.bank_moment(db, scope.school_id, line["posted_on"])
+            transaction_id, reference_code = repository.insert_income(
+                db, organization_id=scope.organization_id, school_id=scope.school_id,
+                user_id=scope.user_id, category_id=category, amount_cents=amount, moment=moment,
+                method=method, external_reference=e2e if method == "PIX_DIRECT" else None,
+                guardian_name=body.guardian_name,
+            )  # fmt: skip
+            kind = "CONTRIBUTION"
+        else:  # REGISTER_FEE
+            if amount >= 0:
+                raise _invalid("action", "line_is_not_a_charge")
+            category = repository.bank_fees_category(db, scope.school_id)
+            if category is None:
+                raise _invalid("category_key", "unknown")
+            moment = repository.bank_moment(db, scope.school_id, line["posted_on"])
+            transaction_id, reference_code = repository.insert_fee_expense(
+                db, organization_id=scope.organization_id, school_id=scope.school_id,
+                user_id=scope.user_id, category_id=category, amount_cents=-amount, moment=moment,
+                description=(str(line["memo"]).strip() or "Tarifa bancária")[:120],
+            )  # fmt: skip
+            kind = "EXPENSE"
+        repository.insert_resolution(
+            db, organization_id=scope.organization_id, school_id=scope.school_id,
+            user_id=scope.user_id, line_id=line_id,
+            action="IGNORED" if body.action == "IGNORE" else "REGISTERED", reason=reason,
+            transaction_id=transaction_id, transaction_kind=kind,
+        )  # fmt: skip
+        db.commit()
+    return LineActionOut(
+        line_id=line_id,
+        action="IGNORED" if body.action == "IGNORE" else "REGISTERED",
+        transaction_id=transaction_id,
+        reference_code=None if reference_code is None else f"APM-{reference_code:06d}",
+    )
+
+
+# --- the balance for the closing ------------------------------------------------------------------
+
+
+def closing_balance(db: Session, scope: SchoolScope, period: str) -> ClosingBalanceOut:
+    """The balance of the last statement of each general account up to the end of the month."""
+    try:
+        year, month = (int(part) for part in period.split("-"))
+        first = dt.date(year, month, 1)
+    except ValueError:
+        raise _invalid("period", "invalid") from None
+    month_end = (first.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
+    items = [
+        ClosingBalanceItem(
+            bank_account_id=r["bank_account_id"],
+            nickname=r["nickname"],
+            closing_balance_cents=int(r["closing_balance_cents"]),
+            as_of=r["as_of"],
+        )
+        for r in repository.closing_balances(db, scope.school_id, month_end)
+    ]
+    return ClosingBalanceOut(
+        items=items,
+        total_cents=sum(i.closing_balance_cents for i in items) if items else None,
     )

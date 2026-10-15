@@ -338,6 +338,9 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `bank_statement_imports_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `bank_statement_imports_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
 | `bank_statement_lines` (0017, what the bank says) | `bank_statement_lines_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (the text is stored with the CPF and the CNPJ masked) |
+| `bank_line_resolutions` (0018, what the management decided about a line) | `bank_line_resolutions_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a line is resolved once) |
+| | `bank_line_resolutions_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `bank_line_resolutions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the reason is audited by name only) |
 | `contribution_fees` (0016, the fee of the gateway of a paid contribution) | `contribution_fees_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
 | | `contribution_fees_20_check` | BEFORE INSERT | `contribution_fees_check`: only for a PAID contribution, over the amount of its own ledger row |
 | | `contribution_fees_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |

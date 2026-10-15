@@ -25,7 +25,12 @@ from app.models.financial_support import (
 )
 from app.models.membership import Membership
 from app.models.organization import Organization
-from app.models.reconciliation import BankAccount, BankStatementImport, BankStatementLine
+from app.models.reconciliation import (
+    BankAccount,
+    BankLineResolution,
+    BankStatementImport,
+    BankStatementLine,
+)
 from app.models.school import School
 from app.models.staff_requests import StaffRequest, StaffRequestAttachment
 from app.models.user import User
@@ -33,6 +38,7 @@ from app.models.user import User
 __all__ = [
     "AuditLog",
     "BankAccount",
+    "BankLineResolution",
     "BankStatementImport",
     "BankStatementLine",
     "Campaign",

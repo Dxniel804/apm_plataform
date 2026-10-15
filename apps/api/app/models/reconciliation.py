@@ -147,3 +147,52 @@ class BankStatementLine(ScopeMixin, Base):
     end_to_end_id: Mapped[str | None] = mapped_column(Text)
     looks_like_fee: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BankLineResolution(ScopeMixin, Base):
+    """What the management decided about a statement line (0018): written once, never changed."""
+
+    __tablename__ = "bank_line_resolutions"
+    __table_args__ = (
+        *scope_constraints("bank_line_resolutions"),
+        ForeignKeyConstraint(
+            ["line_id"],
+            ["bank_statement_lines.id"],
+            name="fk_bank_line_resolutions_line_id_bank_statement_lines",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["transaction_id", "organization_id", "school_id", "transaction_kind"],
+            [
+                "financial_transactions.id",
+                "financial_transactions.organization_id",
+                "financial_transactions.school_id",
+                "financial_transactions.kind",
+            ],
+            name="fk_bank_line_resolutions_transaction",
+            ondelete="RESTRICT",
+        ),
+        user_fk("bank_line_resolutions", "resolved_by_user_id"),
+        UniqueConstraint("school_id", "line_id", name="uq_bank_line_resolutions_school_id_line_id"),
+        UniqueConstraint(
+            "school_id", "transaction_id", name="uq_bank_line_resolutions_school_id_transaction_id"
+        ),
+        CheckConstraint(in_list("action", ("IGNORED", "REGISTERED")), name="action_valid"),
+        CheckConstraint(
+            "(action = 'IGNORED' AND transaction_id IS NULL AND transaction_kind IS NULL "
+            "AND length(btrim(coalesce(reason, ''))) BETWEEN 3 AND 200) "
+            "OR (action = 'REGISTERED' AND reason IS NULL AND transaction_id IS NOT NULL "
+            "AND transaction_kind IN ('CONTRIBUTION', 'EXPENSE'))",
+            name="shape",
+        ),
+        Index("ix_bank_line_resolutions_school_id", "school_id"),
+    )
+
+    id: Mapped[uuid.UUID] = fin_pk()
+    line_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    action: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    transaction_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    transaction_kind: Mapped[str | None] = mapped_column(Text)
+    resolved_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
 import type { ApiResult, Closing, Page } from "@/lib/api/types";
 import { saveBlob } from "@/lib/download";
 import { describeClosingError } from "@/lib/expense-labels";
-import { formatDateLong } from "@/lib/format";
+import { cashBookHref, monthPackageHref } from "@/lib/api/statement";
+import { formatDateLong, formatDayLong } from "@/lib/format";
 import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { areasFor } from "@/lib/permissions";
 import { currentLocalPeriod, periodLabel, recentPeriods } from "@/lib/statement-labels";
@@ -186,7 +187,7 @@ function ClosingCard({ schoolId, closing: c, permissions, open, onToggle, onChan
   );
 }
 
-function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; suggestion: string; onClosed: (closing: Closing) => void }) {
+function CloseMonthForm({ schoolId, permissions, suggestion, onClosed }: { schoolId: string; permissions: string[]; suggestion: string; onClosed: (closing: Closing) => void }) {
   const [latest] = useState(() => currentLocalPeriod());
   // Meses que ja acabaram: do anterior ao atual para tras. A API decide a ordem e se o mes terminou.
   const options = recentPeriods(previousMonth(latest), 36);
@@ -195,6 +196,20 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
   const [cents, setCents] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromStatement, setFromStatement] = useState<string | null>(null);
+
+  /** O saldo do ultimo extrato OFX enviado ate o fim do mes escolhido (conciliacao). Preenche; a pessoa ainda confere. */
+  async function fillFromStatement() {
+    setFromStatement(null);
+    const r = await api.reconciliation.closingBalance(schoolId, period);
+    if (!r.ok) return setFromStatement("Não foi possível buscar o saldo do extrato. Digite o valor.");
+    if (r.data.totalCents === null) return setFromStatement("Nenhum extrato enviado até o fim deste mês. Envie o extrato em Conciliação ou digite o valor.");
+    setCents(r.data.totalCents > 0 ? r.data.totalCents : 0);
+    setFromStatement(
+      r.data.items.map((i) => `${i.nickname}: ${formatBRL(i.closingBalanceCents)} em ${formatDayLong(i.asOf)}`).join(" · ") +
+        (r.data.totalCents <= 0 ? " (saldo zerado ou negativo: digite à mão, se precisar)" : ""),
+    );
+  }
 
   async function close() {
     if (busy) return;
@@ -253,11 +268,57 @@ function CloseMonthForm({ schoolId, suggestion, onClosed }: { schoolId: string; 
               onChange={(e) => setCents(centsFromDigits(e.target.value))}
             />
           </div>
+          {areasFor(permissions).manageReconciliation && (
+            <div>
+              <Button variant="plain" size="md" onClick={() => void fillFromStatement()} className="rounded-full!">
+                Usar o saldo do extrato do banco
+              </Button>
+              {fromStatement && <p role="status" className="mt-2 text-sub text-ink-2">{fromStatement}</p>}
+            </div>
+          )}
           <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
           <FormButtons onCancel={() => setOpen(false)} submitLabel="Fechar mês" pendingLabel="Fechando…" pending={busy} />
         </form>
       </FormModal>
     </div>
+  );
+}
+
+/** O Livro Caixa do mes (planilha e PDF) e, so para a gestao, o pacote do mes (ZIP com o livro e os anexos). Sao downloads. */
+function BookCard({ schoolId, management }: { schoolId: string; management: boolean }) {
+  const [latest] = useState(() => currentLocalPeriod());
+  const options = recentPeriods(latest, 36);
+  const [period, setPeriod] = useState(options[0]!);
+  const link = "inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sub font-semibold text-brand-800 hover:bg-bg";
+  return (
+    <section aria-label="Livro Caixa e pacote do mês" className="mb-8 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
+      <h2 className="text-heading">Livro Caixa e pacote do mês</h2>
+      <p className="mt-1 max-w-[62ch] text-sub text-ink-2">
+        O Livro Caixa lista tudo o que entrou e saiu, na ordem, com o saldo depois de cada lançamento.{management ? " O pacote reúne o livro e os anexos das despesas do mês, para entregar ao contador." : ""}
+      </p>
+      <div className="mt-4 flex flex-wrap items-end gap-4">
+        <div className="min-w-0 basis-56">
+          <SelectField id="book-period" label="Mês" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            {options.map((p) => (
+              <option key={p} value={p}>
+                {periodLabel(p)}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        <a className={link} href={cashBookHref(schoolId, period, "csv")} download>
+          Livro Caixa (planilha)
+        </a>
+        <a className={link} href={cashBookHref(schoolId, period, "pdf")} download>
+          Livro Caixa (PDF)
+        </a>
+        {management && (
+          <a className={link} href={monthPackageHref(schoolId, period)} download>
+            Pacote do mês (ZIP)
+          </a>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -303,6 +364,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
         <CloseMonthForm
           key={next}
           schoolId={schoolId}
+          permissions={permissions}
           suggestion={next}
           onClosed={(c) => {
             setBanner(`Mês fechado: ${periodLabel(c.period)}.`);
@@ -311,6 +373,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
           }}
         />
       )}
+      <BookCard schoolId={schoolId} management={areas.closeMonths} />
       {!areas.closeMonths && (
         <p role="note" className="mb-6 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
           Você pode consultar os fechamentos e baixar o PDF. Fechar o mês é da gestão e da direção.

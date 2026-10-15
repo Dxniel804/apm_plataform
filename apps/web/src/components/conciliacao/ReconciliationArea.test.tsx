@@ -62,6 +62,42 @@ describe("Conciliacao", () => {
     expect(screen.getByText(/não adivinha/)).toBeInTheDocument();
   });
 
+  it("registra a tarifa que o banco cobrou depois de a pessoa confirmar", async () => {
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: REPORT });
+    const act = vi.spyOn(api.reconciliation, "actOnLine").mockResolvedValue({ ok: true, data: { lineId: "l2", action: "REGISTERED", transactionId: "t9", referenceCode: "APM-000030" } });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    await user.click(await screen.findByRole("button", { name: /Ver a comparação do extrato/ }));
+    await user.click(await screen.findByRole("button", { name: "Faltam no sistema (1)" }));
+
+    await user.click(screen.getByRole("button", { name: /Registrar a tarifa de R\$\s?0,80/ }));
+    expect(act).not.toHaveBeenCalled(); // so abre a confirmacao
+    const dialog = await screen.findByRole("dialog", { name: "Registrar tarifa bancária" });
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar e registrar" }));
+
+    await waitFor(() => expect(act).toHaveBeenCalledWith(SCHOOL_ID, "l2", { action: "REGISTER_FEE" }));
+    expect(await screen.findByText(/Registrado no caixa \(APM-000030\)/)).toBeInTheDocument();
+  });
+
+  it("ignorar uma linha exige o motivo", async () => {
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: REPORT });
+    const act = vi.spyOn(api.reconciliation, "actOnLine").mockResolvedValue({ ok: true, data: { lineId: "l2", action: "IGNORED", transactionId: null, referenceCode: null } });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    await user.click(await screen.findByRole("button", { name: /Ver a comparação do extrato/ }));
+    await user.click(await screen.findByRole("button", { name: "Faltam no sistema (1)" }));
+
+    await user.click(screen.getByRole("button", { name: /Ignorar a linha/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Ignorar esta linha" });
+    await user.click(within(dialog).getByRole("button", { name: "Ignorar a linha" }));
+    expect(within(dialog).getByText(/Explique o motivo/)).toBeInTheDocument();
+    expect(act).not.toHaveBeenCalled();
+    await user.type(within(dialog).getByLabelText(/Motivo/), "Pago pela prefeitura");
+    await user.click(within(dialog).getByRole("button", { name: "Ignorar a linha" }));
+
+    await waitFor(() => expect(act).toHaveBeenCalledWith(SCHOOL_ID, "l2", { action: "IGNORE", reason: "Pago pela prefeitura" }));
+  });
+
   it("envia o arquivo OFX com a conta escolhida e avisa quantos lancamentos sao novos", async () => {
     const send = vi.spyOn(api.reconciliation, "import").mockResolvedValue({ ok: true, data: IMPORT });
     vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: REPORT });

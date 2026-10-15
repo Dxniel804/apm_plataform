@@ -45,6 +45,7 @@ CAMPAIGN_TABLES = (
     "bank_accounts",
     "bank_statement_imports",
     "bank_statement_lines",
+    "bank_line_resolutions",
 )
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
@@ -157,6 +158,9 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("bank_statement_imports", "bank_statement_imports_insert", "INSERT", "public"),
         ("bank_statement_lines", "bank_statement_lines_select", "SELECT", "public"),
         ("bank_statement_lines", "bank_statement_lines_insert", "INSERT", "public"),
+        # 0018: what the management decided about a line (insert-only).
+        ("bank_line_resolutions", "bank_line_resolutions_select", "SELECT", "public"),
+        ("bank_line_resolutions", "bank_line_resolutions_insert", "INSERT", "public"),
     }
 )
 

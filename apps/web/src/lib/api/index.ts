@@ -19,7 +19,7 @@ import {
   uploadRequestPhoto,
 } from "./staff-requests";
 import { getGoal, getPending, getSeries, getStatement, getSummary, recordCashContribution } from "./statement";
-import { createBankAccount, getReconciliation, importStatement, listBankAccounts, listStatementImports, setBankAccountActive } from "./reconciliation";
+import { actOnBankLine, createBankAccount, getClosingBalance, getReconciliation, importStatement, listBankAccounts, listStatementImports, setBankAccountActive } from "./reconciliation";
 import { downloadPoster, getPublicLink, getSchoolSettings, updateSchoolSettings } from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
@@ -49,6 +49,8 @@ export const api: {
     imports: typeof listStatementImports;
     import: typeof importStatement;
     compare: typeof getReconciliation;
+    actOnLine: typeof actOnBankLine;
+    closingBalance: typeof getClosingBalance;
   };
   schoolSettings: {
     get: typeof getSchoolSettings;
@@ -144,6 +146,8 @@ export const api: {
     imports: listStatementImports,
     import: importStatement,
     compare: getReconciliation,
+    actOnLine: actOnBankLine,
+    closingBalance: getClosingBalance,
   },
   schoolSettings: { get: getSchoolSettings, update: updateSchoolSettings, publicLink: getPublicLink, poster: downloadPoster },
   campaigns: {

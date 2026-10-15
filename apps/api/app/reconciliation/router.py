@@ -8,7 +8,7 @@ the school were checked."""
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
@@ -22,8 +22,11 @@ from app.reconciliation.schemas import (
     AccountCreate,
     AccountOut,
     AccountPatch,
+    ClosingBalanceOut,
     ImportList,
     ImportOut,
+    LineAction,
+    LineActionOut,
     ReconciliationOut,
 )
 from app.routers.deps import get_tenant_db
@@ -118,3 +121,21 @@ async def import_statement(request: Request, scope: Manage, db: TenantDb) -> Imp
             responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
 def compare(import_id: UUID, scope: Manage, db: TenantDb) -> ReconciliationOut:
     return service.compare(db, scope, import_id)
+
+
+@router.post("/lines/{line_id}/actions", operation_id="reconciliation_line_action", status_code=201,
+             response_model=LineActionOut,
+             summary="Register what the bank shows (a Pix, a transfer, a fee) or ignore the line, with a reason",
+             responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def act_on_line(line_id: UUID, body: LineAction, scope: Manage, db: TenantDb) -> LineActionOut:
+    return service.act_on_line(db, scope, line_id, body)
+
+
+@router.get("/closing-balance", operation_id="reconciliation_closing_balance",
+            response_model=ClosingBalanceOut,
+            summary="The balance of the last bank statements up to the end of a month (YYYY-MM)",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def closing_balance(
+    scope: Manage, db: TenantDb, period: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+) -> ClosingBalanceOut:
+    return service.closing_balance(db, scope, period)

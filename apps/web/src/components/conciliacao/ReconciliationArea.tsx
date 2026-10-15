@@ -6,7 +6,7 @@ import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
-import type { AccountPurpose, ApiError, ApiResult, BankAccount, BankLine, LedgerEntry, Reconciliation, StatementImport } from "@/lib/api/types";
+import type { AccountPurpose, ApiError, ApiResult, BankAccount, BankLine, LedgerEntry, LineActionInput, Reconciliation, StatementImport } from "@/lib/api/types";
 import { formatDayLong } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { areasFor } from "@/lib/permissions";
@@ -36,6 +36,10 @@ function describeError(error: ApiError, fallback = "Não foi possível concluir.
       return "Você não tem permissão para mexer na conciliação.";
     case "conflict":
       return "Já existe uma conta com esse apelido.";
+    case "already_resolved":
+      return "Esta linha já foi resolvida por alguém. Atualize a lista.";
+    case "validation_error":
+      return "Confira os dados: o motivo precisa ter de 3 a 200 letras, e o Pix direto precisa do identificador do banco.";
     default:
       return fallback;
   }
@@ -53,7 +57,8 @@ const Card = ({ title, children, action }: { title: string; children: React.Reac
 
 /**
  * Conciliacao: as contas onde a escola recebe, o envio do extrato OFX do banco e a comparacao com o caixa em quatro
- * listas. So leitura: nada e lancado no caixa por aqui. Quem decide o pareamento e a API (certeza ou divergencia).
+ * listas. A comparacao so le. O que esta no banco e nao no caixa a gestao RESOLVE linha a linha (registrar a entrada ou a
+ * tarifa, ou ignorar com motivo), sempre confirmando. Quem decide o pareamento e a API (certeza ou divergencia).
  */
 export function ReconciliationArea({ schoolId, permissions }: { schoolId: string; permissions: string[] }) {
   const allowed = areasFor(permissions).manageReconciliation;
@@ -94,7 +99,7 @@ export function ReconciliationArea({ schoolId, permissions }: { schoolId: string
   return (
     <div className="space-y-6">
       <p className="max-w-[64ch] text-body text-ink-2">
-        Compare o extrato do banco com o caixa do sistema. Aqui você só <strong className="font-semibold text-ink">confere</strong>: nada é lançado no caixa.
+        Compare o extrato do banco com o caixa do sistema. A comparação só <strong className="font-semibold text-ink">confere</strong>: nada é lançado sozinho. O que estiver no banco e faltar no sistema, você resolve linha a linha, confirmando.
       </p>
       {!loaded.accounts.ok && <p role="alert" className="text-sub font-medium text-bad">{describeError(loaded.accounts.error)}</p>}
       <AccountsCard schoolId={schoolId} accounts={accounts} onChanged={reload} />
@@ -273,18 +278,22 @@ type Tab = "matched" | "missingInSystem" | "missingInBank" | "divergences";
 
 function Comparison({ schoolId, importId }: { schoolId: string; importId: string }) {
   const [tab, setTab] = useState<Tab>("matched");
+  const [version, setVersion] = useState(0);
+  const [done, setDone] = useState<string | null>(null);
+  const key = `${importId}|${version}`;
   const [loaded, setLoaded] = useState<{ id: string; res: ApiResult<Reconciliation> } | null>(null);
   useEffect(() => {
     let cancelled = false;
     void api.reconciliation.compare(schoolId, importId).then((res) => {
-      if (!cancelled) setLoaded({ id: importId, res });
+      if (!cancelled) setLoaded({ id: key, res });
     });
     return () => {
       cancelled = true;
     };
-  }, [schoolId, importId]);
+  }, [schoolId, importId, key]);
 
-  if (loaded?.id !== importId) return <p role="status" className="border-t border-line px-4 py-4 text-sub text-ink-2">Comparando com o caixa…</p>;
+  if (loaded?.id !== key && !loaded) return <p role="status" className="border-t border-line px-4 py-4 text-sub text-ink-2">Comparando com o caixa…</p>;
+  if (!loaded) return null;
   if (!loaded.res.ok) return <p role="alert" className="border-t border-line px-4 py-4 text-sub font-medium text-bad">{describeError(loaded.res.error, "Não foi possível comparar.")}</p>;
   const r = loaded.res.data;
   const tabs: Array<{ id: Tab; label: string; count: number }> = [
@@ -295,6 +304,7 @@ function Comparison({ schoolId, importId }: { schoolId: string; importId: string
   ];
   return (
     <div className="space-y-4 border-t border-line px-4 py-4">
+      {done && <p role="status" className="rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">{done}</p>}
       <div role="group" aria-label="Partes da comparação" className="flex flex-wrap gap-2.5">
         {tabs.map((t) => (
           <button key={t.id} type="button" aria-pressed={tab === t.id} onClick={() => setTab(t.id)} className={chipClass(tab === t.id)}>
@@ -303,11 +313,53 @@ function Comparison({ schoolId, importId }: { schoolId: string; importId: string
         ))}
       </div>
       {tab === "matched" && <Rows empty="Nenhum lançamento do extrato foi conferido com o caixa ainda." items={r.matched.map((m) => ({ key: m.line.lineId, line: m.line, entry: m.entry }))} />}
-      {tab === "missingInSystem" && <Rows hint="No extrato do banco, mas não no caixa do sistema." empty="Tudo o que está no extrato já está no caixa." items={r.missingInSystem.map((line) => ({ key: line.lineId, line }))} />}
-      {tab === "missingInBank" && <Rows hint="No caixa do sistema, mas não apareceu neste extrato." empty="Tudo o que está no caixa apareceu no extrato." items={r.missingInBank.map((entry) => ({ key: entry.transactionId, entry }))} />}
+      {tab === "missingInSystem" && (
+        <div className="space-y-4">
+          <Rows
+            hint="O banco mostra, mas o caixa do sistema não tem. Para cada linha, escolha: registrar no caixa (uma entrada ou uma tarifa) ou ignorar, explicando o motivo."
+            empty="Tudo o que está no extrato já está no caixa."
+            items={r.missingInSystem.map((line) => ({
+              key: line.lineId,
+              line,
+              actions: (
+                <LineActions
+                  schoolId={schoolId}
+                  line={line}
+                  onDone={(message) => {
+                    setDone(message);
+                    setVersion((n) => n + 1);
+                  }}
+                />
+              ),
+            }))}
+          />
+          {r.ignored.length > 0 && (
+            <div>
+              <h3 className="mb-1 text-sub font-semibold text-ink">Ignorados ({r.ignored.length})</h3>
+              <ul aria-label="Linhas ignoradas" className="divide-y divide-line">
+                {r.ignored.map((i) => (
+                  <li key={i.line.lineId} className="flex flex-wrap items-start justify-between gap-x-4 py-2 text-sub text-ink-2">
+                    <span className="min-w-0 flex-1 basis-60 [overflow-wrap:anywhere]">
+                      {formatDayLong(i.line.postedOn)} · {i.line.memo || "sem descrição"} · <em>Motivo: {i.reason}</em>
+                    </span>
+                    <span className="tabular-nums">{formatBRL(i.line.amountCents)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      {tab === "missingInBank" && (
+        <Rows
+          hint="O caixa do sistema tem, mas não apareceu neste extrato. O extrato do banco não se altera. Em geral é um Pix ou depósito que ainda não compensou (envie um extrato mais novo depois), ou um lançamento feito com valor ou data errados (corrija em Despesas ou Contribuições)."
+          empty="Tudo o que está no caixa apareceu no extrato."
+          items={r.missingInBank.map((entry) => ({ key: entry.transactionId, entry }))}
+        />
+      )}
       {tab === "divergences" && (
         <div className="space-y-3">
-          <p className="text-sub text-ink-2">O sistema não adivinha: quando há dúvida, ele deixa para uma pessoa decidir.</p>
+          <p className="text-sub text-ink-2">O sistema não adivinha: quando há dúvida, ele deixa para uma pessoa decidir. Confira com o comprovante e corrija o lançamento do sistema (o extrato do banco não muda).</p>
           {r.divergences.length === 0 && <p className="text-body text-ink-2">Nenhuma divergência.</p>}
           {r.divergences.map((d) => (
             <div key={d.line.lineId} className="rounded-[var(--r-md)] border border-line p-3">
@@ -321,7 +373,7 @@ function Comparison({ schoolId, importId }: { schoolId: string; importId: string
   );
 }
 
-function Rows({ items, empty, hint }: { items: Array<{ key: string; line?: BankLine; entry?: LedgerEntry }>; empty: string; hint?: string }) {
+function Rows({ items, empty, hint }: { items: Array<{ key: string; line?: BankLine; entry?: LedgerEntry; actions?: React.ReactNode }>; empty: string; hint?: string }) {
   if (items.length === 0) return <p className="text-body text-ink-2">{empty}</p>;
   return (
     <div className="space-y-2">
@@ -344,9 +396,116 @@ function Rows({ items, empty, hint }: { items: Array<{ key: string; line?: BankL
               )}
             </div>
             <p className="shrink-0 text-body font-bold tabular-nums text-brand-800">{formatBRL(item.line?.amountCents ?? item.entry?.amountCents ?? 0)}</p>
+            {item.actions && <div className="flex w-full flex-wrap gap-2">{item.actions}</div>}
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+const INCOME_CATEGORIES = [
+  { key: "parent_contribution", label: "Contribuição de pais" },
+  { key: "donation", label: "Doação" },
+  { key: "other_income", label: "Outra entrada" },
+] as const;
+
+/** Os botoes de uma linha que esta no banco e nao no caixa. Nada e feito sem a confirmacao da pessoa. */
+function LineActions({ schoolId, line, onDone }: { schoolId: string; line: BankLine; onDone: (message: string) => void }) {
+  const income = line.amountCents > 0;
+  const [mode, setMode] = useState<"income" | "fee" | "ignore" | null>(null);
+  const [method, setMethod] = useState<"PIX_DIRECT" | "TRANSFER">(line.endToEndId ? "PIX_DIRECT" : "TRANSFER");
+  const [category, setCategory] = useState<(typeof INCOME_CATEGORIES)[number]["key"]>("parent_contribution");
+  const [who, setWho] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  function close() {
+    setMode(null);
+    setProblem(null);
+  }
+
+  async function confirm() {
+    if (busy || !mode) return;
+    if (mode === "ignore" && reason.trim().length < 3) return setProblem("Explique o motivo (pelo menos 3 letras).");
+    setBusy(true);
+    setProblem(null);
+    const input: LineActionInput =
+      mode === "income"
+        ? { action: "REGISTER_INCOME", method, categoryKey: category, ...(who.trim() ? { guardianName: who.trim() } : {}) }
+        : mode === "fee"
+          ? { action: "REGISTER_FEE" }
+          : { action: "IGNORE", reason: reason.trim() };
+    const result = await api.reconciliation.actOnLine(schoolId, line.lineId, input);
+    setBusy(false);
+    if (!result.ok) return setProblem(describeError(result.error, "Não foi possível concluir. Nada foi alterado."));
+    close();
+    onDone(
+      result.data.action === "IGNORED"
+        ? "Linha ignorada. O motivo ficou guardado."
+        : `Registrado no caixa${result.data.referenceCode ? ` (${result.data.referenceCode})` : ""}. A linha agora está em Conferidos.`,
+    );
+  }
+
+  const title = mode === "income" ? "Registrar entrada no caixa" : mode === "fee" ? "Registrar tarifa bancária" : "Ignorar esta linha";
+  return (
+    <>
+      {income && (
+        <Button variant="chip" size="md" onClick={() => setMode("income")} aria-label={`Registrar a entrada de ${formatBRL(line.amountCents)} de ${formatDayLong(line.postedOn)}`} className="rounded-full!">
+          Registrar entrada
+        </Button>
+      )}
+      {!income && line.looksLikeFee && (
+        <Button variant="chip" size="md" onClick={() => setMode("fee")} aria-label={`Registrar a tarifa de ${formatBRL(-line.amountCents)} de ${formatDayLong(line.postedOn)}`} className="rounded-full!">
+          Registrar tarifa
+        </Button>
+      )}
+      <Button variant="plain" size="md" onClick={() => setMode("ignore")} aria-label={`Ignorar a linha de ${formatBRL(line.amountCents)} de ${formatDayLong(line.postedOn)}`} className="rounded-full!">
+        Ignorar
+      </Button>
+      <FormModal
+        open={mode !== null}
+        title={title}
+        intro={
+          mode === "ignore"
+            ? "A linha some da lista de pendências e o motivo fica guardado com o seu nome."
+            : `Vai entrar no caixa ${formatBRL(Math.abs(line.amountCents))}, no dia ${formatDayLong(line.postedOn)}, com o seu nome como quem registrou. Isso não pode ser desfeito por aqui.`
+        }
+        onClose={close}
+        busy={busy}
+      >
+        <form method="post" noValidate aria-label={title} onSubmit={(e) => { e.preventDefault(); void confirm(); }} className="space-y-5">
+          <p className="rounded-[var(--r-md)] bg-bg px-4 py-3 text-sub text-ink [overflow-wrap:anywhere]">
+            {formatDayLong(line.postedOn)} · {line.memo || "sem descrição"} · <strong>{formatBRL(line.amountCents)}</strong>
+          </p>
+          {mode === "income" && (
+            <>
+              <fieldset>
+                <legend className="mb-2 text-sub font-semibold text-ink">Como o dinheiro chegou</legend>
+                <div className="flex flex-wrap gap-2.5">
+                  {line.endToEndId && (
+                    <button type="button" aria-pressed={method === "PIX_DIRECT"} onClick={() => setMethod("PIX_DIRECT")} className={chipClass(method === "PIX_DIRECT")}>Pix direto na conta</button>
+                  )}
+                  <button type="button" aria-pressed={method === "TRANSFER"} onClick={() => setMethod("TRANSFER")} className={chipClass(method === "TRANSFER")}>Transferência ou depósito</button>
+                </div>
+              </fieldset>
+              <div>
+                <label htmlFor="line-category" className="mb-2 block text-sub font-semibold text-ink">Tipo de entrada</label>
+                <select id="line-category" value={category} onChange={(e) => setCategory(e.target.value as typeof category)} className="block min-h-[3.375rem] w-full rounded-ctl border-[1.5px] border-field-border bg-white px-4 text-[1rem] text-ink">
+                  {INCOME_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <TextField label="Quem enviou" optional name="line-who" autoComplete="off" maxLength={120} value={who} onChange={(e) => setWho(e.target.value)} />
+            </>
+          )}
+          {mode === "ignore" && <TextField label="Motivo" name="line-reason" autoComplete="off" maxLength={200} hint="Obrigatório. Ex.: pago pela prefeitura, não é da APM." value={reason} onChange={(e) => setReason(e.target.value)} />}
+          <div aria-live="polite">{problem && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{problem}</p>}</div>
+          <FormButtons onCancel={close} cancelLabel="Voltar" submitLabel={mode === "ignore" ? "Ignorar a linha" : "Confirmar e registrar"} pendingLabel="Salvando…" pending={busy} />
+        </form>
+      </FormModal>
+    </>
   );
 }

@@ -1,5 +1,8 @@
 import { apiGet, apiSend, apiUpload, type RequestOptions, type SendOptions } from "./client";
-import type { AccountPurpose, ApiResult, BankAccount, BankAccountInput, BankLine, Divergence, LedgerEntry, Reconciliation, StatementImport } from "./types";
+import type {
+  AccountPurpose, ApiResult, BankAccount, BankAccountInput, BankLine, ClosingBalance, Divergence, LedgerEntry, LineActionInput, LineActionResult, Reconciliation,
+  StatementImport,
+} from "./types";
 
 /**
  * Conciliacao bancaria (migracao 0017): as contas da escola, o envio do extrato OFX e a comparacao com o caixa.
@@ -91,8 +94,14 @@ export function parseReconciliation(body: unknown): Reconciliation | null {
     const reason = d.reason === "ambiguous" || d.reason === "amount_differs" ? d.reason : null;
     return line && candidates && reason ? { line, candidates, reason } : null;
   });
-  if (!statement || !matchedRaw || !missingInSystem || !missingInBank || !divergences) return null;
-  return { statement, matched: matchedRaw, missingInSystem, missingInBank, divergences };
+  const ignored = parseList(body.ignored ?? [], (i) => {
+    if (!isRecord(i)) return null;
+    const line = parseLine(i.line);
+    const reason = str(i.reason);
+    return line && reason ? { line, reason } : null;
+  });
+  if (!statement || !matchedRaw || !missingInSystem || !missingInBank || !divergences || !ignored) return null;
+  return { statement, matched: matchedRaw, missingInSystem, missingInBank, divergences, ignored };
 }
 
 const base = (schoolId: string) => `/api/v1/schools/${encodeURIComponent(schoolId)}/reconciliation`;
@@ -130,4 +139,48 @@ export function importStatement(schoolId: string, accountId: string, file: File,
 
 export function getReconciliation(schoolId: string, importId: string, options?: RequestOptions): Promise<ApiResult<Reconciliation>> {
   return apiGet(`${base(schoolId)}/imports/${encodeURIComponent(importId)}`, (body, status) => (status === 200 ? parseReconciliation(body) : null), options);
+}
+
+function parseAction(v: unknown, status: number): LineActionResult | null {
+  if (status !== 201 || !isRecord(v)) return null;
+  const lineId = str(v.line_id);
+  const action = v.action === "IGNORED" || v.action === "REGISTERED" ? v.action : null;
+  const transactionId = optStr(v.transaction_id);
+  const referenceCode = optStr(v.reference_code);
+  if (!lineId || !action || transactionId === undefined || referenceCode === undefined) return null;
+  return { lineId, action, transactionId, referenceCode };
+}
+
+/** POST .../lines/{id}/actions: registra o que o banco mostra (Pix, transferencia, tarifa) ou ignora a linha, com motivo. */
+export function actOnBankLine(schoolId: string, lineId: string, input: LineActionInput, options?: SendOptions): Promise<ApiResult<LineActionResult>> {
+  const body: Record<string, unknown> = { action: input.action };
+  if (input.action === "REGISTER_INCOME") {
+    if (input.method) body.method = input.method;
+    if (input.categoryKey) body.category_key = input.categoryKey;
+    if (input.guardianName) body.guardian_name = input.guardianName;
+  }
+  if (input.action === "IGNORE") body.reason = input.reason;
+  return apiSend("POST", `${base(schoolId)}/lines/${encodeURIComponent(lineId)}/actions`, body, parseAction, options);
+}
+
+/** GET .../closing-balance?period=YYYY-MM: o saldo do ultimo extrato de cada conta ate o fim do mes. */
+export function getClosingBalance(schoolId: string, period: string, options?: RequestOptions): Promise<ApiResult<ClosingBalance>> {
+  return apiGet(
+    `${base(schoolId)}/closing-balance?period=${encodeURIComponent(period)}`,
+    (body, status) => {
+      if (status !== 200 || !isRecord(body)) return null;
+      const items = parseList(body.items, (i) => {
+        if (!isRecord(i)) return null;
+        const bankAccountId = str(i.bank_account_id);
+        const nickname = str(i.nickname);
+        const closingBalanceCents = int(i.closing_balance_cents);
+        const asOf = str(i.as_of);
+        return bankAccountId && nickname && closingBalanceCents !== null && asOf ? { bankAccountId, nickname, closingBalanceCents, asOf } : null;
+      });
+      const total = body.total_cents === null || body.total_cents === undefined ? null : int(body.total_cents);
+      if (!items || (body.total_cents != null && total === null)) return null;
+      return { items, totalCents: total };
+    },
+    options,
+  );
 }
