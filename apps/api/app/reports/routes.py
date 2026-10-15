@@ -12,7 +12,7 @@ from app.auth.deps import Principal
 from app.auth.permissions import Permission, permissions_for
 from app.closing.queries import get_closing
 from app.core.errors import ProblemError
-from app.reports import cash_book, queries
+from app.reports import cash_book, community_report, queries
 from app.reports.cash_book import PackageTooLarge
 from app.reports.closing_report import ReportMismatch, build_closing_report, render_closing_report
 from app.reports.contributions_report import (
@@ -29,7 +29,7 @@ from app.statement.deps import (
     responses_of,
 )
 from app.statement.periods import PERIOD_PATTERN
-from app.statement.queries import fetch_summary
+from app.statement.queries import count_paid_contributions, fetch_summary, school_goals
 from app.storage import AttachmentStore, get_attachment_store
 
 router = APIRouter(prefix="/api/v1/schools/{school_id}", tags=["reports"])
@@ -319,3 +319,51 @@ def month_package(
             409, "package_too_large", "Too many or too large files for one package"
         ) from None
     return _file_response(content, "application/zip", f"pacote-{chosen}.zip")
+
+
+@router.get(
+    "/reports/community.pdf",
+    operation_id="reports_community_pdf",
+    summary="One page for the council, parents and teachers: what came in, what it was spent on, what is left",
+    response_class=Response,
+    responses=responses_of(401, 403, 404, 409, 422, extra=PDF_RESPONSE),
+    openapi_extra=permission_extra(*READ),
+)
+def community_pdf(
+    principal: Annotated[Principal, Depends(require_any(*READ))],
+    scope: InSchool,
+    db: TenantDb,
+    period: PeriodQuery = None,
+) -> Response:
+    """No person is named, so every role that can read reports may get it (it is the version made
+    to be shown). The totals are checked against `statement_summary` of the same period (409
+    `report_mismatch` if the ledger moved while it was being read, twice in a row)."""
+    chosen, start, end = month_of(db, scope, period)
+    organization_name, school_name = queries.names(db, scope.school_id)
+    generated_at = datetime.now(UTC)
+    for attempt in (1, 2):
+        summary = fetch_summary(db, scope.school_id, start, end)
+        if summary is None:
+            raise not_found()
+        goal, expected = school_goals(db, scope.school_id)
+        try:
+            report = community_report.build_community_report(
+                entries=queries.period_entries(db, scope.school_id, start, end),
+                summary=summary,
+                category_names=queries.category_names(db, scope.school_id),
+                organization_name=organization_name,
+                school_name=school_name,
+                period_start=start,
+                period_end=end,
+                generated_at=generated_at,
+                goal_cents=goal,
+                expected_contributions=expected,
+                paid_contributions=count_paid_contributions(db, scope.school_id, start, end),
+            )
+            break
+        except ReportMismatch:
+            if attempt == 2:
+                raise ProblemError(
+                    409, "report_mismatch", "The ledger changed while the report was being made"
+                ) from None
+    return pdf_response(community_report.render_community_pdf(report), f"prestacao-{chosen}.pdf")

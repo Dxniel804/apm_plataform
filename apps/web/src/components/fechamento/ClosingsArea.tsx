@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import type { ApiResult, Closing, Page } from "@/lib/api/types";
 import { saveBlob } from "@/lib/download";
 import { describeClosingError } from "@/lib/expense-labels";
-import { cashBookHref, monthPackageHref } from "@/lib/api/statement";
+import { cashBookHref, communityPdfHref, monthPackageHref } from "@/lib/api/statement";
 import { formatDateLong, formatDayLong } from "@/lib/format";
 import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { areasFor } from "@/lib/permissions";
@@ -294,7 +294,7 @@ function BookCard({ schoolId, management }: { schoolId: string; management: bool
     <section aria-label="Livro Caixa e pacote do mês" className="mb-8 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
       <h2 className="text-heading">Livro Caixa e pacote do mês</h2>
       <p className="mt-1 max-w-[62ch] text-sub text-ink-2">
-        O Livro Caixa lista tudo o que entrou e saiu, na ordem, com o saldo depois de cada lançamento.{management ? " O pacote reúne o livro e os anexos das despesas do mês, para entregar ao contador." : ""}
+        O relatório para a comunidade cabe em uma página e não cita nomes: serve para o conselho, os pais e os professores. O Livro Caixa lista tudo o que entrou e saiu, na ordem, com o saldo depois de cada lançamento.{management ? " O pacote reúne o livro e os anexos das despesas do mês, para entregar ao contador." : ""}
       </p>
       <div className="mt-4 flex flex-wrap items-end gap-4">
         <div className="min-w-0 basis-56">
@@ -306,6 +306,9 @@ function BookCard({ schoolId, management }: { schoolId: string; management: bool
             ))}
           </SelectField>
         </div>
+        <a className={link} href={communityPdfHref(schoolId, period)} download>
+          Relatório para a comunidade (PDF)
+        </a>
         <a className={link} href={cashBookHref(schoolId, period, "csv")} download>
           Livro Caixa (planilha)
         </a>

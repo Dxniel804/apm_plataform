@@ -178,6 +178,11 @@ export function cashBookHref(schoolId: string, period: string, format: "csv" | "
   return `${school(schoolId)}/reports/cash-book.${format}${query({ period })}`;
 }
 
+/** O relatorio de uma pagina para a comunidade (conselho, pais e professores): sem nomes de pessoas. */
+export function communityPdfHref(schoolId: string, period: string): string {
+  return `${school(schoolId)}/reports/community.pdf${query({ period })}`;
+}
+
 export function monthPackageHref(schoolId: string, period: string): string {
   return `${school(schoolId)}/reports/month-package.zip${query({ period })}`;
 }
