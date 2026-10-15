@@ -29,8 +29,23 @@ Escrito em 2026-10-15, a partir do código do Diário Digital (branch `origin/in
 
 Pontos a criar ao integrar: coluna `central_user_id` em `users`; tabela das organizações/escolas ligadas à Central (`central_org_id` na escola, como `rede_escolar.central_org_id` no Diário); rota `/sso/callback` e `/sso/start`; cliente da Central com os mesmos limites do Diário; a chave `FORKLIN_CORE_ENABLED` (já existe e hoje **recusa subir ligada**) e os segredos só no ambiente.
 
-## 4. O que ainda preciso confirmar com quem cuida da Central
-1. Os **`role_key`** que o APM terá na Central (hoje só existem os do Diário: `secretaria`, `gestao`, `professor_titular`, `professor_especialista`) e como a Central trata o cargo `gestao` do APM.
-2. Se **cada escola do APM é uma organização** da Central (o Diário usa "uma organização = uma rede = uma escola").
-3. Como o produto **APM Digital** será cadastrado na Central (`organization_products`, `max_users`, URL base do callback) e onde fica o segredo do produto.
-4. O que acontece com **funcionários que já existem** no APM quando a integração ligar (vinculação por e-mail, como o Diário faz para os usuários antigos).
+## 4. Respostas do dono do produto (2026-10-15) e o que ainda falta
+**Como o APM entra na Central.** No painel de administração, em **Novo sistema**, o produto é cadastrado com **Nome, Slug, URL base e Descrição**, e depois se configuram os **cargos (roles)**. Ao criar uma **organização** e atrelar o APM Digital a ela, a Central cria **um ambiente vazio esperando por usuários** nesse produto. Os usuários então entram em duas formas:
+- pelo **App Forklin**: a pessoa abre o App, vê o APM Digital, clica em **Acessar** e entra direto por **SSO** com o cargo dela;
+- pelo botão **ENTRAR COM FORKLIN** na tela de login do APM (igual ao do Diário de Classe), que manda para o App.
+
+**Vínculo por e-mail**, como o Diário: um funcionário que já existe no APM é ligado à conta da Central pelo e-mail na primeira entrada (e só se ainda não tiver vínculo).
+
+**Cargos.** Só **Gestão** e **Funcionário** (o responsável não tem login). Chaves sugeridas para a Central: `gestao` e `funcionario`.
+
+**Valores para o formulário "Novo sistema":**
+| Campo | Valor |
+|---|---|
+| Nome | APM Digital |
+| Slug | `apm-digital` (é o `aud` do token; precisa ser exatamente o que o APM verifica) |
+| URL base | O endereço público do APM (ainda **sem domínio definido**; em teste, o do ambiente local). A Central redireciona para `{URL base}/sso/callback?code=` |
+| Descrição | Prestação de contas da APM: contribuições, campanhas, despesas e conciliação |
+
+**O que a Central vai precisar entregar ao APM**: a URL da API Central, o **segredo do produto** (só no ambiente, nunca no chat) e a lista de chaves públicas (`/.well-known/jwks.json`).
+
+**Falta decidir:** o domínio público do APM (a URL base); a decisão sobre o cargo **Administrador da escola** (juntar com Gestão ou manter só para reabrir mês); se cada escola do APM é uma organização na Central (a regra do APM é "uma escola por conta", então a resposta natural é **sim**).
