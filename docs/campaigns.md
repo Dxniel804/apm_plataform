@@ -18,7 +18,7 @@ Limits: a product costs R$ 1,00 to R$ 10.000,00; at most 99 of a product per lin
 
 ## Who may do what
 
-`campaigns:manage` (the `treasurer`, the *gestão*, and `school_admin`) does everything below. Nobody else touches a campaign. The families need no login.
+`campaigns:manage` (the `secretaria`) does everything below. Nobody else touches a campaign. The families need no login.
 
 ## What the management does: `/api/v1/schools/{school_id}`
 
@@ -52,7 +52,7 @@ The **payment** an order shows is `PAID` (approved), `PENDING` (the Pix is open,
 
 ### Cost, profit and what is not in the ledger
 
-* The **cost** of a product (`unit_cost_cents`, R$ 0,00 to R$ 10.000,00, optional) is a **management metric**: it is NOT a ledger entry. The real outflow is still the expense the treasurer registers.
+* The **cost** of a product (`unit_cost_cents`, R$ 0,00 to R$ 10.000,00, optional) is a **management metric**: it is NOT a ledger entry. The real outflow is still the expense the secretaria registers.
 * The order keeps a **copy of the cost** at the moment of the purchase, like the name and the price. The application never sends it: the trigger `contribution_items_15_copy_cost` fills it from the product, so a cost changed later never touches an order already made.
 * The **profit** is the collected amount minus the costs, and it is shown **only when every unit sold has a cost** (`cost_complete`). Otherwise the answer says `profit_cents: null` and the page says "custo não informado". R$ 0,00 is a cost (a gift); empty is "not informed".
 

@@ -15,9 +15,9 @@ The **tenant is the organization**; a school is a sub-scope of it. Every table i
 
 `memberships` is where isolation is enforced by shape: `FOREIGN KEY (school_id, organization_id) REFERENCES schools (id, organization_id)` means a row can never name an organization and a school that belong to different tenants. `school_id` is `NOT NULL` since 0010 (ADR-020), so the constraint always applies; `organization_id` still has its own foreign key.
 
-Roles (a text `CHECK`, not a native enum, so migrating is easy): `school_admin`, `treasurer`, `staff`, `viewer` (the role of a network, `organization_admin`, was removed by 0010, ADR-020). Statuses: `invited` (default), `active`, `suspended`, `revoked`. The permission matrix (role → permissions) lives **in code** (`app/auth/permissions.py`, see [auth.md](auth.md)), not in tables.
+Roles (a text `CHECK`, not a native enum, so migrating is easy): `secretaria`, `staff` (migration 0022 merged `school_admin` and `treasurer` into `secretaria` and turned every `viewer` into a **suspended** `staff`; the role of a network, `organization_admin`, was removed by 0010, ADR-020). Statuses: `invited` (default), `active`, `suspended`, `revoked`. The permission matrix (role → permissions) lives **in code** (`app/auth/permissions.py`, see [auth.md](auth.md)), not in tables.
 
-**The names on the screen** (the keys above do not change): `school_admin` is *Administrador da escola*, `treasurer` is *Gestão*, `staff` is *Funcionário* and `viewer` is *Leitura* (`apps/web/src/lib/roles.ts`). The ledger origin `TEACHER` is shown as *funcionário(a)* too.
+**The names on the screen** (the keys above do not change): `secretaria` is *Secretaria* and `staff` is *Funcionário* (`apps/web/src/lib/roles.ts`). The ledger origin `TEACHER` is shown as *funcionário(a)* too.
 
 **Why `platform_admin` is not a membership role.** A platform administrator does not belong to an organization, and `memberships.organization_id` is `NOT NULL` on purpose. Putting a platform role there would either force a fake organization or weaken the invariant that every membership row has a tenant. Platform flows (jobs, super admin, creating tenants) need their own ADR and their own database role (ADR-014).
 
@@ -28,7 +28,7 @@ Each school is a separate customer, so **nothing crosses schools**: there is no 
 - The organization is only the **account** of that one school. `uq_schools_organization_id` (a unique index on `schools (organization_id)`) lets an organization hold a single school, so a context that names only the organization can never see another one. The rest of the schema keeps its `organization_id`, with the composite foreign keys, and nothing had to be rewritten.
 - `memberships.school_id` and `invitations.school_id` are `NOT NULL`. The role `organization_admin`, the only one that spanned schools, and the consolidated statement `org_statement_summary` were removed (migration 0010).
 - A person who works in two schools has two memberships, each one granted by the invitation of that school; nothing gives automatic access from one to the other. The site switches between them with `POST /auth/context`.
-- Reopening a closed month and approving an expense above the limit moved to the `school_admin`. The `treasurer` who closes a month still cannot reopen it.
+- Reopening a closed month and approving an expense above the limit moved to the `school_admin` by 0010; since 0022 the `secretaria` (who closes a month) reopens it too.
 - The migration refuses to run, with a message, when an organization has more than one school or a membership or invitation has no school: a school cannot move to another organization (the ledger is frozen), so a development database that still has a network is recreated and seeded again.
 
 ## The tenant context

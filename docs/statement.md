@@ -14,7 +14,7 @@ All under `/api/v1/schools/{school_id}`. `period` is `YYYY-MM`, read in the time
 | `GET /statement/summary` | `statement:read` or `reports:read_aggregate` | The columns of `statement_summary`. **Two balances**: `closing_balance_cents` is the primary one (in cash); `balance_after_pending_cents` is the secondary one (minus the reimbursements still to be paid, as of now) |
 | `GET /statement/pending` | `statement:read` | The rows of `statement_pending` (outside the balance); filter `section` |
 | `POST /closings` | `months:close` | `{period, bank_balance_reported_cents?}`. Only the `INSERT` is done here; the trigger computes everything. `201` with the closing and its `breakdown` |
-| `GET /closings`, `GET /closings/{id}` | `statement:read` or `reports:read_aggregate` | The closing: figures, `entries_hash` (the verification code), `bank_difference_cents` (bank minus cash), `breakdown` (detail only). The `viewer` does not get who closed or reopened it, nor the reason |
+| `GET /closings`, `GET /closings/{id}` | `statement:read` or `reports:read_aggregate` | The closing: figures, `entries_hash` (the verification code), `bank_difference_cents` (bank minus cash), `breakdown` (detail only). A caller without `reports:read` does not get who closed or reopened it, nor the reason |
 | `POST /closings/{id}/verify` | `statement:read` | `verify_closing`: `{verified}` (409 `closing_reopened` for a superseded closing) |
 | `POST /closings/{id}/reopen` | `months:reopen` | `{reason}` (10 to 500 characters after trimming). Latest active closing only, once |
 | `GET /closings/{id}/report.pdf` | `reports:read` or `reports:read_aggregate` | The monthly report (below) |
@@ -48,7 +48,7 @@ Everything on page one of the report and in the summary: opening, the split of t
 1. **From the snapshot, never recomputed.** The numbers of page one (the box of the period, both balances, the reconciliation with the bank and its difference) are columns of the stored closing, with the verification code. The lines come from `statement_entries` of the closed period, which cannot change: a closed month never receives an entry.
 2. **The sections must close with the box.** `build_closing_report` sorts the entries into A (contributions), B (expenses and reimbursements without the fees), C (confirmed returns) and D (bank fees), and checks that, by kind, they add up to the columns of the closing. If they do not, no page is drawn (`closing_mismatch`). Section E (pending, outside the balance) is the state **now** and says so: the box shows the pending reimbursements as they were at the closing.
 3. **Every page** has the footer "Página x de y", the verification code and the note about the receipts; the last page has the signature lines. Money is `R$ 1.234,56`, dates are in the time zone of the school.
-4. **`viewer` gets no personal data.** Whoever lacks `reports:read` gets the version where every origin and beneficiary is shown by initials (done when the report is built, so the drawing code never sees a name). A contribution with no name is "Contribuinte anônimo".
+4. **A caller without `reports:read` gets no personal data** (the `viewer` role was removed by 0022, the rule stays). Whoever lacks `reports:read` gets the version where every origin and beneficiary is shown by initials (done when the report is built, so the drawing code never sees a name). A contribution with no name is "Contribuinte anônimo".
 5. **`report_ref` is written once**, by the first PDF made (`pdf-v1:<instant>:<first 16 of the hash>`); the PDF is not stored, it is reproducible from the snapshot (same bytes for the same data, apart from the generation time).
 
 A reopened closing has no PDF (`409 closing_reopened`).
@@ -61,14 +61,14 @@ A reopened closing has no PDF (`409 closing_reopened`).
 - **A. Contribuições dos responsáveis** (group `CONTRIBUTIONS`) adds up to `contributions_in_cents` of `statement_summary` of the same month; **B. Outras entradas** (donations and the other income groups) to `other_in_cents`. Both are checked before drawing (the read is repeated once if the ledger moved in between, then `409 report_mismatch`). Refunds are not contributions and are not here.
 - **C. Fora do total**: contributions waiting for payment, in review, cancelled or expired (by the date of the fact). They never enter a sum.
 - Each line: date and time, reference (`APM-000042`), guardian (`guardian_name`; "Contribuinte anônimo" when there is none), student and class when the school collects them, channel, the shortened Pix id (of the paid charge, or the end-to-end id of a direct Pix), status, value, and "(ajuste tardio)" for `late_adjustment`.
-- The `viewer` gets initials for guardian and student. The class is kept (it is not a person).
+- A caller without `reports:read` gets initials for guardian and student. The class is kept (it is not a person).
 
 ## How to add a section to a PDF
 
 1. In `build_closing_report` (or `build_contributions_report`) build the lines of the section from the entries the database returned, and add the **cross-check** that ties them to a column of the closing (or of `statement_summary`). A section nobody checks is a section that can drift.
 2. Draw it in `render_*` with `section(title, columns, rows, subtotal_label=..., count=..., total_cents=...)` from `app/reports/layout.py`: it adds the repeated header, the subtotal row and the count.
 3. Any name that reaches the page must go through the anonymising step of the build (initials), never be added while drawing.
-4. Add the figures to the tests of the route: the section exists, its subtotal is the expected one, the `viewer` version has no name.
+4. Add the figures to the tests of the route: the section exists, its subtotal is the expected one, the version without `reports:read` has no name.
 
 ## Not done here
 

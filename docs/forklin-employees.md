@@ -3,9 +3,9 @@
 Escrito em 2026-10-15, a partir do código do Diário Digital (branch `origin/integracao`) e da API Central. **Nada disto está ligado ainda no APM Digital**: é o plano para quando a integração chegar.
 
 ## 1. Hoje (MVP): a gestão traz o funcionário pelo próprio sistema da APM
-- **Tela "Equipe"** (`/painel/equipe`) e **rotas `/api/v1/employees`**, para quem tem a permissão de convidar (`invitations:create`: administrador da escola e **gestão**).
+- **Tela "Equipe"** (`/painel/equipe`) e **rotas `/api/v1/employees`**, para quem tem a permissão de convidar (`invitations:create`: a **Secretaria**).
 - A gestão informa **nome, e-mail e cargo** (padrão: funcionário). O sistema manda um **e-mail** (Resend) com um link de 72 horas para a pessoa escolher a senha. A gestão vê quem já faz parte da equipe e quem ainda não entrou, **reenvia** ou **cancela** o convite, e **suspende** ou **reativa** o acesso de um funcionário.
-- Regra de quem pode o quê: quem pode convidar um cargo pode também suspender e reativar esse cargo, **nunca a si mesmo**. A gestão traz **só funcionários**; o administrador pode trazer qualquer cargo.
+- Regra de quem pode o quê: quem pode convidar um cargo pode também suspender e reativar esse cargo, **nunca a si mesmo**. A Secretaria traz **Funcionários e outras Secretarias** (sempre na própria escola).
 - O e-mail e a regra moram em **um único ponto** (`app/auth/invite.py`). É esse ponto que será trocado na integração; as rotas e a tela ficam.
 
 ## 2. Como o Diário Digital faz (o exemplo a seguir)
@@ -25,7 +25,7 @@ Escrito em 2026-10-15, a partir do código do Diário Digital (branch `origin/in
 | Login por e-mail e senha | **SSO**: App → Acessar → `/sso/callback` |
 | `users.id` próprio | `users.central_user_id` (id da Central) e provisionar no primeiro acesso |
 | Suspender muda a matrícula daqui | Muda na Central (`PATCH`) e depois aqui |
-| Cargos `school_admin`, `treasurer` (gestão), `staff`, `viewer` | Mapa **cargo da Central ↔ cargo do APM** (tabela fixa, cargo desconhecido recusado) |
+| Cargos `secretaria` e `staff` (decisão de 15/10: só dois) | Mapa **cargo da Central ↔ cargo do APM** (tabela fixa, cargo desconhecido recusado) |
 
 Pontos a criar ao integrar: coluna `central_user_id` em `users`; tabela das organizações/escolas ligadas à Central (`central_org_id` na escola, como `rede_escolar.central_org_id` no Diário); rota `/sso/callback` e `/sso/start`; cliente da Central com os mesmos limites do Diário; a chave `FORKLIN_CORE_ENABLED` (já existe e hoje **recusa subir ligada**) e os segredos só no ambiente.
 
@@ -36,7 +36,7 @@ Pontos a criar ao integrar: coluna `central_user_id` em `users`; tabela das orga
 
 **Vínculo por e-mail**, como o Diário: um funcionário que já existe no APM é ligado à conta da Central pelo e-mail na primeira entrada (e só se ainda não tiver vínculo).
 
-**Cargos.** Só **Gestão** e **Funcionário** (o responsável não tem login). Chaves sugeridas para a Central: `gestao` e `funcionario`.
+**Cargos.** Só **Secretaria** e **Funcionário** (o responsável não tem login; não há Administrador da escola nem Leitura). Chaves sugeridas para a Central: `secretaria` e `funcionario` (a chave interna do funcionário segue `staff`).
 
 **Valores para o formulário "Novo sistema":**
 | Campo | Valor |
@@ -48,4 +48,4 @@ Pontos a criar ao integrar: coluna `central_user_id` em `users`; tabela das orga
 
 **O que a Central vai precisar entregar ao APM**: a URL da API Central, o **segredo do produto** (só no ambiente, nunca no chat) e a lista de chaves públicas (`/.well-known/jwks.json`).
 
-**Falta decidir:** o domínio público do APM (a URL base); a decisão sobre o cargo **Administrador da escola** (juntar com Gestão ou manter só para reabrir mês); se cada escola do APM é uma organização na Central (a regra do APM é "uma escola por conta", então a resposta natural é **sim**).
+**Falta decidir:** o domínio público do APM (a URL base); (o cargo Administrador da escola já foi decidido: não existe mais, a Secretaria reabre mês); se cada escola do APM é uma organização na Central (a regra do APM é "uma escola por conta", então a resposta natural é **sim**).

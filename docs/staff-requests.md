@@ -2,16 +2,16 @@
 
 Code: `apps/api/app/staff_requests/` (router, service, repository, schemas), migration `0012_staff_requests.py`, models in `app/models/staff_requests.py`. The photos use the same store and the same upload rules as the receipts of an expense ([expenses.md](expenses.md)). It is **not money**: nothing here touches the ledger.
 
-A *funcionário* opens a request to the management (a category, a title, a description and photos taken on the spot or chosen from the gallery); the *gestão* sees them all, filters by status and category, marks one as in progress and as resolved, with a note the author reads.
+A *funcionário* opens a request to the management (a category, a title, a description and photos taken on the spot or chosen from the gallery); the *secretaria* sees them all, filters by status and category, marks one as in progress and as resolved, with a note the author reads.
 
 ## Who may do what
 
 | Permission | Roles | What it allows |
 | --- | --- | --- |
-| `requests:submit` | `staff`, `school_admin` | open a request, attach photos to **your own** open request, cancel your own |
-| `requests:read_own` | `staff`, `school_admin` | read the requests you wrote |
-| `requests:read_all` | `treasurer` (gestão), `school_admin` | read every request of the school |
-| `requests:manage` | `treasurer` (gestão), `school_admin` | start and resolve any request |
+| `requests:submit` | `staff` | open a request, attach photos to **your own** open request, cancel your own |
+| `requests:read_own` | `staff` | read the requests you wrote |
+| `requests:read_all` | `secretaria` | read every request of the school |
+| `requests:manage` | `secretaria` | start and resolve any request |
 
 Somebody else's request is the same `404 not_found` as one that never existed, for whoever reads only their own.
 

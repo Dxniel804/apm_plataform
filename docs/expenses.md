@@ -43,11 +43,11 @@ A SUBMITTED expense is **not** cancelled: it is decided or sent back. Nothing is
 
 - **The author never decides on their own expense**: `approve`, `reject` and `request-correction` answer `403 self_approval_forbidden` to the author (the database also refuses an approver equal to the submitter). Nor does the person to be reimbursed register their own reimbursement (`403 self_reimbursement_forbidden`), nor the author the payment of their own expense (`403 self_payment_forbidden`).
 - **Only the author** edits, attaches and sends (`403 author_only` for someone else who can see the expense; a colleague who reads only their own gets the `404`).
-- **Reading**: `expenses:read_all` (treasurer, administrators) sees every expense of the school, everyone else only their own; somebody else's is the same `404` as one that never existed.
+- **Reading**: `expenses:read_all` (the secretaria) sees every expense of the school, everyone else only their own; somebody else's is the same `404` as one that never existed.
 - **Partial approval**: `approved_amount_cents` is omitted (the requested amount), at most the requested amount (`422 validation_error`, `above_requested`), and lower only when a collaborator paid (`422 partial_approval_not_allowed`). The reimbursement is **exactly** the approved amount; the request stays in `amount_cents`.
 - **Sending** needs one attachment, a purchase reason and a way it was paid (`422 expense_incomplete`, with the missing fields).
 - **A category** for an expense is money out, active and needing approval; any other (another school's, a revenue, the bank fees, an unknown id) is `422 validation_error` with `errors: [{field: category_id, code: not_available}]`.
-- **The origin** of the ledger line (who spent it) comes from the author's role: staff `TEACHER`, administrators `DIRECTOR`, treasurer `MANAGEMENT`; the reimbursement goes to `teacher_reimbursement` or, for a director, `director_reimbursement`.
+- **The origin** of the ledger line (who spent it) comes from the author's role: staff `TEACHER`, secretaria `MANAGEMENT` (the `DIRECTOR` origin remains in old rows); the reimbursement goes to `teacher_reimbursement` or, for a director, `director_reimbursement`.
 - **Races**: every action locks the row and moves the state with a compare-and-swap, so two approvers at the same moment: one `200`, one `409`.
 
 ## Errors
