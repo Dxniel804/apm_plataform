@@ -48,7 +48,7 @@ Crie uma aplicação do tipo **Compose**: repositório do APM, branch `main`, ca
 | Variável | Obrigatória | Valor |
 |---|---|---|
 | `APM_DOMAIN` | sim | `apm.exemplo.com.br` (sem `https://`) |
-| `DB_HOST` | sim | nome interno do serviço Postgres do passo 1 |
+| `DB_HOST` | sim | **nome interno** do serviço Postgres do passo 1: na página do banco, em *Internal Credentials* / *Internal Host*, é o nome que aparece antes de `:5432` (algo como `apm-db-x7k2ab`). Não é o IP nem o endereço público |
 | `DB_NAME` | não | `apm` (padrão) |
 | `DB_ADMIN_USER` | sim | `apm_admin` |
 | `DB_ADMIN_PASSWORD` | sim | senha do passo 1 |
@@ -56,6 +56,7 @@ Crie uma aplicação do tipo **Compose**: repositório do APM, branch `main`, ca
 | `AUTH_SECRET` | sim | `openssl rand -hex 32` (assina o CSRF e as chaves de limite de tentativas; **guarde: trocar derruba as sessões**) |
 | `RESEND_API_KEY` | sim | chave do Resend |
 | `MAIL_FROM` | sim | `APM Digital <contato@seudominio.com.br>` (domínio verificado no Resend) |
+| `EMAIL_SENDER` | **não preencher** | já vem fixo como `resend` no compose. Esta variável só aceita `resend` (ou `file`, de desenvolvimento): um nome ou e-mail nela impede a API de subir. O remetente vai em `MAIL_FROM` |
 | `PIX_LIVE_ENABLED` | não | **`false`** (padrão): contribuições respondem "pagamentos pausados" até o gateway ser escolhido |
 | `FORKLIN_CORE_ENABLED` | não | `false` até o passo 5; depois `true` |
 | `API_CENTRAL_URL` | com a Forklin | URL **interna** da Central, só o nome do serviço na rede do Dokploy (como a do App: `http://<servico>:8000`, sem pontos no nome), ou a pública `https://`. Qualquer outro `http://` é recusado em produção |
@@ -63,6 +64,8 @@ Crie uma aplicação do tipo **Compose**: repositório do APM, branch `main`, ca
 | `FORKLIN_PRODUCT_SLUG` | não | `apm-digital` (padrão) |
 | `FORKLIN_PRODUCT_SECRET` | com a Forklin | o segredo que a Central mostrou **uma vez** no passo 5 |
 | `TRUSTED_PROXY_IPS` | não | `*` (padrão): a API só é alcançada pelo Traefik |
+
+**Rede:** os serviços entram na rede `dokploy-network` (já declarada no compose como externa), que é a que o Dokploy usa para o Postgres e para o Traefik. Se a sua instalação isola cada aplicação (*Isolated Deployment*), confirme no Dokploy que o serviço Postgres e esta aplicação continuam na mesma rede.
 
 A API **recusa subir** com `ENV=production` sem HTTPS, `COOKIE_SECURE`, origens `https`, e-mail pelo
 Resend ou `AUTH_SECRET` forte: isso já está no compose, e a mensagem de erro diz o que falta.

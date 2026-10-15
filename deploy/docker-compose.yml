@@ -21,6 +21,7 @@ services:
   migrate:
     build: *api-build
     restart: "no"
+    networks: [default, dokploy-network]
     command: ["alembic", "upgrade", "head"]
     environment:
       <<: *database
@@ -31,6 +32,7 @@ services:
   api:
     build: *api-build
     restart: unless-stopped
+    networks: [default, dokploy-network]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -80,6 +82,7 @@ services:
   jobs:
     build: *api-build
     restart: unless-stopped
+    networks: [default, dokploy-network]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -95,6 +98,7 @@ services:
         # Destino do rewrite de /api/* gravado no build (so usado se o dominio apontar so para o site).
         API_PROXY_URL: http://api:8000
     restart: unless-stopped
+    networks: [default, dokploy-network]
     depends_on:
       api:
         condition: service_healthy
@@ -115,6 +119,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
+networks:
+  # A rede compartilhada do Dokploy: e por ela que estes servicos alcançam o Postgres do passo 1 (pelo
+  # nome interno dele, o DB_HOST) e que o Traefik alcança o site e a API.
+  dokploy-network:
+    external: true
 
 volumes:
   attachments:
