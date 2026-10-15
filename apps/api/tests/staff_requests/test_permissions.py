@@ -10,7 +10,7 @@ from app.auth.permissions import ROLE_PERMISSIONS, Permission
 from tests.expenses.support import Scene, png
 from tests.staff_requests.support import opened
 
-ROLES = ["school_admin", "treasurer", "staff", "viewer"]
+ROLES = ["secretaria", "staff"]
 ANY = "00000000-0000-4000-8000-000000000001"
 SUBMIT = {role for role in ROLES if Permission.REQUESTS_SUBMIT in ROLE_PERMISSIONS[role]}
 READ = {
@@ -37,10 +37,9 @@ def _routes() -> list[tuple[str, str, dict[str, Any], set[str]]]:
 
 def test_the_sets_of_roles_are_what_the_permission_map_says() -> None:
     """If the map of roles changes, this table must be looked at again."""
-    assert {"school_admin", "staff"} == SUBMIT
-    assert {"school_admin", "treasurer", "staff"} == READ
-    assert {"school_admin", "treasurer"} == MANAGE
-    assert "viewer" not in SUBMIT | READ | MANAGE
+    assert {"staff"} == SUBMIT
+    assert {"secretaria", "staff"} == READ
+    assert {"secretaria"} == MANAGE
 
 
 @pytest.mark.parametrize("role", ROLES)
@@ -71,7 +70,7 @@ def test_the_staff_cannot_answer_a_request_not_even_their_own(scene: Scene) -> N
 
 
 def test_the_management_cannot_open_a_request(scene: Scene) -> None:
-    gestao = scene.person("treasurer", label="gestao")
+    gestao = scene.person("secretaria", label="gestao")
 
     response = gestao.post("/requests", {"category": "OTHER", "title": "Do tesoureiro"})
 

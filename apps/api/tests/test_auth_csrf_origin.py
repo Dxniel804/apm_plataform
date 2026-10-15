@@ -177,7 +177,7 @@ def test_a_logged_in_write_needs_the_csrf_token_of_its_own_session(
     apis: ApiFactory, users: UserFactory, variant: str
 ) -> None:
     api = apis.make()
-    user = users.make("school_admin")
+    user = users.make("secretaria")
     api.login(user)
     own = api.csrf
     assert own is not None
@@ -217,7 +217,7 @@ def test_a_logged_in_write_needs_the_csrf_token_of_its_own_session(
 
 def test_the_matching_csrf_token_is_accepted(apis: ApiFactory, users: UserFactory) -> None:
     api = apis.make()
-    api.login(users.make("school_admin"))
+    api.login(users.make("secretaria"))
     body = {
         "email": users.world.email("ok"),
         "role": "staff",

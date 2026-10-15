@@ -40,9 +40,9 @@ describe("PainelShell com sessao real", () => {
   it("mostra o nome, o papel e a escola reais; todo vinculo e de UMA escola e o painel e dela", () => {
     renderShell();
     expect(screen.getAllByText("Pessoa de Teste").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Administrador da escola").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Secretaria").length).toBeGreaterThan(0);
     const switcher = screen.getAllByRole("button", { name: /Escola Outra/ })[0]!;
-    expect(switcher).toHaveTextContent("Administrador da escola");
+    expect(switcher).toHaveTextContent("Secretaria");
     expect(screen.getByTestId("data")).toHaveTextContent(ADMIN_MEMBERSHIP.school.id);
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
     expect(screen.queryByText(/Protótipo/)).not.toBeInTheDocument();
@@ -66,21 +66,13 @@ describe("PainelShell com sessao real", () => {
     expect(screen.queryByRole("link", { name: "Fechamento" })).not.toBeInTheDocument();
     unmount();
 
-    const treasurer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage", "campaigns:manage"] } });
-    const t = renderShell(treasurer);
+    const secretaria = session({ active_membership: { ...SCHOOL_MEMBERSHIP, permissions: ["statement:read", "expenses:approve", "expenses:read_all", "months:close", "requests:read_all", "requests:manage", "campaigns:manage"] } });
+    const t = renderShell(secretaria);
     expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Despesas", "Solicitações", "Campanhas", "Fechamento"]));
     expect(screen.getAllByRole("link", { name: "Campanhas" })[0]).toHaveAttribute("href", "/painel/campanhas");
     expect(screen.queryByRole("link", { name: "Minhas despesas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Minhas solicitações" })).not.toBeInTheDocument();
     t.unmount();
-
-    const viewer = session({ active_membership: { ...SCHOOL_MEMBERSHIP, role: "viewer", permissions: ["reports:read_aggregate"] } });
-    renderShell(viewer);
-    expect(names()).toEqual(expect.arrayContaining(["Dashboard", "Fechamento"]));
-    expect(screen.queryByRole("link", { name: "Despesas" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Contribuições" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Solicitações/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Campanhas" })).not.toBeInTheDocument();
   });
 
   it("a area Personalizacao tem o proprio titulo e recebe a escola do vinculo ativo", () => {
@@ -194,8 +186,8 @@ describe("sessao sem vinculo ativo (varios vinculos, nenhum escolhido)", () => {
 
   it("os dois vinculos aparecem com o papel de cada um", () => {
     renderShell(session({ active_membership: null }));
-    expect(screen.getByRole("button", { name: /Escola Outra/ })).toHaveTextContent("Administrador da escola");
-    expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Gestão");
+    expect(screen.getByRole("button", { name: /Escola Outra/ })).toHaveTextContent("Secretaria");
+    expect(screen.getByRole("button", { name: /Escola Teste/ })).toHaveTextContent("Secretaria");
   });
 });
 

@@ -34,7 +34,7 @@ def session_state(engine: Engine, token: str) -> Any:
 def test_a_user_with_two_memberships_must_choose_before_acting(
     api: Api, users: UserFactory
 ) -> None:
-    user = users.make("school_admin", extra=(("viewer", "a", "2"),), label="two")
+    user = users.make("secretaria", extra=(("staff", "a", "2"),), label="two")
     api.login(user)
 
     response = api.invite(users.world.email("x"), "staff", users.world.school_a1)
@@ -46,7 +46,7 @@ def test_a_user_with_two_memberships_must_choose_before_acting(
 def test_switching_rotates_the_token_and_keeps_the_absolute_expiry(
     api: Api, users: UserFactory, admin_engine: Engine
 ) -> None:
-    user = users.make("school_admin", extra=(("viewer", "a", "2"),), label="two")
+    user = users.make("secretaria", extra=(("staff", "a", "2"),), label="two")
     api.login(user)
     old_token, old_csrf = api.session_token, api.csrf
     assert old_token is not None
@@ -56,8 +56,13 @@ def test_switching_rotates_the_token_and_keeps_the_absolute_expiry(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["active_membership"]["role"] == "viewer"
-    assert body["active_membership"]["permissions"] == ["reports:read_aggregate"]
+    assert body["active_membership"]["role"] == "staff"
+    assert body["active_membership"]["permissions"] == [
+        "expenses:read_own",
+        "expenses:submit",
+        "requests:read_own",
+        "requests:submit",
+    ]
     new_token = api.session_token
     assert new_token not in (None, old_token) and api.csrf != old_csrf
     assert session_state(admin_engine, new_token or "").expires_at == expiry  # no extension
@@ -70,7 +75,7 @@ def test_switching_rotates_the_token_and_keeps_the_absolute_expiry(
 def test_switching_to_somebody_elses_membership_or_an_unknown_one_is_the_same_answer(
     api: Api, users: UserFactory
 ) -> None:
-    mine = users.make("school_admin", extra=(("viewer", "a", "2"),), label="two")
+    mine = users.make("secretaria", extra=(("staff", "a", "2"),), label="two")
     theirs = users.make("staff", org="b", school="1", label="other")
     api.login(mine)
 
@@ -147,18 +152,18 @@ def test_a_deactivated_user_loses_the_session_on_the_next_request(
 def test_a_change_of_role_takes_effect_on_the_next_request(
     api: Api, users: UserFactory, admin_engine: Engine
 ) -> None:
-    user = users.make("school_admin")
+    user = users.make("secretaria")
     api.login(user)
     school = users.world.school_a1
     assert api.invite(users.world.email("a"), "staff", school).status_code == 201
 
     with admin_engine.begin() as connection:
         connection.execute(
-            text("UPDATE memberships SET role = 'viewer' WHERE id = :id"),
+            text("UPDATE memberships SET role = 'staff' WHERE id = :id"),
             {"id": user.membership_ids[0]},
         )
 
-    assert api.get(ME).json()["active_membership"]["role"] == "viewer"
+    assert api.get(ME).json()["active_membership"]["role"] == "staff"
     assert api.invite(users.world.email("b"), "staff", school).status_code == 403
 
 
@@ -171,7 +176,7 @@ def test_a_membership_that_was_added_later_shows_up_without_a_new_login(
         connection.execute(
             text(
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-                "VALUES (:u, :o, :s, 'viewer', 'active')"
+                "VALUES (:u, :o, :s, 'staff', 'active')"
             ),
             {"u": user.id, "o": world.org_a2, "s": world.school_a2},
         )
@@ -209,10 +214,10 @@ def test_each_role_reaches_exactly_its_own_scope(
     seen: dict[str, set[str]] = {}
     for label, user in {
         "school-a1": users.make("staff", org="a", school="1"),
-        "school-a2": users.make("viewer", org="a", school="2"),
-        "admin-a1": users.make("school_admin", org="a"),
+        "school-a2": users.make("staff", org="a", school="2"),
+        "admin-a1": users.make("secretaria", org="a"),
         "school-b1": users.make("staff", org="b", school="1"),
-        "admin-b1": users.make("school_admin", org="b"),
+        "admin-b1": users.make("secretaria", org="b"),
     }.items():
         client = apis.make(configure=_tenant_routes)
         client.login(user)
@@ -251,7 +256,7 @@ def test_the_tenant_is_not_taken_from_a_header_the_query_or_the_body(
 def test_a_session_without_a_context_reaches_no_tenant_route(
     tenant_api: Api, users: UserFactory
 ) -> None:
-    tenant_api.login(users.make("staff", extra=(("viewer", "a", "2"),), label="two"))
+    tenant_api.login(users.make("staff", extra=(("staff", "a", "2"),), label="two"))
 
     response = tenant_api.get("/api/test/tenant")
 
@@ -261,7 +266,7 @@ def test_a_session_without_a_context_reaches_no_tenant_route(
 def test_switching_context_moves_the_tenant_with_it(
     tenant_api: Api, users: UserFactory, world: World
 ) -> None:
-    user = users.make("staff", org="a", school="1", extra=(("viewer", "a", "2"),), label="two")
+    user = users.make("staff", org="a", school="1", extra=(("staff", "a", "2"),), label="two")
     tenant_api.login(user)
 
     tenant_api.switch(user.membership_ids[0])
@@ -287,7 +292,7 @@ def test_the_permission_map_matches_what_the_roles_of_the_database_allow(
             text(
                 "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
                 "WHERE conrelid = 'memberships'::regclass AND contype = 'c' "
-                "AND pg_get_constraintdef(oid) LIKE '%viewer%'"
+                "AND pg_get_constraintdef(oid) LIKE '%secretaria%'"
             )
         ).scalar_one()
 
@@ -298,16 +303,16 @@ def test_the_permission_map_matches_what_the_roles_of_the_database_allow(
 
 
 def test_what_each_role_may_do() -> None:
-    everything = set(Permission)
-    assert permissions_for("school_admin") == everything  # includes reopening a closed month
-    assert permissions_for("organization_admin") == frozenset()  # the role of a network is gone
-    assert permissions_for("treasurer") == {
+    for gone in ("organization_admin", "school_admin", "treasurer", "viewer"):
+        assert permissions_for(gone) == frozenset()  # the roles that no longer exist can do nothing
+    assert permissions_for("secretaria") == {
         Permission.CONTRIBUTIONS_RECORD_CASH,
         Permission.EXPENSES_READ_ALL,
         Permission.EXPENSES_APPROVE,
         Permission.REIMBURSEMENTS_REGISTER,
         Permission.REFUNDS_REGISTER,
         Permission.MONTHS_CLOSE,
+        Permission.MONTHS_REOPEN,  # decided on 2026-10-15: the secretaria also reopens a month
         Permission.STATEMENT_READ,
         Permission.REPORTS_READ,
         Permission.REQUESTS_READ_ALL,
@@ -315,7 +320,7 @@ def test_what_each_role_may_do() -> None:
         Permission.CAMPAIGNS_MANAGE,
         Permission.SCHOOL_SETTINGS_MANAGE,
         Permission.RECONCILIATION_MANAGE,
-        Permission.INVITATIONS_CREATE,  # the management brings the employees in (and only them)
+        Permission.INVITATIONS_CREATE,  # she brings the people of the school in
     }
     assert permissions_for("staff") == {
         Permission.EXPENSES_SUBMIT,
@@ -323,16 +328,14 @@ def test_what_each_role_may_do() -> None:
         Permission.REQUESTS_SUBMIT,
         Permission.REQUESTS_READ_OWN,
     }
-    assert permissions_for("viewer") == {Permission.REPORTS_READ_AGGREGATE}
     for unknown in (None, "", "root", "ORGANIZATION_ADMIN", "parent"):
         assert permissions_for(unknown) == frozenset()  # a role that does not exist can do nothing
 
 
-def test_only_the_school_admin_can_reopen_a_month_and_nobody_else_manages_access() -> None:
+def test_only_the_secretaria_reopens_a_month_and_brings_people_in() -> None:
     can_reopen = {r for r, p in ROLE_PERMISSIONS.items() if Permission.MONTHS_REOPEN in p}
     can_invite = {r for r, p in ROLE_PERMISSIONS.items() if Permission.INVITATIONS_CREATE in p}
 
-    assert can_reopen == {"school_admin"}
-    # the management invites too, but INVITABLE_ROLES lets it bring in employees only
-    assert can_invite == {"school_admin", "treasurer"}
-    assert INVITABLE_ROLES["treasurer"] == {"staff"}
+    assert can_reopen == {"secretaria"}
+    assert can_invite == {"secretaria"}
+    assert INVITABLE_ROLES["secretaria"] == {"secretaria", "staff"}

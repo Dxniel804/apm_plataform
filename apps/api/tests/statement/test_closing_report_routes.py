@@ -1,6 +1,6 @@
 # ruff: noqa: E501  (SQL text)
 """The PDF of a closing over HTTP: drawn from the snapshot, the sections close with the summary, the
-`viewer` gets no names, `report_ref` is written once."""
+`report_ref` is written once."""
 
 import uuid
 from typing import Any
@@ -20,7 +20,7 @@ def report_path(scene: Scene, closing_id: str) -> str:
 
 
 def close_march(login: Login, scene: Scene, **body: Any) -> dict[str, Any]:
-    response = login(scene.users["treasurer"]).post(
+    response = login(scene.users["secretaria"]).post(
         closings(scene.fresh.school), {"period": MARCH, **body}
     )
     assert response.status_code == 201, response.text
@@ -32,7 +32,7 @@ def test_the_pdf_of_march_has_the_summary_the_sections_and_the_signatures(
     scene: Scene, login: Login
 ) -> None:
     created = close_march(login, scene, bank_balance_reported_cents=12000)
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(report_path(scene, created["id"]))
 
@@ -92,7 +92,7 @@ def test_the_pdf_of_march_has_the_summary_the_sections_and_the_signatures(
 
 def test_the_sections_close_with_the_summary_of_the_closing(scene: Scene, login: Login) -> None:
     created = close_march(login, scene)
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     everything = text_of(api.get(report_path(scene, created["id"])).content)
 
@@ -112,7 +112,7 @@ def test_where_the_money_went_comes_from_the_breakdown(scene: Scene, login: Logi
     created = close_march(login, scene)
 
     everything = text_of(
-        login(scene.users["treasurer"]).get(report_path(scene, created["id"])).content
+        login(scene.users["secretaria"]).get(report_path(scene, created["id"])).content
     )
 
     assert "Para onde foi o dinheiro" in everything
@@ -121,25 +121,9 @@ def test_where_the_money_went_comes_from_the_breakdown(scene: Scene, login: Logi
     assert "Tarifas bancárias (5,5%) R$ 3,50" in everything  # 350 of 6350
 
 
-def test_the_viewer_gets_the_version_without_names(scene: Scene, login: Login) -> None:
-    created = close_march(login, scene)
-
-    response = login(scene.users["viewer"]).get(report_path(scene, created["id"]))
-
-    assert response.status_code == 200, response.text
-    everything = text_of(response.content)
-    for name in ("Maria", "Exemplo", "João", "Teste", "T5 staff", "Ana Antiga"):
-        assert name not in everything, name
-    assert "M. E." in everything and "J. T." in everything and "T. S." in everything
-    assert "Versão sem dados pessoais" in everything
-    # the figures are the same ones
-    assert "SALDO FINAL EM CAIXA R$ 121,50" in everything
-    assert "Subtotal de entradas (2) R$ 80,00" in everything
-
-
 @pytest.mark.parametrize(
     ("role", "status"),
-    [("admin", 200), ("school_admin", 200), ("treasurer", 200), ("viewer", 200), ("staff", 403)],
+    [("admin", 200), ("secretaria", 200), ("secretaria", 200), ("staff", 403)],
 )
 def test_who_may_download_the_pdf(scene: Scene, login: Login, role: str, status: int) -> None:
     created = close_march(login, scene)
@@ -154,11 +138,11 @@ def test_the_reference_is_written_once_on_the_first_pdf_and_never_again(
 ) -> None:
     created = close_march(login, scene)
     assert created["report_ref"] is None
-    treasurer = login(scene.users["treasurer"])
+    treasurer = login(scene.users["secretaria"])
 
     first = treasurer.get(report_path(scene, created["id"]))
     detail = treasurer.get(closings(scene.fresh.school, f"/{created['id']}")).json()
-    second = login(scene.users["viewer"]).get(report_path(scene, created["id"]))
+    second = login(scene.users["admin"]).get(report_path(scene, created["id"]))
     again = treasurer.get(closings(scene.fresh.school, f"/{created['id']}")).json()
 
     assert first.status_code == second.status_code == 200
@@ -179,7 +163,7 @@ def test_a_reopened_closing_has_no_pdf(scene: Scene, login: Login) -> None:
     created = close_march(login, scene)
     assert reopen(login(scene.users["admin"]), scene, created["id"]).status_code == 200
 
-    response = login(scene.users["treasurer"]).get(report_path(scene, created["id"]))
+    response = login(scene.users["secretaria"]).get(report_path(scene, created["id"]))
 
     assert (response.status_code, response.json()["code"]) == (409, "closing_reopened")
 
@@ -195,19 +179,19 @@ def test_a_ledger_that_no_longer_matches_the_snapshot_gets_no_pdf(
             {"t": scene.entries["maria"]},
         )
 
-    response = login(scene.users["treasurer"]).get(report_path(scene, created["id"]))
+    response = login(scene.users["secretaria"]).get(report_path(scene, created["id"]))
 
     assert (response.status_code, response.json()["code"]) == (409, "closing_mismatch")
-    detail = login(scene.users["treasurer"]).get(closings(scene.fresh.school, f"/{created['id']}"))
+    detail = login(scene.users["secretaria"]).get(closings(scene.fresh.school, f"/{created['id']}"))
     assert detail.json()["report_ref"] is None
 
 
 def test_the_pdf_of_another_organization_is_a_404(scene: Scene, login: Login) -> None:
-    theirs = login(scene.other_users["treasurer"]).post(
+    theirs = login(scene.other_users["secretaria"]).post(
         closings(scene.other.school), {"period": MARCH}
     )
     assert theirs.status_code == 201
-    mine = login(scene.users["treasurer"])
+    mine = login(scene.users["secretaria"])
 
     answers = [
         mine.get(report_path(scene, theirs.json()["id"])),  # their closing under my school
@@ -225,7 +209,7 @@ def test_the_same_closing_gives_the_same_pdf_but_for_the_time_it_was_made(
     scene: Scene, login: Login
 ) -> None:
     created = close_march(login, scene)
-    api: Api = login(scene.users["treasurer"])
+    api: Api = login(scene.users["secretaria"])
 
     first = api.get(report_path(scene, created["id"])).content
     second = api.get(report_path(scene, created["id"])).content
@@ -250,7 +234,7 @@ def test_the_pending_section_adds_what_is_to_receive_apart_from_what_is_to_pay(
         check_consistency(conn)
 
     everything = text_of(
-        login(scene.users["treasurer"]).get(report_path(scene, created["id"])).content
+        login(scene.users["secretaria"]).get(report_path(scene, created["id"])).content
     )
 
     assert "E. Pendências (fora do saldo): a receber" in everything
@@ -261,49 +245,6 @@ def test_the_pending_section_adds_what_is_to_receive_apart_from_what_is_to_pay(
     pending_section = everything.split("E. Pendências")[1].split("Conferência")[0]
     assert "R$ 40,00" not in pending_section  # not their sum, 25 + 15
     assert "R$ 10,00" not in pending_section  # nor their difference
-
-
-def test_the_viewer_never_gets_the_free_text_of_a_line_but_management_does(
-    scene: Scene, login: Login
-) -> None:
-    created = close_march(login, scene)
-    seen_by_viewer = text_of(
-        login(scene.users["viewer"]).get(report_path(scene, created["id"])).content
-    )
-    seen_by_management = text_of(
-        login(scene.users["treasurer"]).get(report_path(scene, created["id"])).content
-    )
-
-    for free_text in ("Zélia", "Pintora", "Material de pintura", "Rosa", "Tabajara", "devolvido"):
-        assert free_text not in seen_by_viewer, free_text
-    assert "Compra de material" in seen_by_viewer  # the category stays, and so does the amount
-    assert "R$ 20,00" in seen_by_viewer
-    assert "Material de pintura comprado por Zélia Pintora" in seen_by_management
-    assert "devolvido pela professora Rosa Tabajara" in seen_by_management
-
-
-def test_a_read_only_role_draws_the_pdf_and_writes_nothing(
-    scene: Scene, login: Login, admin_engine: Engine
-) -> None:
-    created = close_march(login, scene)
-    treasurer = login(scene.users["treasurer"])
-
-    by_viewer = login(scene.users["viewer"]).get(report_path(scene, created["id"]))
-    after_viewer = treasurer.get(closings(scene.fresh.school, f"/{created['id']}")).json()
-    with admin_engine.connect() as conn:
-        audited: int = conn.execute(
-            text(
-                "SELECT count(*) FROM audit_logs WHERE entity_id = :c AND action = 'monthly_closings.update'"
-            ),
-            {"c": created["id"]},
-        ).scalar_one()
-    by_treasurer = treasurer.get(report_path(scene, created["id"]))
-    after_treasurer = treasurer.get(closings(scene.fresh.school, f"/{created['id']}")).json()
-
-    assert by_viewer.status_code == 200 and by_viewer.content.startswith(b"%PDF-")
-    assert after_viewer["report_ref"] is None and audited == 0  # nothing written, nothing audited
-    assert by_treasurer.status_code == 200
-    assert after_treasurer["report_ref"].startswith("pdf-v1:")  # management records it
 
 
 def test_the_reference_is_only_ever_written_on_an_active_closing(
@@ -342,7 +283,7 @@ def test_a_race_with_the_ledger_is_read_again_once_before_it_looks_like_tamperin
 
     monkeypatch.setattr("app.reports.routes.queries.period_entries", short_the_first_time)
 
-    response = login(scene.users["treasurer"]).get(report_path(scene, created["id"]))
+    response = login(scene.users["secretaria"]).get(report_path(scene, created["id"]))
 
     assert response.status_code == 200, response.text
     assert len(reads) == 2
@@ -361,7 +302,7 @@ def test_a_second_miss_is_a_409_and_writes_nothing(
         return real(*args, **kwargs)[:-1]
 
     monkeypatch.setattr("app.reports.routes.queries.period_entries", always_short)
-    treasurer = login(scene.users["treasurer"])
+    treasurer = login(scene.users["secretaria"])
 
     response = treasurer.get(report_path(scene, created["id"]))
 

@@ -46,7 +46,7 @@ def test_a_school_outside_the_session_is_the_same_404_as_one_that_never_existed(
     scene: Scene,
 ) -> None:
     ana = manager(scene, "ana")
-    other = scene.person("treasurer", school="2", label="other")
+    other = scene.person("secretaria", school="2", label="other")
     foreign = on_sale(other)
 
     for school in (other.school, scene.world.school_b1, uuid.uuid4(), NOTHING):
@@ -64,7 +64,7 @@ def test_a_school_outside_the_session_is_the_same_404_as_one_that_never_existed(
 
 def test_the_campaign_of_another_school_is_a_404_for_every_way_to_touch_it(scene: Scene) -> None:
     ana = manager(scene, "ana")
-    other = scene.person("treasurer", school="2", label="other")
+    other = scene.person("secretaria", school="2", label="other")
     foreign = on_sale(other)
     mine = created(ana, title="Minha")
 
@@ -90,7 +90,7 @@ def test_the_campaign_of_another_school_is_a_404_for_every_way_to_touch_it(scene
 def test_another_account_sees_none_of_it_and_cannot_name_a_product_of_it(scene: Scene) -> None:
     ana = manager(scene, "ana")
     mine = on_sale(ana)
-    stranger = scene.person("treasurer", org="b", label="stranger")
+    stranger = scene.person("secretaria", org="b", label="stranger")
 
     same_404(every_way_to_touch(stranger, mine["id"], mine["items"][0]["id"]))
     assert stranger.get("/campaigns").json()["items"] == []

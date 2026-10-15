@@ -11,63 +11,6 @@ from tests.expenses.support import Client, Scene
 # --- the author never decides ---------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("role", ["school_admin"])
-def test_the_author_never_approves_rejects_or_asks_a_correction_of_their_own_expense(
-    scene: Scene, role: str
-) -> None:
-    author = scene.person(role, label="author")
-    other = scene.person("school_admin", label="other")
-    expense = scene.submitted(author)
-
-    for action, body in (
-        ("approve", {}),
-        ("approve", {"approved_amount_cents": 100}),
-        ("reject", {"reason": "nao quero"}),
-        ("request-correction", {"reason": "corrija"}),
-    ):
-        response = author.post(f"/expenses/{expense['id']}/{action}", body)
-        assert response.status_code == 403, (action, response.text)
-        assert response.json()["code"] == "self_approval_forbidden"
-        assert response.headers["content-type"].startswith("application/problem+json")
-
-    assert scene.row(expense["id"]).status == "SUBMITTED"
-    assert scene.row(expense["id"]).approved_by_user_id is None
-    assert other.post(f"/expenses/{expense['id']}/approve", {}).status_code == 200
-    decided = scene.row(expense["id"])
-    assert decided.approved_by_user_id == other.user.id != decided.submitted_by_user_id
-
-
-def test_the_person_reimbursed_does_not_register_their_own_reimbursement(scene: Scene) -> None:
-    author = scene.person("school_admin", label="author")
-    other = scene.person("school_admin", label="other")
-    expense = scene.approved(author, other, paid_by="COLLABORATOR")
-
-    own = author.post(f"/expenses/{expense['id']}/reimburse", {"payment_reference": "TED-1"})
-
-    assert own.status_code == 403 and own.json()["code"] == "self_reimbursement_forbidden"
-    assert scene.row(expense["id"]).status == "APPROVED"
-    assert (
-        other.post(
-            f"/expenses/{expense['id']}/reimburse", {"payment_reference": "TED-1"}
-        ).status_code
-        == 200
-    )
-
-
-def test_the_author_does_not_register_the_payment_of_their_own_expense(scene: Scene) -> None:
-    author = scene.person("school_admin", label="author")
-    other = scene.person("school_admin", label="other")
-    expense = scene.approved(author, other, paid_by="APM")
-
-    own = author.post(f"/expenses/{expense['id']}/pay")
-
-    assert own.status_code == 403 and own.json()["code"] == "self_payment_forbidden"
-    assert own.headers["content-type"].startswith("application/problem+json")
-    assert scene.row(expense["id"]).status == "APPROVED"
-    assert scene.row(expense["id"]).settled_at is None
-    assert other.post(f"/expenses/{expense['id']}/pay").status_code == 200
-
-
 # --- the edit window ------------------------------------------------------------------------------
 
 
@@ -75,7 +18,8 @@ def test_an_expense_is_edited_by_its_author_while_it_is_a_draft_or_awaits_a_corr
     scene: Scene,
 ) -> None:
     author = scene.person("staff", label="author")
-    director = scene.person("school_admin", label="director")
+    director = scene.person("secretaria", label="director")
+    colleague = scene.person("staff", label="colleague")
     expense = scene.draft(author)
     path = f"/expenses/{expense['id']}"
 
@@ -107,9 +51,11 @@ def test_an_expense_is_edited_by_its_author_while_it_is_a_draft_or_awaits_a_corr
         .startswith("2026-08-01T15:00")
     )
 
-    # not by someone who is not the author, even an administrator who can see it
-    denied = director.patch(path, {"description": "mudei"})
-    assert denied.status_code == 403 and denied.json()["code"] == "author_only"
+    # not by someone who is not the author: a colleague does not even see it, and a secretaria
+    # (who sees everything) never writes an expense
+    denied = colleague.patch(path, {"description": "mudei"})
+    assert denied.status_code == 404 and denied.json()["code"] == "not_found"
+    assert director.patch(path, {"description": "mudei"}).status_code == 403
     # not the payer, not the author, not a school, not an empty or null edit, not a bad category
     for bad in (
         {"paid_by": "COLLABORATOR"},
@@ -132,7 +78,7 @@ def test_an_expense_is_edited_by_its_author_while_it_is_a_draft_or_awaits_a_corr
 
 def test_an_approved_or_final_expense_cannot_be_edited(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     approved = scene.approved(author, treasurer)
     cancelled = scene.draft(author)
     assert author.post(f"/expenses/{cancelled['id']}/cancel").status_code == 200
@@ -169,13 +115,13 @@ def test_an_expense_is_sent_only_with_an_attachment_a_reason_and_a_way_it_was_pa
 
 def test_only_the_author_sends_an_expense(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    director = scene.person("school_admin", label="director")
+    colleague = scene.person("staff", label="colleague")
     expense = scene.draft(author)
     assert author.upload(expense["id"]).status_code == 201
 
-    response = director.post(f"/expenses/{expense['id']}/submit")
+    response = colleague.post(f"/expenses/{expense['id']}/submit")
 
-    assert response.status_code == 403 and response.json()["code"] == "author_only"
+    assert response.status_code == 404 and response.json()["code"] == "not_found"
     assert scene.row(expense["id"]).status == "DRAFT"
 
 
@@ -186,7 +132,7 @@ def test_less_than_requested_is_approved_only_for_a_collaborator_and_never_more(
     scene: Scene,
 ) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     apm = scene.submitted(author, paid_by="APM", amount_cents=1_000)
     collaborator = scene.submitted(author, paid_by="COLLABORATOR", amount_cents=1_000)
 
@@ -215,7 +161,7 @@ def test_less_than_requested_is_approved_only_for_a_collaborator_and_never_more(
 
 def test_an_omitted_approved_amount_is_the_requested_one(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.submitted(author, paid_by="COLLABORATOR", amount_cents=7_777)
 
     approved = treasurer.post(f"/expenses/{expense['id']}/approve").json()  # no body at all
@@ -225,7 +171,7 @@ def test_an_omitted_approved_amount_is_the_requested_one(scene: Scene) -> None:
 
 def test_who_gets_paid_how(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     apm = scene.approved(author, treasurer, paid_by="APM")
     collaborator = scene.approved(author, treasurer, paid_by="COLLABORATOR")
     ref = {"payment_reference": "TED-9"}
@@ -249,7 +195,7 @@ def test_who_gets_paid_how(scene: Scene) -> None:
 @pytest.mark.parametrize("reference", ["", "   ", "x" * 201])
 def test_a_reimbursement_needs_a_reference_of_the_payment(scene: Scene, reference: str) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(author, treasurer, paid_by="COLLABORATOR")
 
     response = treasurer.post(
@@ -262,7 +208,7 @@ def test_a_reimbursement_needs_a_reference_of_the_payment(scene: Scene, referenc
 
 def test_a_reason_has_at_least_three_characters(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.submitted(author)
     path = f"/expenses/{expense['id']}"
 
@@ -280,7 +226,7 @@ def test_a_reason_has_at_least_three_characters(scene: Scene) -> None:
 
 def test_an_action_out_of_its_state_is_a_409_with_a_stable_code(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     draft = scene.draft(author)
     approved = scene.approved(author, treasurer, paid_by="COLLABORATOR")
     ref = {"payment_reference": "TED-1"}
@@ -305,8 +251,8 @@ def test_an_action_out_of_its_state_is_a_409_with_a_stable_code(scene: Scene) ->
 
 def test_what_a_person_may_cancel(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    director = scene.person("school_admin", label="director")
-    treasurer = scene.person("treasurer", label="treasurer")
+    director = scene.person("secretaria", label="director")
+    treasurer = scene.person("secretaria", label="secretaria")
 
     # an author cancels their draft; nobody else does (even who can see it)
     draft = scene.draft(author)
@@ -338,7 +284,7 @@ def test_what_a_person_may_cancel(scene: Scene) -> None:
 
 def test_a_paid_expense_is_final(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(author, treasurer, paid_by="APM")
     assert treasurer.post(f"/expenses/{expense['id']}/pay").status_code == 200
 
@@ -352,8 +298,8 @@ def test_a_paid_expense_is_final(scene: Scene) -> None:
 
 def test_two_approvers_at_the_same_moment_decide_once(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    first = scene.person("treasurer", label="first")
-    second = scene.person("school_admin", label="second")
+    first = scene.person("secretaria", label="first")
+    second = scene.person("secretaria", label="second")
     expense = scene.submitted(author, paid_by="COLLABORATOR", amount_cents=2_000)
     path = f"/expenses/{expense['id']}"
 

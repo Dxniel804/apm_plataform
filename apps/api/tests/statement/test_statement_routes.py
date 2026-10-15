@@ -22,7 +22,7 @@ def march(api: Api, scene: Scene, **params: Any) -> list[dict[str, Any]]:
 def test_the_statement_of_march_repeats_the_columns_of_the_database(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(statement_path(scene.fresh.school), params={"period": MARCH})
 
@@ -79,7 +79,7 @@ def test_the_statement_of_march_repeats_the_columns_of_the_database(
 def test_a_filter_chooses_rows_but_the_balances_stay_those_of_the_account(
     scene: Scene, login: Login, params: dict[str, str], amounts: list[int], running: list[int]
 ) -> None:
-    items = march(login(scene.users["treasurer"]), scene, **params)
+    items = march(login(scene.users["secretaria"]), scene, **params)
 
     assert [item["signed_amount_cents"] for item in items] == amounts
     assert [item["running_balance_cents"] for item in items] == running
@@ -87,7 +87,7 @@ def test_a_filter_chooses_rows_but_the_balances_stay_those_of_the_account(
 
 
 def test_the_category_and_person_filters(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     by_category = march(api, scene, category=str(scene.fresh.cat_other))
     by_person = march(api, scene, person=str(scene.fresh.staff))
@@ -114,7 +114,7 @@ def test_the_category_and_person_filters(scene: Scene, login: Login) -> None:
 def test_the_period_is_a_calendar_month_and_the_opening_carries_over(
     scene: Scene, login: Login, period: str, amounts: list[int], opening: int | None
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     items = march(api, scene, period=period)
 
@@ -126,7 +126,7 @@ def test_the_period_is_a_calendar_month_and_the_opening_carries_over(
 def test_the_cursor_walks_the_statement_without_repeating_or_skipping(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     seen: list[dict[str, Any]] = []
     cursor: str | None = None
     pages = 0
@@ -151,7 +151,7 @@ def test_the_cursor_walks_the_statement_without_repeating_or_skipping(
 
 
 def test_a_page_that_is_exactly_full_has_no_next_cursor(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     body = api.get(statement_path(scene.fresh.school), params={"period": MARCH, "limit": 6}).json()
 
@@ -182,7 +182,7 @@ def test_a_page_that_is_exactly_full_has_no_next_cursor(scene: Scene, login: Log
 def test_bad_input_is_a_422_with_a_fixed_code(
     scene: Scene, login: Login, params: dict[str, Any]
 ) -> None:
-    response = login(scene.users["treasurer"]).get(
+    response = login(scene.users["secretaria"]).get(
         statement_path(scene.fresh.school), params=params
     )
 
@@ -195,7 +195,7 @@ def test_bad_input_is_a_422_with_a_fixed_code(
 def test_the_summary_repeats_the_columns_of_statement_summary_with_both_balances(
     scene: Scene, login: Login
 ) -> None:
-    response = login(scene.users["treasurer"]).get(
+    response = login(scene.users["secretaria"]).get(
         statement_path(scene.fresh.school, "/summary"), params={"period": MARCH}
     )
 
@@ -223,7 +223,7 @@ def test_the_summary_repeats_the_columns_of_statement_summary_with_both_balances
 
 def test_the_summary_of_an_empty_month_is_one_row_of_zeros(scene: Scene, login: Login) -> None:
     body = (
-        login(scene.users["treasurer"])
+        login(scene.users["secretaria"])
         .get(statement_path(scene.fresh.school, "/summary"), params={"period": "2024-01"})
         .json()
     )
@@ -236,7 +236,7 @@ def test_the_summary_of_an_empty_month_is_one_row_of_zeros(scene: Scene, login: 
 def test_without_a_period_the_month_is_the_current_one_in_the_time_zone_of_the_school(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
     body = api.get(statement_path(scene.fresh.school, "/summary")).json()
@@ -246,7 +246,7 @@ def test_without_a_period_the_month_is_the_current_one_in_the_time_zone_of_the_s
 
 
 def test_pending_lists_what_is_outside_the_balance(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     body = api.get(statement_path(scene.fresh.school, "/pending")).json()
 
@@ -276,9 +276,8 @@ def test_pending_lists_what_is_outside_the_balance(scene: Scene, login: Login) -
     ("role", "statement", "summary", "pending"),
     [
         ("admin", 200, 200, 200),  # school_admin
-        ("school_admin", 200, 200, 200),
-        ("treasurer", 200, 200, 200),
-        ("viewer", 403, 200, 403),  # aggregate reports only
+        ("secretaria", 200, 200, 200),
+        ("secretaria", 200, 200, 200),
         ("staff", 403, 403, 403),
     ],
 )
@@ -295,21 +294,10 @@ def test_each_role_gets_what_its_permissions_allow(
     assert api.get(statement_path(school, "/pending")).status_code == pending
 
 
-def test_the_summary_the_viewer_sees_is_the_same_aggregate(scene: Scene, login: Login) -> None:
-    viewer = login(scene.users["viewer"]).get(
-        statement_path(scene.fresh.school, "/summary"), params={"period": MARCH}
-    )
-    treasurer = login(scene.users["treasurer"]).get(
-        statement_path(scene.fresh.school, "/summary"), params={"period": MARCH}
-    )
-
-    assert viewer.json() == treasurer.json()
-
-
 def test_a_school_outside_the_session_is_a_404_identical_to_one_that_does_not_exist(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     unknown = uuid4()
     foreign = scene.other.school  # a school of ANOTHER organization
 
@@ -344,7 +332,7 @@ def test_a_school_admin_reaches_its_own_school_and_no_other(scene: Scene, login:
 def test_what_another_organization_holds_never_shows_in_the_answers(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     text = api.get(statement_path(scene.fresh.school), params={"period": MARCH}).text
     summary = api.get(statement_path(scene.fresh.school, "/summary"), params={"period": MARCH}).text
@@ -354,7 +342,7 @@ def test_what_another_organization_holds_never_shows_in_the_answers(
 
 
 def test_the_path_is_not_the_way_to_choose_a_tenant(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     forged = {"X-Organization-Id": str(scene.other.org), "X-School-Id": str(scene.other.school)}
 
     response = api.get(statement_path(scene.other.school), params={"period": MARCH}, headers=forged)
@@ -365,6 +353,6 @@ def test_the_path_is_not_the_way_to_choose_a_tenant(scene: Scene, login: Login) 
 def test_a_malformed_school_id_is_a_validation_error_not_a_server_error(
     scene: Scene, login: Login
 ) -> None:
-    response = login(scene.users["treasurer"]).get("/api/v1/schools/not-a-uuid/statement")
+    response = login(scene.users["secretaria"]).get("/api/v1/schools/not-a-uuid/statement")
 
     assert response.status_code == 422

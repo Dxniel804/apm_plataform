@@ -64,7 +64,7 @@ def perf(migrated_scratch_db: ScratchDb) -> Iterator[PerfData]:
             conn.execute(
                 text(
                     "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-                    "VALUES (:u, :o, :s, 'school_admin', 'active')"
+                    "VALUES (:u, :o, :s, 'secretaria', 'active')"
                 ),
                 {"u": user, "o": org, "s": school},
             )

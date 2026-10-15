@@ -36,7 +36,7 @@ describe("AcceptInvitationForm: pessoa nova", () => {
     expect(accept).toHaveBeenCalledWith({ token: TOKEN, fullName: "Pessoa Nova", password: "uma-senha-bem-longa-1" });
     expect(await screen.findByRole("status")).toHaveTextContent("Convite aceito");
     expect(screen.getByRole("status")).toHaveTextContent("Escola Teste");
-    expect(screen.getByRole("status")).toHaveTextContent("Gestão");
+    expect(screen.getByRole("status")).toHaveTextContent("Secretaria");
     expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/login");
     expect(login).not.toHaveBeenCalled();
   });

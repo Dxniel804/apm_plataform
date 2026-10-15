@@ -48,12 +48,15 @@ class Permission(StrEnum):
 
 ALL_PERMISSIONS = frozenset(Permission)
 
-# Every role belongs to ONE school (ADR-020): there is no role that spans schools.
+# Two roles only (secretaria and staff), each belonging to ONE school (ADR-020): there is no role
+# that spans schools. The families (responsaveis) have no login: they pay through the public link.
 ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
-    # Everything in the school, including reopening a closed month (ADR-015, ADR-020): the
-    # treasurer who closes it cannot reopen it.
-    "school_admin": ALL_PERMISSIONS,
-    "treasurer": frozenset(
+    # The SECRETARIA runs the money of the school: approves and pays, closes the month and may
+    # REOPEN it (the owner of the product decided so on 2026-10-15; before, only a director could),
+    # writes the campaigns and the settings, compares the bank statement, answers the requests of
+    # the staff and brings the people of the school in (and out). She never submits an expense of
+    # her own: whoever approves does not write (docs/expenses.md).
+    "secretaria": frozenset(
         {
             Permission.CONTRIBUTIONS_RECORD_CASH,
             Permission.EXPENSES_READ_ALL,
@@ -61,20 +64,18 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.REIMBURSEMENTS_REGISTER,
             Permission.REFUNDS_REGISTER,
             Permission.MONTHS_CLOSE,
+            Permission.MONTHS_REOPEN,
             Permission.STATEMENT_READ,
             Permission.REPORTS_READ,
-            # The management answers the requests of the staff.
             Permission.REQUESTS_READ_ALL,
             Permission.REQUESTS_MANAGE,
-            # The management writes the campaigns and their products.
             Permission.CAMPAIGNS_MANAGE,
             Permission.SCHOOL_SETTINGS_MANAGE,
             Permission.RECONCILIATION_MANAGE,
-            # ...and brings the employees of the school in (and out), see INVITABLE_ROLES.
             Permission.INVITATIONS_CREATE,
         }
     ),
-    # Staff (funcionario): submit and see their OWN expenses, and ask the management for things.
+    # Staff (funcionario): submit and see their OWN expenses, and ask the secretaria for things.
     "staff": frozenset(
         {
             Permission.EXPENSES_SUBMIT,
@@ -83,15 +84,12 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.REQUESTS_READ_OWN,
         }
     ),
-    # Aggregate reading only, no personal data of guardians.
-    "viewer": frozenset({Permission.REPORTS_READ_AGGREGATE}),
 }
 
 # Roles an inviter may grant, by the inviter's own role (always into the inviter's own school).
+# There is no school director above the secretaria any more, so she brings in both roles.
 INVITABLE_ROLES: dict[str, frozenset[str]] = {
-    "school_admin": frozenset({"school_admin", "treasurer", "staff", "viewer"}),
-    # The management (treasurer) brings the employees in, and only them.
-    "treasurer": frozenset({"staff"}),
+    "secretaria": frozenset({"secretaria", "staff"}),
 }
 
 

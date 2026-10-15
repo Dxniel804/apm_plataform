@@ -17,7 +17,7 @@ from tests.public.conftest import PublicSchool
 from tests.public.support import contribute, txid_of
 from tests.reconciliation.ofx_samples import e2e, sgml
 
-ROLES = ["school_admin", "treasurer", "staff", "viewer"]
+ROLES = ["secretaria", "staff"]
 MANAGE = {r for r in ROLES if Permission.RECONCILIATION_MANAGE in ROLE_PERMISSIONS[r]}
 
 

@@ -56,7 +56,7 @@ def on_sale(client: Client, **overrides: Any) -> dict[str, Any]:
 
 def manager(scene: Scene, label: str = "gestao") -> Client:
     """The management (role `treasurer`) of school A1."""
-    return scene.person("treasurer", label=label)
+    return scene.person("secretaria", label=label)
 
 
 def picture() -> tuple[str, bytes, str]:

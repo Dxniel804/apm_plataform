@@ -100,8 +100,8 @@ def create_tenants(connection: Connection) -> Tenants:
         )
     for key, user, org, school, role in (
         ("membership_a1", "user_a1", "org_a", "school_a1", "staff"),
-        ("membership_a2", "user_a2", "org_a2", "school_a2", "viewer"),
-        ("membership_admin_a", "user_admin_a", "org_a", "school_a1", "school_admin"),
+        ("membership_a2", "user_a2", "org_a2", "school_a2", "staff"),
+        ("membership_admin_a", "user_admin_a", "org_a", "school_a1", "secretaria"),
         ("membership_b1", "user_b1", "org_b", "school_b1", "staff"),
     ):
         connection.execute(

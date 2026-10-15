@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+$")
-Role = Literal["school_admin", "treasurer", "staff", "viewer"]
+Role = Literal["secretaria", "staff"]
 
 
 class Strict(BaseModel):

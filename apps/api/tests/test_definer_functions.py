@@ -140,7 +140,7 @@ def test_list_memberships_returns_only_active_ones_with_names_and_no_more(
 ) -> None:
     user = users.make(
         "staff",
-        extra=(("viewer", "a", "2"), ("school_admin", "b", "1")),
+        extra=(("staff", "a", "2"), ("secretaria", "b", "1")),
         label="three",
     )
     users.set_membership_status(user.membership_ids[1], "suspended")
@@ -165,12 +165,12 @@ def test_list_memberships_returns_only_active_ones_with_names_and_no_more(
     by_role = {r.role: r for r in rows}
     assert by_role["staff"].school_id == world.school_a1
     assert by_role["staff"].organization_name == "Org A"
-    assert by_role["school_admin"].organization_id == world.org_b
+    assert by_role["secretaria"].organization_id == world.org_b
 
 
 def test_every_membership_listed_names_its_school(app_engine: Engine, users: UserFactory) -> None:
     """ADR-020: there is no membership of a whole organization, so there is always a school."""
-    admin = users.make("school_admin")
+    admin = users.make("secretaria")
 
     with app_tx(app_engine) as connection:
         row = connection.execute(text(LIST), {"user": admin.id}).one()
@@ -209,10 +209,10 @@ def accept(
 def test_accepting_creates_a_new_user_and_the_membership_the_invitation_names(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     email = world.email("newbie")
     token_hash = invitation(
-        admin_engine, world, inviter, email, role="treasurer", school=world.school_a1
+        admin_engine, world, inviter, email, role="secretaria", school=world.school_a1
     )
 
     with app_tx(app_engine) as connection:
@@ -232,9 +232,9 @@ def test_accepting_creates_a_new_user_and_the_membership_the_invitation_names(
             {"id": result.membership_id},
         ).one()
 
-    assert result.outcome == "accepted_new_user" and result.role == "treasurer"
+    assert result.outcome == "accepted_new_user" and result.role == "secretaria"
     assert (created.email, created.full_name, created.is_active) == (email, "New Person", True)
-    assert tuple(membership) == ("treasurer", "active", world.school_a1, world.org_a)
+    assert tuple(membership) == ("secretaria", "active", world.school_a1, world.org_a)
 
 
 def test_there_is_no_argument_to_choose_the_role_or_the_tenant() -> None:
@@ -259,7 +259,7 @@ def test_a_new_account_needs_a_name_and_a_password_hash(
     world: World,
     arguments: dict[str, Any],
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     email = world.email("incomplete")
     token_hash = invitation(admin_engine, world, inviter, email)
 
@@ -273,11 +273,11 @@ def test_a_new_account_needs_a_name_and_a_password_hash(
 def test_an_existing_account_must_present_itself_and_is_never_modified(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     owner = users.make("staff", org="b", label="owner")  # a person of ANOTHER school, invited here
     stranger = users.make("staff", label="stranger")
     token_hash = invitation(
-        admin_engine, world, inviter, owner.email, role="viewer", school=world.school_a1
+        admin_engine, world, inviter, owner.email, role="staff", school=world.school_a1
     )
 
     with app_tx(app_engine) as connection:
@@ -299,7 +299,7 @@ def test_an_existing_account_must_present_itself_and_is_never_modified(
 def test_accepting_twice_or_with_a_wrong_hash_is_the_same_nothing(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     token_hash = invitation(admin_engine, world, inviter, world.email("once"))
 
     with app_tx(app_engine) as connection:
@@ -314,7 +314,7 @@ def test_accepting_twice_or_with_a_wrong_hash_is_the_same_nothing(
 def test_an_expired_or_revoked_invitation_cannot_be_accepted(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     expired = invitation(admin_engine, world, inviter, world.email("old"))
     revoked = invitation(admin_engine, world, inviter, world.email("gone"))
     with admin_engine.begin() as connection:
@@ -338,10 +338,10 @@ def test_an_expired_or_revoked_invitation_cannot_be_accepted(
 def test_someone_who_is_already_a_member_of_that_scope_gets_nothing_created(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     member = users.make("staff", school="1", label="member")
     token_hash = invitation(
-        admin_engine, world, inviter, member.email, role="viewer", school=world.school_a1
+        admin_engine, world, inviter, member.email, role="staff", school=world.school_a1
     )
 
     with app_tx(app_engine) as connection:
@@ -353,7 +353,7 @@ def test_someone_who_is_already_a_member_of_that_scope_gets_nothing_created(
 def test_an_inactive_account_cannot_accept(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
+    inviter = users.make("secretaria")
     dormant = users.make("staff", active=False, label="dormant")
     token_hash = invitation(admin_engine, world, inviter, dormant.email)
 

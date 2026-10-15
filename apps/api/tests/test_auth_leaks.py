@@ -91,7 +91,7 @@ def test_nothing_secret_is_in_a_response_a_log_line_or_the_console(
     world = users.world
     # Made before the logging is turned up: the test's own admin engine does not hide parameters,
     # and what is under test is what the APPLICATION says.
-    admin_user = users.make("school_admin", label="leak-admin")
+    admin_user = users.make("secretaria", label="leak-admin")
     # SQLAlchemy keeps its own logger at WARNING: INFO on `sqlalchemy.engine` is what `echo=True`
     # does, and it prints every statement with its parameters (hidden here by hide_parameters).
     caplog.set_level(logging.DEBUG)

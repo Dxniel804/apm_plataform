@@ -71,11 +71,11 @@ def _add_member(conn: Connection, fresh: Fresh, suffix: str, label: str, role: s
 
 
 def _school_people(conn: Connection, fresh: Fresh, suffix: str) -> dict[str, TestUser]:
-    """The three users the builder made get a password; a school admin and a viewer are added."""
+    """The three users the builder made get a password (two secretarias and a staff member)."""
     users: dict[str, TestUser] = {}
     for label, user_id, role in (
-        ("admin", fresh.admin, "school_admin"),
-        ("treasurer", fresh.treasurer, "treasurer"),
+        ("admin", fresh.admin, "secretaria"),
+        ("secretaria", fresh.treasurer, "secretaria"),
         ("staff", fresh.staff, "staff"),
     ):
         conn.execute(
@@ -90,8 +90,6 @@ def _school_people(conn: Connection, fresh: Fresh, suffix: str) -> dict[str, Tes
             {"u": user_id, "r": role},
         ).scalar_one()
         users[label] = TestUser(user_id, email, (membership,))
-    users["school_admin"] = _add_member(conn, fresh, suffix, "school_admin", "school_admin")
-    users["viewer"] = _add_member(conn, fresh, suffix, "viewer", "viewer")
     return users
 
 

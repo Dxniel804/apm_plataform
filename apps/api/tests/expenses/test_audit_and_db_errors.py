@@ -19,7 +19,7 @@ def test_every_change_is_recorded_with_the_user_and_the_request_that_made_it(
     scene: Scene,
 ) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
 
     created = author.post(
         "/expenses",
@@ -84,7 +84,7 @@ def test_every_change_is_recorded_with_the_user_and_the_request_that_made_it(
 
 def test_the_event_of_a_decision_holds_ids_amounts_and_states_only(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.submitted(author, paid_by="COLLABORATOR", amount_cents=3_000)
     assert treasurer.post(
         f"/expenses/{expense['id']}/approve", {"approved_amount_cents": 2_000}
@@ -111,7 +111,7 @@ def test_a_reimbursement_is_recorded_for_the_person_who_paid_without_the_referen
     scene: Scene,
 ) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(author, treasurer, paid_by="COLLABORATOR")
     paid = treasurer.post(
         f"/expenses/{expense['id']}/reimburse", {"payment_reference": "TED-AUDITADO-123"}
@@ -218,7 +218,7 @@ def test_a_person_who_left_the_school_cannot_be_reimbursed_and_the_answer_is_a_p
     """The database checks that the person to reimburse is still a member: a refusal the service did
     not foresee comes back as 422 `reference_invalid`, with no text of the database."""
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(author, treasurer, paid_by="COLLABORATOR")
     scene.users.set_membership_status(author.user.membership_ids[0], "suspended")
 

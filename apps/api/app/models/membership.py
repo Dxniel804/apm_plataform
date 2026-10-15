@@ -18,7 +18,7 @@ from app.models.mixins import TimestampMixin, uuid_pk
 # platform_admin is NOT here on purpose: a platform role does not belong to an organization
 # (ADR-014). Neither is a role that spans schools: each school is a separate customer (ADR-020).
 # The permission matrix per role lives in code, not in tables (TASK-004).
-ROLES = ("school_admin", "treasurer", "staff", "viewer")
+ROLES = ("secretaria", "staff")
 STATUSES = ("invited", "active", "suspended", "revoked")
 
 

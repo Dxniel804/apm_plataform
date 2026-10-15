@@ -35,7 +35,7 @@ def _context(name: str, tenants: Tenants) -> TenantContext:
 def _insert_membership_of(user_id: uuid.UUID, tenants: Tenants, school: uuid.UUID | None) -> Any:
     return (
         "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-        "VALUES (:user, :org, :school, 'viewer', 'active')",
+        "VALUES (:user, :org, :school, 'staff', 'active')",
         {"user": user_id, "org": tenants.org_a, "school": school},
     )
 
@@ -155,7 +155,7 @@ def test_orm_cannot_attach_a_user_of_another_tenant_either(
                 user_id=tenants.user_b1,
                 organization_id=tenants.org_a,
                 school_id=None,
-                role="viewer",
+                role="staff",
                 status="active",
             )
         )
@@ -169,7 +169,7 @@ def test_what_apm_app_may_still_update_in_memberships(app_engine: Engine, tenant
     with transaction(app_engine, context=TenantContext(tenants.org_a)) as connection:
         result = connection.execute(
             text(
-                "UPDATE memberships SET role = 'treasurer', status = 'suspended', "
+                "UPDATE memberships SET role = 'secretaria', status = 'suspended', "
                 "updated_at = now() WHERE id = :m"
             ),
             {"m": tenants.membership_a1},

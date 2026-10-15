@@ -11,7 +11,7 @@ from tests.campaigns.images import make_png
 from tests.campaigns.support import on_sale
 from tests.expenses.support import Scene
 
-ROLES = ["school_admin", "treasurer", "staff", "viewer"]
+ROLES = ["secretaria", "staff"]
 ANY = "00000000-0000-4000-8000-000000000001"
 MANAGE = {role for role in ROLES if Permission.CAMPAIGNS_MANAGE in ROLE_PERMISSIONS[role]}
 
@@ -39,8 +39,8 @@ def _routes() -> list[tuple[str, str, dict[str, Any]]]:
 
 def test_the_set_of_roles_is_what_the_permission_map_says() -> None:
     """If the map of roles changes, this table must be looked at again."""
-    assert {"school_admin", "treasurer"} == MANAGE
-    assert "staff" not in MANAGE and "viewer" not in MANAGE
+    assert {"secretaria"} == MANAGE
+    assert "staff" not in MANAGE
 
 
 @pytest.mark.parametrize("role", ROLES)
@@ -60,11 +60,11 @@ def test_every_route_enforces_its_permission(scene: Scene, role: str) -> None:
     assert checked == 14
 
 
-@pytest.mark.parametrize("role", ["staff", "viewer"])
+@pytest.mark.parametrize("role", ["staff"])
 def test_the_ones_without_the_permission_change_nothing_not_even_by_guessing_the_id(
     scene: Scene, role: str
 ) -> None:
-    campaign = on_sale(scene.person("treasurer", label="gestao"))
+    campaign = on_sale(scene.person("secretaria", label="gestao"))
     outsider = scene.person(role)
 
     for method, tail, kwargs in (
@@ -74,7 +74,7 @@ def test_the_ones_without_the_permission_change_nothing_not_even_by_guessing_the
          {"json": {"price_cents": 100}}),
     ):  # fmt: skip
         assert outsider.request(method, tail, **kwargs).status_code == 403
-    after = scene.person("treasurer", label="gestao2").get(f"/campaigns/{campaign['id']}").json()
+    after = scene.person("secretaria", label="gestao2").get(f"/campaigns/{campaign['id']}").json()
     assert after["title"] == campaign["title"] and after["status"] == "ACTIVE"
     assert after["items"][0]["price_cents"] == campaign["items"][0]["price_cents"]
 

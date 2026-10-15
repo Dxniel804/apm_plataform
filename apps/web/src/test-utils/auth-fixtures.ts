@@ -10,13 +10,13 @@ export const ADMIN_MEMBERSHIP = {
   membership_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   organization: OTHER_ORG,
   school: OTHER_SCHOOL,
-  role: "school_admin",
+  role: "secretaria",
 };
 export const SCHOOL_MEMBERSHIP = {
   membership_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   organization: ORG,
   school: SCHOOL,
-  role: "treasurer",
+  role: "secretaria",
 };
 
 export function sessionBody(overrides: Record<string, unknown> = {}) {

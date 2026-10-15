@@ -20,7 +20,7 @@ def _insert_membership(connection, tenants: Tenants, **overrides: object) -> Non
         "user": tenants.user_free,
         "org": tenants.org_a,
         "school": tenants.school_a1,
-        "role": "viewer",
+        "role": "staff",
         "status": "active",
     }
     values.update(overrides)
@@ -52,7 +52,7 @@ def test_composite_fk_accepts_the_school_of_the_organization(
 def test_a_membership_always_names_a_school(admin_engine: Engine, tenants: Tenants) -> None:
     """ADR-020: there is no membership of a whole organization (school_id is NOT NULL)."""
     with transaction(admin_engine) as connection, pytest.raises(IntegrityError) as error:
-        _insert_membership(connection, tenants, school=None, role="treasurer")
+        _insert_membership(connection, tenants, school=None, role="secretaria")
 
     assert getattr(error.value.orig.diag, "column_name", None) == "school_id"  # type: ignore[union-attr]
 
@@ -175,13 +175,13 @@ def test_every_membership_role_in_the_spec_is_accepted(
     admin_engine: Engine, tenants: Tenants
 ) -> None:
     with transaction(admin_engine) as connection:
-        _insert_membership(connection, tenants, role="school_admin")
-        _insert_membership(connection, tenants, role="treasurer", user=tenants.user_a2)
+        _insert_membership(connection, tenants, role="secretaria")
+        _insert_membership(connection, tenants, role="secretaria", user=tenants.user_a2)
         _insert_membership(connection, tenants, role="staff", user=tenants.user_b1)
         _insert_membership(
             connection,
             tenants,
-            role="viewer",
+            role="staff",
             org=tenants.org_b,
             school=tenants.school_b1,
         )

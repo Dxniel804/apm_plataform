@@ -55,8 +55,7 @@ Row = repository.Row
 # Where the "who spent it" of the ledger comes from: the role of the person who made the expense.
 ORIGIN_BY_ROLE = {
     "staff": "TEACHER",
-    "school_admin": "DIRECTOR",
-    "treasurer": "MANAGEMENT",
+    "secretaria": "MANAGEMENT",
 }
 DEFAULT_ORIGIN = "EMPLOYEE"
 # Which category a reimbursement is filed under, by the origin of the expense.

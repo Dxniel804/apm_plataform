@@ -127,7 +127,7 @@ def test_schools_and_memberships_refuse_a_missing_organization(
         connection.execute(
             text(
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-                "VALUES (:u, NULL, NULL, 'viewer', 'active')"
+                "VALUES (:u, NULL, NULL, 'staff', 'active')"
             ),
             {"u": tenants.user_free},
         )
@@ -302,7 +302,7 @@ def test_a_membership_needs_an_existing_user(admin_engine: Engine, tenants: Tena
         connection.execute(
             text(
                 "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-                "VALUES (:u, :o, :s, 'viewer', 'active')"
+                "VALUES (:u, :o, :s, 'staff', 'active')"
             ),
             {"u": uuid.uuid4(), "o": tenants.org_a, "s": tenants.school_a1},
         )
@@ -390,8 +390,7 @@ EXPECTED_AUTH_CHECKS = {
     ),
     "ck_invitations_role_valid": (
         "invitations",
-        "CHECK ((role = ANY (ARRAY['school_admin'::text, 'treasurer'::text, 'staff'::text, "
-        "'viewer'::text])))",
+        "CHECK ((role = ANY (ARRAY['secretaria'::text, 'staff'::text])))",
     ),
     "ck_invitations_expires_after_creation": (
         "invitations",

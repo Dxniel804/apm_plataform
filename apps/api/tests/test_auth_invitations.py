@@ -39,7 +39,7 @@ def invite_for_token(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, *, role: str = "staff"
 ) -> tuple[str, str]:
     """A school admin invites a new e-mail; returns (email, token read from the outbox)."""
-    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    admin = logged_in(apis, users.make("secretaria", label="admin"))
     email = new_email(users.world)
     response = admin.invite(email, role, users.world.school_a1)
     assert response.status_code == 201, response.text
@@ -66,7 +66,7 @@ def invitation_row(engine: Engine, token: str) -> Any:
 def test_an_invitation_is_created_for_the_active_tenant_and_the_token_goes_by_e_mail_only(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
-    admin_user = users.make("school_admin", school="1")
+    admin_user = users.make("secretaria", school="1")
     admin = logged_in(apis, admin_user)
     email = new_email(users.world).upper()
 
@@ -98,18 +98,14 @@ def test_an_invitation_is_created_for_the_active_tenant_and_the_token_goes_by_e_
 @pytest.mark.parametrize(
     ("inviter", "role", "school", "status"),
     [
-        ("school_admin", "school_admin", "1", 201),
-        ("school_admin", "treasurer", "1", 201),
-        ("school_admin", "staff", "1", 201),
-        ("school_admin", "viewer", None, 201),  # defaults to its own school
-        ("school_admin", "organization_admin", "1", 422),  # the role of a network no longer exists
-        ("school_admin", "staff", "2", 403),  # never into another school (ADR-020)
-        ("treasurer", "staff", "1", 201),  # the management brings employees in...
-        ("treasurer", "treasurer", "1", 403),  # ...and nobody above them
-        ("treasurer", "school_admin", "1", 403),
-        ("treasurer", "viewer", "1", 403),
+        ("secretaria", "secretaria", "1", 201),
+        ("secretaria", "staff", "1", 201),
+        ("secretaria", "staff", None, 201),  # defaults to its own school
+        ("secretaria", "organization_admin", "1", 422),  # the role of a network no longer exists
+        ("secretaria", "school_admin", "1", 422),  # nor a director above the secretaria
+        ("secretaria", "viewer", "1", 422),  # nor a read-only role
+        ("secretaria", "staff", "2", 403),  # never into another school (ADR-020)
         ("staff", "staff", "1", 403),
-        ("viewer", "viewer", "1", 403),
     ],
 )
 def test_who_may_invite_whom(
@@ -134,8 +130,8 @@ def test_who_may_invite_whom(
 def test_nobody_can_invite_into_a_school_that_is_not_their_own(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin_a = logged_in(apis, users.make("school_admin", org="a"))
-    admin_b = logged_in(apis, users.make("school_admin", org="b"))
+    admin_a = logged_in(apis, users.make("secretaria", org="a"))
+    admin_b = logged_in(apis, users.make("secretaria", org="b"))
     world = users.world
 
     into_b = admin_a.invite(new_email(world), "staff", world.school_b1)
@@ -161,7 +157,7 @@ def test_nobody_can_invite_into_a_school_that_is_not_their_own(
 def test_nothing_but_the_email_the_role_and_the_school_is_taken_from_the_body(
     apis: ApiFactory, users: UserFactory, extra: dict[str, str]
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin"))
+    admin = logged_in(apis, users.make("secretaria"))
     body = {
         "email": new_email(users.world),
         "role": "staff",
@@ -188,7 +184,7 @@ def test_nothing_but_the_email_the_role_and_the_school_is_taken_from_the_body(
 def test_a_malformed_invitation_is_a_422(
     apis: ApiFactory, users: UserFactory, body: dict[str, Any]
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin"))
+    admin = logged_in(apis, users.make("secretaria"))
 
     assert admin.post(INVITE, body).status_code == 422
 
@@ -203,11 +199,11 @@ def test_inviting_needs_a_session(api: Api) -> None:
 def test_a_second_pending_invitation_for_the_same_scope_is_a_conflict(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin"))
+    admin = logged_in(apis, users.make("secretaria"))
     email = new_email(users.world)
     assert admin.invite(email, "staff", users.world.school_a1).status_code == 201
 
-    again = admin.invite(email, "viewer", users.world.school_a1)
+    again = admin.invite(email, "staff", users.world.school_a1)
 
     assert again.status_code == 409 and again.json()["code"] == "invitation_pending"
 
@@ -215,10 +211,10 @@ def test_a_second_pending_invitation_for_the_same_scope_is_a_conflict(
 def test_somebody_who_already_has_access_there_is_a_conflict(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin"))
+    admin = logged_in(apis, users.make("secretaria"))
     member = users.make("staff", school="1")
 
-    response = admin.invite(member.email, "viewer", users.world.school_a1)
+    response = admin.invite(member.email, "staff", users.world.school_a1)
 
     assert response.status_code == 409 and response.json()["code"] == "already_member"
 
@@ -228,7 +224,7 @@ def test_an_account_of_another_organization_is_not_revealed_by_an_invitation(
 ) -> None:
     """The conflict check only sees the inviter's own tenant, so inviting an e-mail that belongs
     to somebody in another organization answers exactly like inviting a brand new one."""
-    admin_a = logged_in(apis, users.make("school_admin", org="a"))
+    admin_a = logged_in(apis, users.make("secretaria", org="a"))
     in_b = users.make("staff", org="b", school="1")
 
     response = admin_a.invite(in_b.email, "staff", users.world.school_a1)
@@ -239,7 +235,7 @@ def test_an_account_of_another_organization_is_not_revealed_by_an_invitation(
 def test_an_expired_invitation_does_not_block_a_new_one(
     apis: ApiFactory, users: UserFactory, admin_engine: Engine, tmp_path: Path
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin"))
+    admin = logged_in(apis, users.make("secretaria"))
     email = new_email(users.world)
     admin.invite(email, "staff", users.world.school_a1)
     first = read_outbox(tmp_path)[-1].token
@@ -264,7 +260,7 @@ def test_an_expired_invitation_does_not_block_a_new_one(
 def test_a_new_person_accepts_gets_an_account_and_can_log_in(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
-    email, token = invite_for_token(apis, users, tmp_path, role="treasurer")
+    email, token = invite_for_token(apis, users, tmp_path, role="secretaria")
     newcomer = apis.make()
 
     response = newcomer.post(
@@ -273,7 +269,7 @@ def test_a_new_person_accepts_gets_an_account_and_can_log_in(
 
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["membership"]["role"] == "treasurer"
+    assert body["membership"]["role"] == "secretaria"
     assert body["membership"]["school"]["id"] == str(users.world.school_a1)
     assert "set-cookie" not in response.headers  # accepting does not log in
     with admin_engine.connect() as connection:
@@ -289,7 +285,7 @@ def test_a_new_person_accepts_gets_an_account_and_can_log_in(
     assert row.accepted_at is not None and row.accepted_user_id == user.id
     login = newcomer.login(email, PASSWORD)
     assert login.status_code == 200
-    assert login.json()["active_membership"]["role"] == "treasurer"
+    assert login.json()["active_membership"]["role"] == "secretaria"
 
 
 def test_an_invitation_can_be_used_once(
@@ -427,9 +423,9 @@ def test_somebody_with_an_account_must_log_in_before_accepting(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
     """The token alone never lets anybody act as an existing account."""
-    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    admin = logged_in(apis, users.make("secretaria", label="admin"))
     existing = users.make("staff", org="b", label="existing")  # works in ANOTHER school
-    assert admin.invite(existing.email, "viewer", users.world.school_a1).status_code == 201
+    assert admin.invite(existing.email, "staff", users.world.school_a1).status_code == 201
     token = read_outbox(tmp_path)[-1].token
 
     anonymous = apis.make().post(ACCEPT, {"token": token})
@@ -443,19 +439,18 @@ def test_somebody_with_an_account_must_log_in_before_accepting(
         assert response.json()["code"] == "account_exists_login_required"
     assert invitation_row(admin_engine, token).accepted_at is not None
     assert accepted.status_code == 201
-    assert accepted.json()["membership"]["role"] == "viewer"
+    assert accepted.json()["membership"]["role"] == "staff"
     assert {m["role"] for m in owner.get("/api/v1/auth/me").json()["memberships"]} == {
         "staff",
-        "viewer",
     }
 
 
 def test_an_existing_account_cannot_have_its_password_replaced_through_an_invitation(
     apis: ApiFactory, users: UserFactory, tmp_path: Path, admin_engine: Engine
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    admin = logged_in(apis, users.make("secretaria", label="admin"))
     existing = users.make("staff", org="b", label="existing")
-    admin.invite(existing.email, "viewer", users.world.school_a1)
+    admin.invite(existing.email, "staff", users.world.school_a1)
     token = read_outbox(tmp_path)[-1].token
     with admin_engine.connect() as connection:
         before: Any = connection.execute(
@@ -479,9 +474,9 @@ def test_an_existing_account_cannot_have_its_password_replaced_through_an_invita
 def test_an_inactive_account_cannot_accept(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    admin = logged_in(apis, users.make("school_admin", label="admin"))
+    admin = logged_in(apis, users.make("secretaria", label="admin"))
     dormant = users.make("staff", org="b", active=False, label="dormant")
-    admin.invite(dormant.email, "viewer", users.world.school_a1)
+    admin.invite(dormant.email, "staff", users.world.school_a1)
     token = read_outbox(tmp_path)[-1].token
 
     response = apis.make().post(ACCEPT, {"token": token})

@@ -287,7 +287,7 @@ HOPS: list[tuple[str, str, str, str, str]] = [
     (
         "new membership written into another organization",
         "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-        "VALUES (:user_free, :org_b, NULL, 'viewer', 'active')",
+        "VALUES (:user_free, :org_b, NULL, 'staff', 'active')",
         "own_org",
         PRIVILEGE,
         RLS,
@@ -302,7 +302,7 @@ HOPS: list[tuple[str, str, str, str, str]] = [
     (
         "new membership with a school of another organization (composite FK)",
         "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-        "VALUES (:user_free, :org_a, :school_b1, 'viewer', 'active')",
+        "VALUES (:user_free, :org_a, :school_b1, 'staff', 'active')",
         "own_org",
         PRIVILEGE,
         FK,

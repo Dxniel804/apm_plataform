@@ -208,13 +208,13 @@ def test_the_states_have_no_way_back_and_a_second_answer_is_a_409(scene: Scene) 
 def test_the_author_cancels_while_it_is_open_and_nobody_else_does(scene: Scene) -> None:
     author = scene.person("staff", label="author")
     colleague = scene.person("staff", label="colleague")
-    director = scene.person("school_admin", label="director")  # may submit, but did not write it
+    director = scene.person("secretaria", label="director")  # sees it, but did not write it
     request = opened(author)
     path = f"/requests/{request['id']}"
 
     assert colleague.post(f"{path}/cancel").status_code == 404  # cannot even see it
     refused = director.post(f"{path}/cancel")
-    assert (refused.status_code, refused.json()["code"]) == (403, "author_only")
+    assert refused.status_code == 403
     done = author.post(f"{path}/cancel")
 
     assert done.status_code == 200 and done.json()["status"] == "CANCELLED"

@@ -45,7 +45,7 @@ FIGURES_OF_MARCH = {
 def test_closing_march_writes_the_snapshot_the_database_computed(
     scene: Scene, login: Login, admin_engine: Engine
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = close(api, scene, bank_balance_reported_cents=12000)
 
@@ -55,7 +55,7 @@ def test_closing_march_writes_the_snapshot_the_database_computed(
     assert body["school_id"] == str(scene.fresh.school)
     assert body["bank_balance_reported_cents"] == 12000
     assert body["bank_difference_cents"] == -150  # the bank holds LESS than the platform
-    assert body["closed_by_user_id"] == str(scene.users["treasurer"].id)
+    assert body["closed_by_user_id"] == str(scene.users["secretaria"].id)
     assert body["report_ref"] is None
     assert body["reopened_at"] is None and body["reopen_reason"] is None
     assert len(body["entries_hash"]) == 64
@@ -93,21 +93,21 @@ def test_closing_march_writes_the_snapshot_the_database_computed(
 
 
 def test_without_a_bank_balance_there_is_no_difference(scene: Scene, login: Login) -> None:
-    body = close(login(scene.users["treasurer"]), scene).json()
+    body = close(login(scene.users["secretaria"]), scene).json()
 
     assert body["bank_balance_reported_cents"] is None
     assert body["bank_difference_cents"] is None
 
 
 def test_a_difference_to_the_bank_does_not_stop_the_closing(scene: Scene, login: Login) -> None:
-    response = close(login(scene.users["treasurer"]), scene, bank_balance_reported_cents=99999)
+    response = close(login(scene.users["secretaria"]), scene, bank_balance_reported_cents=99999)
 
     assert response.status_code == 201
     assert response.json()["bank_difference_cents"] == 99999 - 12150
 
 
 def test_a_month_that_has_not_ended_cannot_be_closed(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
     this_month = close(api, scene, f"{now.year:04d}-{now.month:02d}")
@@ -119,7 +119,7 @@ def test_a_month_that_has_not_ended_cannot_be_closed(scene: Scene, login: Login)
 
 
 def test_months_are_closed_in_order(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     assert close(api, scene).status_code == 201
 
     skipped = close(api, scene, "2025-05")
@@ -154,7 +154,7 @@ def test_months_are_closed_in_order(scene: Scene, login: Login) -> None:
     ids=str,
 )
 def test_a_bad_body_is_a_422_and_nothing_is_closed(scene: Scene, login: Login, body: Any) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.post(closings(scene.fresh.school), body)
 
@@ -164,14 +164,14 @@ def test_a_bad_body_is_a_422_and_nothing_is_closed(scene: Scene, login: Login, b
 
 
 def test_the_bank_balance_at_the_limit_is_accepted(scene: Scene, login: Login) -> None:
-    response = close(login(scene.users["treasurer"]), scene, bank_balance_reported_cents=10**12)
+    response = close(login(scene.users["secretaria"]), scene, bank_balance_reported_cents=10**12)
 
     assert response.status_code == 201
     assert response.json()["bank_difference_cents"] == 10**12 - 12150
 
 
 def test_the_refusals_never_carry_the_text_of_postgres(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     close(api, scene)
     bodies = [
         close(api, scene, "2099-12").text,
@@ -198,7 +198,7 @@ def test_the_refusals_never_carry_the_text_of_postgres(scene: Scene, login: Logi
 
 @pytest.mark.parametrize(
     ("role", "status"),
-    [("admin", 201), ("school_admin", 201), ("treasurer", 201), ("viewer", 403), ("staff", 403)],
+    [("admin", 201), ("secretaria", 201), ("secretaria", 201), ("staff", 403)],
 )
 def test_who_may_close_a_month(scene: Scene, login: Login, role: str, status: int) -> None:
     response = close(login(scene.users[role]), scene)
@@ -209,7 +209,7 @@ def test_who_may_close_a_month(scene: Scene, login: Login, role: str, status: in
 def test_closing_needs_the_csrf_token_and_the_origin_of_the_site(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     path = closings(scene.fresh.school)
 
     no_csrf = api.post(path, {"period": MARCH}, csrf=False)
@@ -226,7 +226,7 @@ def test_closing_needs_the_csrf_token_and_the_origin_of_the_site(
 
 
 def test_list_and_get_repeat_the_closing(scene: Scene, login: Login) -> None:
-    treasurer = login(scene.users["treasurer"])
+    treasurer = login(scene.users["secretaria"])
     created = close(treasurer, scene, bank_balance_reported_cents=12150).json()
     school = scene.fresh.school
 
@@ -243,33 +243,18 @@ def test_list_and_get_repeat_the_closing(scene: Scene, login: Login) -> None:
 
 @pytest.mark.parametrize(
     ("role", "status"),
-    [("admin", 200), ("school_admin", 200), ("treasurer", 200), ("viewer", 200), ("staff", 403)],
+    [("admin", 200), ("secretaria", 200), ("secretaria", 200), ("staff", 403)],
 )
 def test_who_may_read_the_closings(scene: Scene, login: Login, role: str, status: int) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+    created = close(login(scene.users["secretaria"]), scene).json()
     api = login(scene.users[role])
 
     assert api.get(closings(scene.fresh.school)).status_code == status
     assert api.get(closings(scene.fresh.school, f"/{created['id']}")).status_code == status
 
 
-def test_the_viewer_reads_the_figures_but_not_who_closed_the_month(
-    scene: Scene, login: Login
-) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
-
-    seen = (
-        login(scene.users["viewer"]).get(closings(scene.fresh.school, f"/{created['id']}")).json()
-    )
-
-    assert seen["closing_balance_cents"] == 12150
-    assert seen["breakdown"] == created["breakdown"]
-    assert seen["closed_by_user_id"] is None
-    assert seen["reopened_by_user_id"] is None and seen["reopen_reason"] is None
-
-
 def test_the_list_is_newest_first_and_paginated_by_cursor(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     march = close(api, scene).json()
     april = close(api, scene, "2025-04").json()
     may = close(api, scene, "2025-05").json()
@@ -289,7 +274,7 @@ def test_the_list_is_newest_first_and_paginated_by_cursor(scene: Scene, login: L
 
 
 def test_an_unknown_closing_is_a_404(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     path = closings(scene.fresh.school, f"/{uuid.uuid4()}")
 
     assert api.get(path).status_code == 404
@@ -301,7 +286,7 @@ def test_an_unknown_closing_is_a_404(scene: Scene, login: Login) -> None:
 
 
 def test_verify_says_true_for_an_intact_closing(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     created = close(api, scene).json()
 
     response = api.post(closings(scene.fresh.school, f"/{created['id']}/verify"))
@@ -317,7 +302,7 @@ def test_verify_says_true_for_an_intact_closing(scene: Scene, login: Login) -> N
 def test_verify_says_false_when_the_ledger_no_longer_matches_the_snapshot(
     scene: Scene, login: Login, admin_engine: Engine
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     created = close(api, scene).json()
     with admin_engine.begin() as conn:  # only someone who can switch the triggers off could do this
         conn.execute(text("SET LOCAL session_replication_role = replica"))
@@ -333,10 +318,10 @@ def test_verify_says_false_when_the_ledger_no_longer_matches_the_snapshot(
 
 @pytest.mark.parametrize(
     ("role", "status"),
-    [("admin", 200), ("school_admin", 200), ("treasurer", 200), ("viewer", 403), ("staff", 403)],
+    [("admin", 200), ("secretaria", 200), ("secretaria", 200), ("staff", 403)],
 )
 def test_who_may_verify(scene: Scene, login: Login, role: str, status: int) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+    created = close(login(scene.users["secretaria"]), scene).json()
 
     response = login(scene.users[role]).post(
         closings(scene.fresh.school, f"/{created['id']}/verify")
@@ -357,7 +342,7 @@ def reopen(api: Api, scene: Scene, closing_id: str, reason: Any = REASON) -> Any
 def test_a_school_admin_reopens_the_latest_closing_and_the_month_can_be_closed_again(
     scene: Scene, login: Login
 ) -> None:
-    treasurer, admin = login(scene.users["treasurer"]), login(scene.users["admin"])
+    treasurer, admin = login(scene.users["secretaria"]), login(scene.users["admin"])
     created = close(treasurer, scene).json()
 
     response = reopen(admin, scene, created["id"])
@@ -379,9 +364,9 @@ def test_a_school_admin_reopens_the_latest_closing_and_the_month_can_be_closed_a
     assert [row["id"] for row in active["items"]] == [again.json()["id"]]
 
 
-@pytest.mark.parametrize("role", ["treasurer", "viewer", "staff"])
-def test_only_a_school_admin_may_reopen(scene: Scene, login: Login, role: str) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+@pytest.mark.parametrize("role", ["staff"])
+def test_only_the_secretaria_may_reopen(scene: Scene, login: Login, role: str) -> None:
+    created = close(login(scene.users["secretaria"]), scene).json()
 
     response = reopen(login(scene.users[role]), scene, created["id"])
 
@@ -389,12 +374,12 @@ def test_only_a_school_admin_may_reopen(scene: Scene, login: Login, role: str) -
     assert response.json()["code"] == "permission_denied"
 
 
-def test_every_school_admin_may_reopen(scene: Scene, login: Login) -> None:
-    """The treasurer who closes the month cannot reopen it; the administrator of the school can
-    (ADR-020 moved this from the administrator of the network, which no longer exists)."""
-    created = close(login(scene.users["treasurer"]), scene).json()
+def test_the_secretaria_may_reopen_a_month_she_closed(scene: Scene, login: Login) -> None:
+    """There is no director above the secretaria any more (decided 2026-10-15): she closes the
+    month and may reopen it, with a reason that is kept and audited."""
+    created = close(login(scene.users["secretaria"]), scene).json()
 
-    response = reopen(login(scene.users["school_admin"]), scene, created["id"])
+    response = reopen(login(scene.users["secretaria"]), scene, created["id"])
 
     assert response.status_code == 200, response.text
 
@@ -405,7 +390,7 @@ def test_every_school_admin_may_reopen(scene: Scene, login: Login) -> None:
     ids=str,
 )
 def test_the_reason_needs_at_least_ten_characters(scene: Scene, login: Login, reason: Any) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+    created = close(login(scene.users["secretaria"]), scene).json()
     admin = login(scene.users["admin"])
     path = closings(scene.fresh.school, f"/{created['id']}/reopen")
 
@@ -418,7 +403,7 @@ def test_the_reason_needs_at_least_ten_characters(scene: Scene, login: Login, re
 
 
 def test_the_reason_is_trimmed_and_the_body_takes_nothing_else(scene: Scene, login: Login) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+    created = close(login(scene.users["secretaria"]), scene).json()
     admin = login(scene.users["admin"])
     path = closings(scene.fresh.school, f"/{created['id']}/reopen")
 
@@ -430,7 +415,7 @@ def test_the_reason_is_trimmed_and_the_body_takes_nothing_else(scene: Scene, log
 
 
 def test_only_the_latest_closing_can_be_reopened_and_only_once(scene: Scene, login: Login) -> None:
-    treasurer, admin = login(scene.users["treasurer"]), login(scene.users["admin"])
+    treasurer, admin = login(scene.users["secretaria"]), login(scene.users["admin"])
     march = close(treasurer, scene).json()
     april = close(treasurer, scene, "2025-04").json()
 
@@ -458,7 +443,7 @@ def test_the_closings_of_another_organization_are_neither_readable_nor_writable(
     scene: Scene, login: Login, admin_engine: Engine
 ) -> None:
     theirs = close_other(login, scene)
-    mine = login(scene.users["treasurer"])
+    mine = login(scene.users["secretaria"])
     unknown = uuid.uuid4()
 
     answers = [
@@ -486,7 +471,7 @@ def test_the_closings_of_another_organization_are_neither_readable_nor_writable(
 
 
 def close_other(login: Login, scene: Scene) -> uuid.UUID:
-    api = login(scene.other_users["treasurer"])
+    api = login(scene.other_users["secretaria"])
     response = api.post(closings(scene.other.school), {"period": MARCH})
     assert response.status_code == 201, response.text
     assert response.json()["closing_balance_cents"] == 99900
@@ -500,7 +485,7 @@ def reopen_theirs(api: Api, scene: Scene, closing: uuid.UUID) -> Any:
 def test_closing_and_reopening_are_audited_with_the_person_who_did_it(
     scene: Scene, login: Login, admin_engine: Engine
 ) -> None:
-    created = close(login(scene.users["treasurer"]), scene).json()
+    created = close(login(scene.users["secretaria"]), scene).json()
     reopen(login(scene.users["admin"]), scene, created["id"])
 
     with admin_engine.connect() as conn:
@@ -514,7 +499,7 @@ def test_closing_and_reopening_are_audited_with_the_person_who_did_it(
 
     assert [row.action for row in rows] == ["monthly_closings.insert", "monthly_closings.update"]
     assert [row.actor_user_id for row in rows] == [
-        scene.users["treasurer"].id,
+        scene.users["secretaria"].id,
         scene.users["admin"].id,
     ]
     assert {row.actor_type for row in rows} == {"USER"}
@@ -536,7 +521,7 @@ def test_the_next_period_is_looked_up_only_for_the_sequence_refusal(
         return real(db, school_id)
 
     monkeypatch.setattr("app.closing.routes.queries.next_period_to_close", spy)
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     not_ended = close(api, scene, "2099-12")  # refused for another reason
     ok = close(api, scene)
@@ -555,7 +540,7 @@ def test_a_failing_extra_read_never_masks_the_refusal(
         db.execute(text("SELECT * FROM a_table_that_does_not_exist"))
 
     monkeypatch.setattr("app.closing.routes.queries.next_period_to_close", broken)
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     assert close(api, scene).status_code == 201
 
     response = close(api, scene, "2025-05")

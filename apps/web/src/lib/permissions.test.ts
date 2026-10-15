@@ -3,50 +3,36 @@ import { areaHref, areasFor, homeArea } from "./permissions";
 
 // Permissoes REAIS de cada papel (docs/auth.md e GET /auth/me).
 const STAFF = ["expenses:read_own", "expenses:submit", "requests:read_own", "requests:submit"];
-const TREASURER = ["campaigns:manage", "contributions:record_cash", "expenses:approve", "expenses:read_all", "invitations:create", "months:close", "refunds:register", "reimbursements:register", "reports:read", "requests:manage", "reconciliation:manage", "requests:read_all", "school_settings:manage", "statement:read"];
-const SCHOOL_ADMIN = [...TREASURER, "expenses:read_own", "expenses:submit", "memberships:manage", "months:reopen", "organization:update", "reports:read_aggregate", "requests:read_own", "requests:submit", "school:update"];
-const VIEWER = ["reports:read_aggregate"];
-
+const SECRETARIA = ["campaigns:manage", "contributions:record_cash", "expenses:approve", "expenses:read_all", "invitations:create", "months:close", "months:reopen", "refunds:register", "reimbursements:register", "reports:read", "requests:manage", "reconciliation:manage", "requests:read_all", "school_settings:manage", "statement:read"];
 describe("areasFor", () => {
   it("funcionário (staff): so 'Minhas despesas'", () => {
     expect(areasFor(STAFF)).toEqual({ resumo: false, fechamento: false, manageExpenses: false, myExpenses: true, closeMonths: false, reopenMonths: false, requests: true, manageRequests: false, myRequests: true, manageCampaigns: false, manageSettings: false, manageReconciliation: false, manageTeam: false });
     expect(homeArea(areasFor(STAFF))).toBe("despesas");
   });
 
-  it("gestão (treasurer): resumo, fila de analise e fechamento; fecha mes mas nao reabre; nao envia despesa propria", () => {
-    expect(areasFor(TREASURER)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: false, requests: true, manageRequests: true, myRequests: false, manageCampaigns: true, manageSettings: true, manageReconciliation: true, manageTeam: true });
+  it("secretaria: resumo, fila de analise e fechamento; fecha e reabre o mes; nao envia despesa propria", () => {
+    expect(areasFor(SECRETARIA)).toEqual({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: false, closeMonths: true, reopenMonths: true, requests: true, manageRequests: true, myRequests: false, manageCampaigns: true, manageSettings: true, manageReconciliation: true, manageTeam: true });
   });
 
-  it("administrador da escola (school_admin): tudo, inclusive reabrir mes; envia e analisa", () => {
-    expect(areasFor(SCHOOL_ADMIN)).toMatchObject({ resumo: true, fechamento: true, manageExpenses: true, myExpenses: true, closeMonths: true, reopenMonths: true });
-  });
-
-  it("solicitacoes: o funcionario abre as suas, a gestao recebe e responde, o administrador faz as duas coisas, o leitor nao ve", () => {
+  it("solicitacoes: o funcionario abre as suas e a secretaria recebe e responde", () => {
     expect(areasFor(STAFF)).toMatchObject({ requests: true, myRequests: true, manageRequests: false });
-    expect(areasFor(TREASURER)).toMatchObject({ requests: true, myRequests: false, manageRequests: true });
-    expect(areasFor(SCHOOL_ADMIN)).toMatchObject({ requests: true, myRequests: true, manageRequests: true });
-    expect(areasFor(VIEWER)).toMatchObject({ requests: false, myRequests: false, manageRequests: false });
+    expect(areasFor(SECRETARIA)).toMatchObject({ requests: true, myRequests: false, manageRequests: true });
     expect(areasFor([])).toMatchObject({ requests: false });
   });
 
-  it("campanhas: so quem tem campaigns:manage, ou seja, a gestao e o administrador; funcionario e leitor nao", () => {
-    expect(areasFor(TREASURER).manageCampaigns).toBe(true);
-    expect(areasFor(SCHOOL_ADMIN).manageCampaigns).toBe(true);
+  it("campanhas: so quem tem campaigns:manage, ou seja, a secretaria; o funcionario nao", () => {
+    expect(areasFor(SECRETARIA).manageCampaigns).toBe(true);
     expect(areasFor(STAFF).manageCampaigns).toBe(false);
-    expect(areasFor(VIEWER).manageCampaigns).toBe(false);
     // quem so tem campanhas cai nelas (nao no resumo, que nao pode ver)
     expect(homeArea(areasFor(["campaigns:manage"]))).toBe("campanhas");
   });
 
-  it("reabrir mes so com months:reopen (ADR-020: so o administrador da escola)", () => {
-    expect(areasFor(SCHOOL_ADMIN.filter((p) => p !== "months:reopen")).reopenMonths).toBe(false);
-    expect(areasFor(TREASURER).reopenMonths).toBe(false);
+  it("reabrir mes so com months:reopen", () => {
+    expect(areasFor(SECRETARIA).reopenMonths).toBe(true);
+    expect(areasFor(SECRETARIA.filter((p) => p !== "months:reopen")).reopenMonths).toBe(false);
   });
 
-  it("viewer: resumo e fechamento so de leitura, sem despesas e sem fechar", () => {
-    expect(areasFor(VIEWER)).toEqual({ resumo: true, fechamento: true, manageExpenses: false, myExpenses: false, closeMonths: false, reopenMonths: false, requests: false, manageRequests: false, myRequests: false, manageCampaigns: false, manageSettings: false, manageReconciliation: false, manageTeam: false });
-    expect(homeArea(areasFor(VIEWER))).toBe("resumo");
-    // quem so tem solicitacoes cai nelas (nao no resumo, que nao pode ver)
+  it("quem so tem solicitacoes cai nelas (nao no resumo, que nao pode ver)", () => {
     expect(homeArea(areasFor(["requests:submit", "requests:read_own"]))).toBe("solicitacoes");
   });
 

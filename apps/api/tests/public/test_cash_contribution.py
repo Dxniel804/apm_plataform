@@ -23,7 +23,7 @@ def _url(world: World) -> str:
 def test_the_treasury_records_a_cash_contribution(
     apis: ApiFactory, users: UserFactory, world: World, admin_engine: Engine
 ) -> None:
-    api, user = _login(apis, users, "treasurer")
+    api, user = _login(apis, users, "secretaria")
     response = api.post(
         _url(world), {"amount_cents": 5000, "guardian_name": "Maria Exemplo", "class_name": "4B"}
     )
@@ -44,7 +44,7 @@ def test_the_treasury_records_a_cash_contribution(
     assert tuple(stored) == ("PAID", "IN", True, user.id, None, "CASH", "Maria Exemplo", "4B", None)
 
 
-@pytest.mark.parametrize("role", ["school_admin", "treasurer"])
+@pytest.mark.parametrize("role", ["secretaria", "secretaria"])
 def test_the_roles_that_may_record_cash(
     apis: ApiFactory, users: UserFactory, world: World, role: str
 ) -> None:
@@ -52,7 +52,7 @@ def test_the_roles_that_may_record_cash(
     assert api.post(_url(world), {"amount_cents": 1000, "method": "TRANSFER"}).status_code == 201
 
 
-@pytest.mark.parametrize("role", ["staff", "viewer"])
+@pytest.mark.parametrize("role", ["staff"])
 def test_the_roles_that_may_not(
     apis: ApiFactory, users: UserFactory, world: World, role: str
 ) -> None:
@@ -62,7 +62,7 @@ def test_the_roles_that_may_not(
 
 
 def test_another_school_or_no_session(apis: ApiFactory, users: UserFactory, world: World) -> None:
-    api, _ = _login(apis, users, "treasurer")
+    api, _ = _login(apis, users, "secretaria")
     other = api.post(f"/api/v1/schools/{world.school_a2}/contributions", {"amount_cents": 1000})
     unknown = api.post(f"/api/v1/schools/{uuid.uuid4()}/contributions", {"amount_cents": 1000})
     assert other.status_code == unknown.status_code == 404  # the same answer
@@ -84,14 +84,14 @@ def test_another_school_or_no_session(apis: ApiFactory, users: UserFactory, worl
 def test_invalid_bodies_are_refused(
     apis: ApiFactory, users: UserFactory, world: World, body: dict[str, object]
 ) -> None:
-    api, _ = _login(apis, users, "treasurer")
+    api, _ = _login(apis, users, "secretaria")
     assert api.post(_url(world), body).status_code == 422
 
 
 def test_a_donation_goes_to_its_own_category(
     apis: ApiFactory, users: UserFactory, world: World, admin_engine: Engine
 ) -> None:
-    api, _ = _login(apis, users, "treasurer")
+    api, _ = _login(apis, users, "secretaria")
     body = api.post(_url(world), {"amount_cents": 2500, "category_key": "donation"}).json()
     with admin_engine.connect() as conn:
         key: str = conn.execute(
@@ -107,7 +107,7 @@ def test_a_donation_goes_to_its_own_category(
 def test_the_same_idempotency_key_records_the_money_once(
     apis: ApiFactory, users: UserFactory, world: World, admin_engine: Engine
 ) -> None:
-    api, _ = _login(apis, users, "treasurer")
+    api, _ = _login(apis, users, "secretaria")
     key = str(uuid.uuid4())
     first = api.post(_url(world), {"amount_cents": 7000}, headers={"Idempotency-Key": key})
     again = api.post(_url(world), {"amount_cents": 7000}, headers={"Idempotency-Key": key})

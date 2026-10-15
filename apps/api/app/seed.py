@@ -42,35 +42,33 @@ SCHOOLS = [
 ]
 # (email, full name)
 USERS = [
-    ("ana.admin@example.test", "Ana Administradora (demo)"),
-    ("bruno.diretor@example.test", "Bruno Diretor (demo)"),
-    ("carla.tesoureira@example.test", "Carla Gestão (demo)"),
+    ("ana.admin@example.test", "Ana Secretária (demo)"),
+    ("bruno.diretor@example.test", "Bruno Secretário (demo)"),
+    ("carla.tesoureira@example.test", "Carla Secretária (demo)"),
     ("diego.professor@example.test", "Diego Funcionário (demo)"),
-    ("elisa.leitora@example.test", "Elisa Leitora (demo)"),
-    ("fabio.admin@example.test", "Fabio Administrador (demo)"),
-    ("gina.tesoureira@example.test", "Gina Gestão (demo)"),
+    ("fabio.admin@example.test", "Fabio Secretário (demo)"),
+    ("gina.tesoureira@example.test", "Gina Secretária (demo)"),
     # Three memberships, one in each school, to try the switch of context in the site: each school
     # invited this person on its own and none of them gives access to another.
     ("helena.multipla@example.test", "Helena Multipla (demo)"),
-    # One more teacher in Aurora and one more treasurer in Horizonte, so that every school has a
+    # One more teacher in Aurora and one more secretaria in Horizonte, so that every school has a
     # person who submits an expense and a different person who approves it.
     ("paula.professora@example.test", "Paula Funcionária (demo)"),
-    ("marcos.tesoureiro@example.test", "Marcos Gestão (demo)"),
+    ("marcos.tesoureiro@example.test", "Marcos Secretário (demo)"),
 ]
 # (email, organization slug, school slug, role)
 MEMBERSHIPS = [
-    ("ana.admin@example.test", "demo-horizonte-conta", "demo-horizonte", "school_admin"),
-    ("bruno.diretor@example.test", "demo-aurora-conta", "demo-aurora", "school_admin"),
-    ("carla.tesoureira@example.test", "demo-aurora-conta", "demo-aurora", "treasurer"),
+    ("ana.admin@example.test", "demo-horizonte-conta", "demo-horizonte", "secretaria"),
+    ("bruno.diretor@example.test", "demo-aurora-conta", "demo-aurora", "secretaria"),
+    ("carla.tesoureira@example.test", "demo-aurora-conta", "demo-aurora", "secretaria"),
     ("diego.professor@example.test", "demo-horizonte-conta", "demo-horizonte", "staff"),
-    ("elisa.leitora@example.test", "demo-horizonte-conta", "demo-horizonte", "viewer"),
-    ("fabio.admin@example.test", "demo-central-conta", "demo-central", "school_admin"),
-    ("gina.tesoureira@example.test", "demo-central-conta", "demo-central", "treasurer"),
-    ("helena.multipla@example.test", "demo-aurora-conta", "demo-aurora", "treasurer"),
+    ("fabio.admin@example.test", "demo-central-conta", "demo-central", "secretaria"),
+    ("gina.tesoureira@example.test", "demo-central-conta", "demo-central", "secretaria"),
+    ("helena.multipla@example.test", "demo-aurora-conta", "demo-aurora", "secretaria"),
     ("helena.multipla@example.test", "demo-horizonte-conta", "demo-horizonte", "staff"),
-    ("helena.multipla@example.test", "demo-central-conta", "demo-central", "viewer"),
+    ("helena.multipla@example.test", "demo-central-conta", "demo-central", "staff"),
     ("paula.professora@example.test", "demo-aurora-conta", "demo-aurora", "staff"),
-    ("marcos.tesoureiro@example.test", "demo-horizonte-conta", "demo-horizonte", "treasurer"),
+    ("marcos.tesoureiro@example.test", "demo-horizonte-conta", "demo-horizonte", "secretaria"),
 ]
 
 

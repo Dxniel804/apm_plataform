@@ -17,7 +17,7 @@ describe("parseSession (snake_case da API -> camelCase do site)", () => {
         membershipId: ADMIN_MEMBERSHIP.membership_id,
         organization: ADMIN_MEMBERSHIP.organization,
         school: ADMIN_MEMBERSHIP.school,
-        role: "school_admin",
+        role: "secretaria",
         permissions: ["reports:read"],
       },
       memberships: [
@@ -25,13 +25,13 @@ describe("parseSession (snake_case da API -> camelCase do site)", () => {
           membershipId: ADMIN_MEMBERSHIP.membership_id,
           organization: ADMIN_MEMBERSHIP.organization,
           school: ADMIN_MEMBERSHIP.school,
-          role: "school_admin",
+          role: "secretaria",
         },
         {
           membershipId: SCHOOL_MEMBERSHIP.membership_id,
           organization: SCHOOL_MEMBERSHIP.organization,
           school: SCHOOL_MEMBERSHIP.school,
-          role: "treasurer",
+          role: "secretaria",
         },
       ],
       expiresAt: "2026-10-06T00:00:00Z",
@@ -144,7 +144,7 @@ describe("acceptInvitation", () => {
           membershipId: SCHOOL_MEMBERSHIP.membership_id,
           organization: SCHOOL_MEMBERSHIP.organization,
           school: SCHOOL_MEMBERSHIP.school,
-          role: "treasurer",
+          role: "secretaria",
         },
       },
     });

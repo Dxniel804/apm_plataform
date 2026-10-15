@@ -18,9 +18,9 @@ def test_staff_see_their_own_and_whoever_reads_all_sees_every_expense_of_the_sch
 ) -> None:
     ana = scene.person("staff", label="ana")
     beto = scene.person("staff", label="beto")
-    treasurer = scene.person("treasurer", label="treasurer")
-    director = scene.person("school_admin", label="director")
-    admin = scene.person("school_admin", label="admin")
+    treasurer = scene.person("secretaria", label="secretaria")
+    director = scene.person("secretaria", label="director")
+    admin = scene.person("secretaria", label="admin")
     mine, theirs = scene.draft(ana), scene.draft(beto)
 
     assert ids(ana.get("/expenses")) == [mine["id"]]
@@ -138,7 +138,7 @@ def test_a_cursor_cannot_widen_what_a_person_sees(scene: Scene) -> None:
 
 def test_the_status_filter(scene: Scene) -> None:
     ana = scene.person("staff", label="ana")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     draft = scene.draft(ana)
     sent = scene.submitted(ana)
     approved = scene.approved(ana, treasurer)
@@ -197,7 +197,7 @@ def test_filters_and_the_cursor_work_together(scene: Scene) -> None:
 
 def test_the_detail_carries_the_attachments_and_the_decision(scene: Scene) -> None:
     ana: Client = scene.person("staff", label="ana")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(ana, treasurer, paid_by="COLLABORATOR")
 
     detail = ana.get(f"/expenses/{expense['id']}").json()

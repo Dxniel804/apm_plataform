@@ -73,8 +73,8 @@ def _scene(connection: Connection) -> Scene:
     # school and the organization visible to it (the other two are of the same school).
     for status, user, role in (
         ("active", "user", "staff"),
-        ("suspended", "user_s", "viewer"),
-        ("revoked", "user_r", "treasurer"),
+        ("suspended", "user_s", "staff"),
+        ("revoked", "user_r", "secretaria"),
     ):
         memberships[status] = uuid.uuid4()
         connection.execute(
@@ -107,7 +107,7 @@ def _scene(connection: Connection) -> Scene:
             text(
                 "INSERT INTO invitations (id, organization_id, school_id, email, role, token_hash, "
                 "invited_by_user_id, created_at, expires_at, accepted_at, accepted_user_id, "
-                "revoked_at) VALUES (:id, :o, :s, :e, 'viewer', decode(:h, 'hex'), :u, "
+                "revoked_at) VALUES (:id, :o, :s, :e, 'staff', decode(:h, 'hex'), :u, "
                 ":created, :expires, :accepted_at, :accepted_user, :revoked_at)"
             ),
             {
@@ -206,7 +206,7 @@ def test_the_definer_reads_every_user_row_but_no_other_table_without_a_policy(
 
 _MEMBERSHIP = (
     "INSERT INTO memberships (user_id, organization_id, school_id, role, status) "
-    "VALUES (:u, :o, :s, 'viewer', :status)"
+    "VALUES (:u, :o, :s, 'staff', :status)"
 )
 
 

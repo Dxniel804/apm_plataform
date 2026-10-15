@@ -12,7 +12,7 @@ const member = (id: string, name: string, role: string, extra: Record<string, un
 });
 const TEAM: Team = parseTeam(
   {
-    members: [member("eu", "Carla Gestão", "treasurer", { is_you: true, can_manage: false }), member("ana", "Ana Funcionária", "staff"), member("rui", "Rui Suspenso", "staff", { status: "suspended" })],
+    members: [member("eu", "Carla Gestão", "secretaria", { is_you: true, can_manage: false }), member("ana", "Ana Funcionária", "staff"), member("rui", "Rui Suspenso", "staff", { status: "suspended" })],
     invitable_roles: ["staff"],
     pending: [{ id: "i1", email: "novo@escola.test", role: "staff", expires_at: "2026-10-18T12:00:00Z", can_manage: true }],
   },

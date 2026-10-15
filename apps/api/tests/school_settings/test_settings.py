@@ -12,16 +12,16 @@ from sqlalchemy import Engine, text
 from app.auth.permissions import ROLE_PERMISSIONS, Permission
 from tests.expenses.support import Scene
 
-ROLES = ["school_admin", "treasurer", "staff", "viewer"]
+ROLES = ["secretaria", "staff"]
 MANAGE = {role for role in ROLES if Permission.SCHOOL_SETTINGS_MANAGE in ROLE_PERMISSIONS[role]}
 
 
 def test_the_set_of_roles_is_what_the_permission_map_says() -> None:
-    assert {"school_admin", "treasurer"} == MANAGE
+    assert {"secretaria"} == MANAGE
 
 
 def test_the_settings_come_with_their_defaults(scene: Scene) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
 
     body = gestao.get("/settings").json()
 
@@ -36,7 +36,7 @@ def test_the_settings_come_with_their_defaults(scene: Scene) -> None:
 
 
 def test_the_management_changes_the_amounts_the_text_and_the_goals(scene: Scene) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
 
     changed = gestao.patch(
         "/settings",
@@ -59,7 +59,7 @@ def test_the_management_changes_the_amounts_the_text_and_the_goals(scene: Scene)
 
 
 def test_only_what_is_sent_changes_and_null_clears_the_optional_fields(scene: Scene) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
     gestao.patch(
         "/settings",
         {
@@ -112,7 +112,7 @@ def test_only_what_is_sent_changes_and_null_clears_the_optional_fields(scene: Sc
     ],
 )
 def test_a_bad_change_is_a_422_and_changes_nothing(scene: Scene, body: dict[str, Any]) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
     before = gestao.get("/settings").json()
 
     response = gestao.patch("/settings", body)
@@ -161,8 +161,8 @@ def test_every_route_enforces_its_permission(scene: Scene, role: str) -> None:
 
 
 def test_another_school_cannot_be_reached(scene: Scene) -> None:
-    gestao = scene.person("treasurer")
-    other = scene.person("treasurer", org="b")
+    gestao = scene.person("secretaria")
+    other = scene.person("secretaria", org="b")
 
     for method, tail, body in (
         ("GET", "/settings", None),
@@ -176,7 +176,7 @@ def test_another_school_cannot_be_reached(scene: Scene) -> None:
 
 
 def test_a_change_is_audited_without_the_free_text(scene: Scene, admin_engine: Engine) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
     gestao.patch(
         "/settings", {"free_amount_text": "texto livre da escola", "monthly_goal_cents": 123400}
     )
@@ -200,7 +200,7 @@ def test_a_change_is_audited_without_the_free_text(scene: Scene, admin_engine: E
 def test_the_public_link_is_the_base_address_and_the_slug(
     scene: Scene, admin_engine: Engine
 ) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
     with admin_engine.connect() as conn:
         slug, name = conn.execute(
             text("SELECT slug, name FROM schools WHERE id = :s"), {"s": gestao.school}
@@ -214,7 +214,7 @@ def test_the_public_link_is_the_base_address_and_the_slug(
 
 
 def test_the_poster_is_an_a4_pdf_with_the_name_and_the_address(scene: Scene) -> None:
-    gestao = scene.person("treasurer")
+    gestao = scene.person("secretaria")
     link = gestao.get("/public-link").json()
 
     response = gestao.get("/public-link/poster.pdf")

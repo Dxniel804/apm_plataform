@@ -195,11 +195,11 @@ def insert_statement(table: str, ledger: Ledger, org: uuid.UUID, school: uuid.UU
             "INSERT INTO monthly_closings (organization_id, school_id, period_start, "
             "closed_by_user_id) VALUES (:org, :school, "
             "(SELECT period_start + interval '1 month' FROM monthly_closings WHERE id = :closing), "
-            ":treasurer)",
+            ":secretaria)",
             {
                 **base,
                 "closing": ledger.closing,
-                "treasurer": a1.staff,
+                "secretaria": a1.staff,
             },  # a member of A1, visible in its context
             "rowcount",
         ),

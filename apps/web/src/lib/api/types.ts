@@ -50,7 +50,7 @@ export type ReadinessResult =
 
 // ---------------------------------------------------------------- REAL: autenticacao (docs/auth.md)
 
-export const ROLES = ["school_admin", "treasurer", "staff", "viewer"] as const;
+export const ROLES = ["secretaria", "staff"] as const;
 export type Role = (typeof ROLES)[number];
 
 export interface AuthUser {

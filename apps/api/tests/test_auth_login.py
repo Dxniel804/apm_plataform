@@ -135,16 +135,16 @@ def test_the_development_mode_uses_plain_names_without_the_secure_flag(
 def test_login_with_one_membership_selects_it_and_with_two_asks(
     api: Api, users: UserFactory
 ) -> None:
-    single = users.make("school_admin")
-    multi = users.make("staff", extra=(("viewer", "a", "2"),), label="multi")
+    single = users.make("secretaria")
+    multi = users.make("staff", extra=(("staff", "a", "2"),), label="multi")
 
     first = api.login(single).json()
     api.forget_cookies()
     second = api.login(multi).json()
 
-    assert first["active_membership"]["role"] == "school_admin"
+    assert first["active_membership"]["role"] == "secretaria"
     assert second["active_membership"] is None  # the user must choose (POST /auth/context)
-    assert {m["role"] for m in second["memberships"]} == {"staff", "viewer"}
+    assert {m["role"] for m in second["memberships"]} == {"staff"}
 
 
 def test_a_user_with_no_membership_logs_in_with_no_context(api: Api, users: UserFactory) -> None:
@@ -175,7 +175,7 @@ def test_every_login_issues_a_new_token(api: Api, users: UserFactory) -> None:
 
 
 def test_me_returns_the_session_of_the_cookie(api: Api, users: UserFactory) -> None:
-    user = users.make("treasurer")
+    user = users.make("secretaria")
     logged = api.login(user).json()
 
     me = api.get(ME)
@@ -459,7 +459,7 @@ def test_login_ends_the_session_the_browser_already_had(
     old = api.session_token
     assert old is not None
 
-    api.login(first if same_user else users.make("viewer"))
+    api.login(first if same_user else users.make("staff"))
 
     row = session_row(admin_engine, old)
     assert row.revoked_at is not None and row.revoked_reason == "rotated"

@@ -39,11 +39,10 @@ const STATUS: Record<string, { label: string; tone: "success" | "warning" | "neu
 };
 
 /**
- * Os cargos que a tela oferece: so FUNCIONARIO e GESTAO (os dois da escola, mais o responsavel, que nao tem login).
- * "Administrador da escola" e "Leitura" existem no sistema mas nao sao escolhidos aqui. Cada pessoa so ve os que a
- * API diz que ela pode trazer (a gestao traz funcionarios; o administrador traz os dois).
+ * Os cargos da escola: SECRETARIA e FUNCIONARIO (o responsavel nao tem login). A tela oferece os que a API diz que a
+ * pessoa pode trazer.
  */
-const OFFERED: Role[] = ["staff", "treasurer"];
+const OFFERED: Role[] = ["staff", "secretaria"];
 
 /**
  * Equipe da escola: quem faz parte, quem foi convidado e ainda nao entrou, e o botao de trazer um funcionario.

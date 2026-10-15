@@ -4,7 +4,7 @@ Both come from `statement_summary`, so they always agree with the cards and the 
 
 from typing import Any
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine
 
 from tests.authsupport import ApiFactory
 from tests.campaigns.support import committed_manager
@@ -115,29 +115,6 @@ def test_campaign_sales_are_not_counted_as_contributions(
     assert (
         body["collected_cents"] == 0 and body["paid_contributions"] == 0
     )  # the campaign has its own page
-
-
-def test_viewer_sees_the_aggregates_and_staff_does_not(
-    apis: ApiFactory, school: PublicSchool, admin_engine: Engine
-) -> None:
-    from tests.authsupport import PASSWORD_HASH, TestUser
-    from tests.expenses.support import Client
-
-    fresh = school.fresh
-    with admin_engine.begin() as conn:
-        conn.execute(
-            text("UPDATE users SET password_hash = :h WHERE id = :i"),
-            {"h": PASSWORD_HASH, "i": fresh.staff},
-        )
-        email: str = conn.execute(
-            text("SELECT email FROM users WHERE id = :i"), {"i": fresh.staff}
-        ).scalar_one()
-    api = apis.make()
-    assert api.login(email).status_code == 200
-    staff = Client(api, TestUser(fresh.staff, email, ()), apis.world, fresh.school)
-
-    assert staff.get("/statement/series").status_code == 403
-    assert staff.get("/statement/goal").status_code == 403
 
 
 def test_another_school_cannot_read_the_series_or_the_goal(

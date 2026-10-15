@@ -41,7 +41,7 @@ class RequireAnyOf(PermissionRequirement):
     """Marker + dependency: the role must hold at least ONE of these permissions.
 
     The route walk reads `.permission` (the first one) for `x-permission`; the routes also list the
-    whole set in `x-permission-any`. It is needed because `treasurer` reads every expense
+    whole set in `x-permission-any`. It is needed because `secretaria` reads every expense
     (`expenses:read_all`) without holding `expenses:read_own`.
     """
 

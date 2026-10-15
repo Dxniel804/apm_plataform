@@ -23,7 +23,7 @@ def _as(apis: ApiFactory, users: UserFactory, role: str, **kwargs: object) -> Ap
 def test_the_management_creates_an_employee_and_the_e_mail_names_them(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
 
     made = gestao.post(BASE, {"full_name": "Maria Silva", "email": mail(users, "maria")})
 
@@ -37,7 +37,7 @@ def test_the_management_creates_an_employee_and_the_e_mail_names_them(
 def test_the_employee_accepts_and_then_appears_among_the_people_of_the_school(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    gestao = _as(apis, users, "school_admin")
+    gestao = _as(apis, users, "secretaria")
     gestao.post(BASE, {"full_name": "João Souza", "email": mail(users, "joao")})
     token = read_outbox(tmp_path)[-1].token
     before = gestao.get(BASE).json()
@@ -55,26 +55,29 @@ def test_the_employee_accepts_and_then_appears_among_the_people_of_the_school(
     assert joao["role"] == "staff" and joao["status"] == "active" and joao["can_manage"] is True
 
 
-def test_the_management_may_bring_only_employees_in_and_a_staff_member_nobody(
+def test_the_secretaria_brings_secretarias_and_employees_in_and_an_employee_nobody(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
     staff = _as(apis, users, "staff")
 
-    other_role = gestao.post(
-        BASE, {"full_name": "Fulano", "email": mail(users, "fulano"), "role": "treasurer"}
+    other_secretaria = gestao.post(
+        BASE, {"full_name": "Fulano", "email": mail(users, "fulano"), "role": "secretaria"}
+    )
+    gone_role = gestao.post(
+        BASE, {"full_name": "Fulano", "email": mail(users, "fulano3"), "role": "viewer"}
     )
     by_staff = staff.post(BASE, {"full_name": "Fulano", "email": mail(users, "fulano2")})
     listing_by_staff = staff.get(BASE)
 
-    assert other_role.status_code == 403
+    assert other_secretaria.status_code == 201 and gone_role.status_code == 422
     assert by_staff.status_code == 403 and listing_by_staff.status_code == 403
 
 
 def test_the_same_e_mail_twice_is_refused_and_so_is_a_person_already_in(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
     member = users.make("staff", label="already")
     body = {"full_name": "Ana Paula", "email": mail(users, "ana")}
 
@@ -90,7 +93,7 @@ def test_the_same_e_mail_twice_is_refused_and_so_is_a_person_already_in(
 def test_resending_makes_a_new_link_and_the_old_one_stops_working(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
     made = gestao.post(BASE, {"full_name": "Rita Lima", "email": mail(users, "rita")})
     old = read_outbox(tmp_path)[-1].token
 
@@ -110,7 +113,7 @@ def test_resending_makes_a_new_link_and_the_old_one_stops_working(
 def test_cancelling_an_invitation_takes_it_off_the_list_and_kills_the_link(
     apis: ApiFactory, users: UserFactory, tmp_path: Path
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
     made = gestao.post(BASE, {"full_name": "Paulo Reis", "email": mail(users, "paulo")})
     token = read_outbox(tmp_path)[-1].token
 
@@ -131,7 +134,7 @@ def test_cancelling_an_invitation_takes_it_off_the_list_and_kills_the_link(
 def test_suspending_ends_the_access_and_bringing_back_gives_it_again(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    gestao = _as(apis, users, "treasurer")
+    gestao = _as(apis, users, "secretaria")
     employee = users.make("staff", label="employee")
     session = apis.make()
     assert session.login(employee).status_code == 200
@@ -147,28 +150,28 @@ def test_suspending_ends_the_access_and_bringing_back_gives_it_again(
     assert apis.make().login(employee).status_code == 200
 
 
-def test_nobody_suspends_themselves_or_a_role_above_theirs(
+def test_nobody_suspends_themselves_but_a_secretaria_may_suspend_another(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    gestao_user = users.make("treasurer")
+    gestao_user = users.make("secretaria")
     gestao = apis.make()
     gestao.login(gestao_user)
     members = gestao.get(BASE).json()["members"]
     me = next(m for m in members if m["email"] == gestao_user.email)
-    admin = users.make("school_admin", label="admin")
+    admin = users.make("secretaria", label="admin")
     members = gestao.get(BASE).json()["members"]
     above = next(m for m in members if m["email"] == admin.email)
 
     on_myself = gestao.post(f"{BASE}/{me['membership_id']}/suspend")
     on_admin = gestao.post(f"{BASE}/{above['membership_id']}/suspend")
 
-    assert me["is_you"] and me["can_manage"] is False and above["can_manage"] is False
-    assert on_myself.status_code == 404 and on_admin.status_code == 404
+    assert me["is_you"] and me["can_manage"] is False and above["can_manage"] is True
+    assert on_myself.status_code == 404 and on_admin.status_code == 204
 
 
 def test_another_school_does_not_see_the_team(apis: ApiFactory, users: UserFactory) -> None:
-    mine = _as(apis, users, "treasurer")
-    other = _as(apis, users, "treasurer", org="a", school="2", label="other")
+    mine = _as(apis, users, "secretaria")
+    other = _as(apis, users, "secretaria", org="a", school="2", label="other")
     users.make("staff", label="mine-staff")
 
     seen = [m["email"] for m in other.get(BASE).json()["members"]]
@@ -180,8 +183,8 @@ def test_another_school_does_not_see_the_team(apis: ApiFactory, users: UserFacto
 def test_the_team_says_which_roles_the_caller_may_bring_in(
     apis: ApiFactory, users: UserFactory
 ) -> None:
-    management = _as(apis, users, "treasurer").get(BASE).json()
-    director = _as(apis, users, "school_admin", label="director").get(BASE).json()
+    management = _as(apis, users, "secretaria").get(BASE).json()
+    director = _as(apis, users, "secretaria", label="director").get(BASE).json()
 
-    assert management["invitable_roles"] == ["staff"]
-    assert director["invitable_roles"] == ["school_admin", "staff", "treasurer", "viewer"]
+    assert management["invitable_roles"] == ["secretaria", "staff"]
+    assert director["invitable_roles"] == ["secretaria", "staff"]

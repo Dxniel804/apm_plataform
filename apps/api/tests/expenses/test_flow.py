@@ -12,7 +12,7 @@ def test_a_collaborators_expense_is_written_sent_approved_for_less_and_reimburse
     scene: Scene,
 ) -> None:
     teacher = scene.person("staff", label="teacher")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
 
     expense = scene.draft(teacher, paid_by="COLLABORATOR", amount_cents=20_000)
     assert expense["status"] == "DRAFT"
@@ -54,7 +54,7 @@ def test_an_expense_the_apm_paid_is_approved_in_full_and_then_registered_as_paid
     scene: Scene,
 ) -> None:
     teacher = scene.person("staff", label="teacher")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.approved(teacher, treasurer, paid_by="APM", amount_cents=9_900)
     assert expense["approved_amount_cents"] == 9_900
 
@@ -69,7 +69,7 @@ def test_the_cash_statement_counts_only_what_was_paid(scene: Scene, admin_engine
     """An expense is outside the balance until it is PAID, and an expense a collaborator paid moves
     the cash only through its reimbursement (never twice)."""
     teacher = scene.person("staff", label="teacher")
-    treasurer = scene.person("treasurer", label="treasurer")
+    treasurer = scene.person("secretaria", label="secretaria")
     school = teacher.school
 
     def out_cents() -> int:
@@ -103,7 +103,7 @@ def test_a_rejected_expense_is_final_and_a_correction_goes_back_to_the_author(
     scene: Scene,
 ) -> None:
     teacher = scene.person("staff", label="teacher")
-    director = scene.person("school_admin", label="director")
+    director = scene.person("secretaria", label="director")
 
     first = scene.submitted(teacher)
     rejected = director.post(f"/expenses/{first['id']}/reject", {"reason": "nao e despesa da APM"})

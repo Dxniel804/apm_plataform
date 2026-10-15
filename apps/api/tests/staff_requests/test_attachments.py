@@ -155,12 +155,12 @@ def test_the_same_photo_twice_is_a_409_and_a_seventh_one_too(scene: Scene) -> No
 
 def test_only_the_author_attaches_and_only_while_it_is_open(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    director = scene.person("school_admin", label="director")
+    colleague = scene.person("staff", label="colleague")
     gestao = manager(scene)
     request = opened(author)
 
-    foreign = upload(director, request["id"], png())
-    assert (foreign.status_code, foreign.json()["code"]) == (403, "author_only")
+    foreign = upload(colleague, request["id"], png())
+    assert (foreign.status_code, foreign.json()["code"]) == (404, "not_found")  # not even visible
     assert stored_files(scene.directory) == []
     assert upload(author, request["id"], png()).status_code == 201
     gestao.post(f"/requests/{request['id']}/start")

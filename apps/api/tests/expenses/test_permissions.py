@@ -9,7 +9,7 @@ import pytest
 from app.auth.permissions import ROLE_PERMISSIONS, Permission
 from tests.expenses.support import Client, Scene, pdf
 
-ROLES = ["school_admin", "treasurer", "staff", "viewer"]
+ROLES = ["secretaria", "staff"]
 ANY = "00000000-0000-4000-8000-000000000001"
 SUBMIT = {role for role in ROLES if Permission.EXPENSES_SUBMIT in ROLE_PERMISSIONS[role]}
 READ = {
@@ -62,14 +62,8 @@ def _routes(scene: Scene, school: Any) -> list[tuple[str, str, dict[str, Any], s
 
 def test_the_sets_of_roles_are_what_the_permission_map_says() -> None:
     """If the map of roles changes, this table must be looked at again."""
-    admins = {"school_admin"}
-    can_write, can_read, can_decide = (
-        admins | {"staff"},
-        admins | {"treasurer", "staff"},
-        admins | {"treasurer"},
-    )
+    can_write, can_read, can_decide = ({"staff"}, {"secretaria", "staff"}, {"secretaria"})
     assert (can_write, can_read, can_decide, can_decide) == (SUBMIT, READ, APPROVE, REIMBURSE)
-    assert "viewer" not in FORM | CANCEL
 
 
 @pytest.mark.parametrize("role", ROLES)

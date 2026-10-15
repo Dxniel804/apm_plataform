@@ -31,4 +31,4 @@ def with_photo(client: Client, request_id: str) -> dict[str, Any]:
 
 def manager(scene: Scene, label: str = "gestao") -> Client:
     """The management (role `treasurer`) of school A1."""
-    return scene.person("treasurer", label=label)
+    return scene.person("secretaria", label=label)

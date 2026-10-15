@@ -13,7 +13,7 @@ def _path(school: object, period: str | None = "2025-03") -> str:
 def test_the_report_is_one_page_with_the_totals_of_the_summary_and_no_names(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     summary = api.get(
         f"/api/v1/schools/{scene.fresh.school}/statement/summary", params={"period": "2025-03"}
     ).json()
@@ -42,7 +42,7 @@ def test_the_report_is_one_page_with_the_totals_of_the_summary_and_no_names(
         assert name not in text
 
 
-def test_the_viewer_may_also_get_it_because_it_names_no_one(scene: Scene, login: Login) -> None:
-    response = login(scene.users["viewer"]).get(_path(scene.fresh.school))
+def test_an_employee_does_not_get_it(scene: Scene, login: Login) -> None:
+    response = login(scene.users["staff"]).get(_path(scene.fresh.school))
 
-    assert response.status_code == 200
+    assert response.status_code == 403

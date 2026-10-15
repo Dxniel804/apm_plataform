@@ -76,7 +76,7 @@ def assert_invalid_cursor(response: Any) -> None:
 def test_a_forged_cursor_of_the_statement_is_a_422(
     scene: Scene, login: Login, payload: Any
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(
         f"/api/v1/schools/{scene.fresh.school}/statement",
@@ -90,7 +90,7 @@ def test_a_forged_cursor_of_the_statement_is_a_422(
 def test_a_forged_cursor_of_the_pending_list_is_a_422(
     scene: Scene, login: Login, payload: Any
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(
         f"/api/v1/schools/{scene.fresh.school}/statement/pending", params={"cursor": forge(payload)}
@@ -101,7 +101,7 @@ def test_a_forged_cursor_of_the_pending_list_is_a_422(
 
 @pytest.mark.parametrize("payload", CLOSINGS_FORGERIES, ids=lambda p: json.dumps(p)[:60])
 def test_a_forged_cursor_of_the_closings_is_a_422(scene: Scene, login: Login, payload: Any) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     assert close(api, scene).status_code == 201
 
     response = api.get(closings(scene.fresh.school), params={"cursor": forge(payload)})
@@ -112,7 +112,7 @@ def test_a_forged_cursor_of_the_closings_is_a_422(scene: Scene, login: Login, pa
 def test_a_well_formed_cursor_that_points_nowhere_just_gives_an_empty_page(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     last = {"settled_at": "2099-01-01T00:00:00+00:00", "reference_code": 2**63 - 1}
 
     response = api.get(

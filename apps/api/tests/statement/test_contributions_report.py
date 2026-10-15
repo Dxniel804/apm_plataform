@@ -1,6 +1,6 @@
 # ruff: noqa: E501  (SQL text)
 """The PDF of the contributions of a month: the sections add up to the summary of the database, what
-is not in the cash ledger stays outside the total, the `viewer` gets initials."""
+is not in the cash ledger stays outside the total."""
 
 from datetime import datetime
 from typing import Any
@@ -18,7 +18,7 @@ def contributions_path(school: Any, period: str | None = "2025-03") -> str:
     return base if period is None else f"{base}?period={period}"
 
 
-def march_text(scene: Scene, login: Login, role: str = "treasurer") -> str:
+def march_text(scene: Scene, login: Login, role: str = "secretaria") -> str:
     response = login(scene.users[role]).get(contributions_path(scene.fresh.school))
     assert response.status_code == 200, response.text
     return text_of(response.content)
@@ -28,7 +28,7 @@ def test_the_pdf_of_march_has_the_header_the_summary_and_the_lists(
     contrib_scene: Scene, login: Login
 ) -> None:
     scene = contrib_scene
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(contributions_path(scene.fresh.school))
 
@@ -114,7 +114,7 @@ def test_the_pix_ids_are_the_shortened_ones_of_the_charge_and_of_the_direct_pix(
 
 def test_the_totals_are_the_ones_of_statement_summary(contrib_scene: Scene, login: Login) -> None:
     scene = contrib_scene
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     summary = api.get(
         f"/api/v1/schools/{scene.fresh.school}/statement/summary", params={"period": "2025-03"}
     ).json()
@@ -132,7 +132,7 @@ def test_what_is_not_in_the_cash_ledger_is_outside_the_total_and_a_late_adjustme
 ) -> None:
     scene = contrib_scene
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     period = f"{now.year:04d}-{now.month:02d}"
 
     response = api.get(contributions_path(scene.fresh.school, period))
@@ -161,7 +161,7 @@ def test_without_a_period_the_month_is_the_current_one(contrib_scene: Scene, log
     scene = contrib_scene
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
-    response = login(scene.users["treasurer"]).get(contributions_path(scene.fresh.school, None))
+    response = login(scene.users["secretaria"]).get(contributions_path(scene.fresh.school, None))
 
     assert response.status_code == 200
     assert (
@@ -173,7 +173,7 @@ def test_without_a_period_the_month_is_the_current_one(contrib_scene: Scene, log
 def test_an_empty_month_still_gives_a_pdf_with_zeros(contrib_scene: Scene, login: Login) -> None:
     scene = contrib_scene
 
-    response = login(scene.users["treasurer"]).get(
+    response = login(scene.users["secretaria"]).get(
         contributions_path(scene.fresh.school, "2024-01")
     )
 
@@ -185,35 +185,9 @@ def test_an_empty_month_still_gives_a_pdf_with_zeros(contrib_scene: Scene, login
     assert "Subtotal (0) R$ 0,00" in everything
 
 
-def test_the_viewer_gets_initials_instead_of_names(contrib_scene: Scene, login: Login) -> None:
-    scene = contrib_scene
-
-    everything = march_text(scene, login, role="viewer")
-
-    for name in (
-        "Maria",
-        "Exemplo",
-        "João",
-        "Carla",
-        "Pedro",
-        "Quatro",
-        "Ana Quinze",
-        "Doador",
-        "Generoso",
-        "Aluno Um",
-    ):
-        assert name not in everything, name
-    for initials in ("M. E.", "J. T.", "C. T.", "P. Q.", "A. Q.", "D. G.", "A. U."):
-        assert initials in everything, initials
-    assert "Contribuinte anônimo" in everything
-    assert "5º A" not in everything and "Marta" not in everything  # the class is free text
-    assert "Versão sem dados pessoais" in everything
-    assert "Subtotal (6) R$ 155,00" in everything  # the same figures
-
-
 @pytest.mark.parametrize(
     ("role", "status"),
-    [("admin", 200), ("school_admin", 200), ("treasurer", 200), ("viewer", 200), ("staff", 403)],
+    [("admin", 200), ("secretaria", 200), ("secretaria", 200), ("staff", 403)],
 )
 def test_who_may_download_it(contrib_scene: Scene, login: Login, role: str, status: int) -> None:
     scene = contrib_scene
@@ -227,7 +201,7 @@ def test_another_school_is_a_404_and_its_people_never_show(
     contrib_scene: Scene, login: Login
 ) -> None:
     scene = contrib_scene
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     foreign = api.get(contributions_path(scene.other.school))
     unknown = api.get(contributions_path("00000000-0000-0000-0000-000000000000"))
@@ -245,7 +219,7 @@ def test_another_school_is_a_404_and_its_people_never_show(
 def test_a_bad_period_is_a_422(contrib_scene: Scene, login: Login, period: str) -> None:
     scene = contrib_scene
 
-    response = login(scene.users["treasurer"]).get(contributions_path(scene.fresh.school, period))
+    response = login(scene.users["secretaria"]).get(contributions_path(scene.fresh.school, period))
 
     assert response.status_code == 422, response.text
 
@@ -254,7 +228,7 @@ def test_sections_that_disagree_with_the_summary_give_no_pdf(
     contrib_scene: Scene, login: Login, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     scene = contrib_scene
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     # The ledger "moves" between the reads: the list comes back short, twice in a row.
     monkeypatch.setattr("app.reports.routes.queries.settled_contributions", lambda *a, **k: [])
 
@@ -278,7 +252,7 @@ def test_a_contribution_without_its_detail_row_is_still_in_the_list_and_in_the_t
             ),
             {"o": f.org, "s": f.school, "c": f.cat_in, "u": f.treasurer},
         )
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     summary = api.get(
         f"/api/v1/schools/{f.school}/statement/summary", params={"period": "2025-03"}
     ).json()

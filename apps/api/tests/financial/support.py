@@ -103,15 +103,15 @@ def make_school(conn: Connection, *, timezone: str | None = None) -> Fresh:
         ),
         {"id": school, "org": org, "slug": f"t5-sch-{suffix}"},
     )
-    people = {name: uuid.uuid4() for name in ("admin", "treasurer", "staff", "outsider")}
+    people = {name: uuid.uuid4() for name in ("admin", "secretaria", "staff", "outsider")}
     for name, user in people.items():
         conn.execute(
             text("INSERT INTO users (id, email, full_name) VALUES (:id, :email, :name)"),
             {"id": user, "email": f"t5-{name}-{suffix}@example.test", "name": f"T5 {name}"},
         )
     for name, role, school_id in (
-        ("admin", "school_admin", school),
-        ("treasurer", "treasurer", school),
+        ("admin", "secretaria", school),
+        ("secretaria", "secretaria", school),
         ("staff", "staff", school),
     ):
         conn.execute(
@@ -132,7 +132,7 @@ def make_school(conn: Connection, *, timezone: str | None = None) -> Fresh:
         org=org,
         school=school,
         admin=people["admin"],
-        treasurer=people["treasurer"],
+        treasurer=people["secretaria"],
         staff=people["staff"],
         outsider=people["outsider"],
         account=account,

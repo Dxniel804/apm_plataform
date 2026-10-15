@@ -83,8 +83,8 @@ def test_an_expense_of_another_school_is_not_there_for_the_school_in_the_path(
 def test_another_organization_cannot_see_the_school_nor_its_expenses(scene: Scene) -> None:
     teacher = scene.person("staff", school="1", label="t1")
     expense = scene.draft(teacher)
-    treasurer_b = scene.person("treasurer", org="b", school="1", label="tb")
-    admin_b = scene.person("school_admin", org="b", label="ab")
+    treasurer_b = scene.person("secretaria", org="b", school="1", label="tb")
+    admin_b = scene.person("secretaria", org="b", label="ab")
 
     for outsider in (treasurer_b, admin_b):
         answers = [
@@ -108,7 +108,7 @@ def test_a_school_admin_reaches_its_own_school_and_no_other(scene: Scene) -> Non
     the administrator of A1 gets the same 404 for A2 and B1 as for a school that never existed."""
     teacher_1 = scene.person("staff", school="1", label="t1")
     teacher_2 = scene.person("staff", school="2", label="t2")
-    admin = scene.person("school_admin", label="admin")
+    admin = scene.person("secretaria", label="admin")
     one, two = scene.draft(teacher_1), scene.draft(teacher_2)
 
     assert admin.get(f"/expenses/{one['id']}", school=teacher_1.school).status_code == 200

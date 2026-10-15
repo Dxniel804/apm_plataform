@@ -269,7 +269,7 @@ def test_the_request_must_declare_its_size(ocr_scene: Callable[..., Scene]) -> N
 # --- who may read -------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("role", ["treasurer", "viewer"])
+@pytest.mark.parametrize("role", ["secretaria"])
 def test_only_who_can_send_an_expense_may_read_a_receipt(
     ocr_scene: Callable[..., Scene], role: str
 ) -> None:
@@ -281,10 +281,12 @@ def test_only_who_can_send_an_expense_may_read_a_receipt(
     assert provider.calls == []
 
 
-def test_the_school_director_may_read(ocr_scene: Callable[..., Scene]) -> None:
-    director = ocr_scene().person("school_admin", label="director")
+def test_a_secretaria_does_not_read_receipts_because_she_never_writes_expenses(
+    ocr_scene: Callable[..., Scene],
+) -> None:
+    secretaria = ocr_scene().person("secretaria", label="secretaria")
 
-    assert read(director).status_code == 200
+    assert read(secretaria).status_code == 403
 
 
 def test_a_school_outside_the_session_is_the_usual_404(ocr_scene: Callable[..., Scene]) -> None:

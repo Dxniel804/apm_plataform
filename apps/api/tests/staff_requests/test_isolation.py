@@ -77,7 +77,7 @@ def test_the_management_of_one_school_reaches_nothing_of_another(scene: Scene) -
     other = scene.person("staff", school="2", label="other")
     foreign = opened(other)
     gestao = manager(scene)  # school A1
-    gestao_b = scene.person("treasurer", org="b", label="gestao-b")
+    gestao_b = scene.person("secretaria", org="b", label="gestao-b")
 
     for outsider in (gestao, gestao_b):
         same_404(

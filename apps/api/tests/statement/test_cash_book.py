@@ -33,7 +33,7 @@ def _rows(content: bytes) -> list[list[str]]:
 def test_the_csv_has_the_opening_every_entry_and_the_closing_of_the_summary(
     scene: Scene, login: Login
 ) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
     summary = api.get(
         f"/api/v1/schools/{scene.fresh.school}/statement/summary", params={"period": "2025-03"}
     ).json()
@@ -61,7 +61,7 @@ def test_the_csv_has_the_opening_every_entry_and_the_closing_of_the_summary(
 
 
 def test_the_pdf_has_the_header_the_balances_and_the_footer(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(_path(scene.fresh.school, "cash-book.pdf"))
 
@@ -74,19 +74,8 @@ def test_the_pdf_has_the_header_the_balances_and_the_footer(scene: Scene, login:
     assert "Maria Exemplo" in text
 
 
-def test_the_viewer_gets_initials_and_no_package(scene: Scene, login: Login) -> None:
-    api = login(scene.users["viewer"])
-
-    csv_response = api.get(_path(scene.fresh.school, "cash-book.csv"))
-    package = api.get(_path(scene.fresh.school, "month-package.zip"))
-
-    assert csv_response.status_code == 200
-    assert b"Maria Exemplo" not in csv_response.content and b"M. E." in csv_response.content
-    assert package.status_code == 403
-
-
 def test_the_package_is_a_zip_with_the_book_in_both_forms(scene: Scene, login: Login) -> None:
-    api = login(scene.users["treasurer"])
+    api = login(scene.users["secretaria"])
 
     response = api.get(_path(scene.fresh.school, "month-package.zip"))
 
@@ -126,3 +115,10 @@ def test_the_package_names_are_clean_and_it_has_a_ceiling() -> None:
             period="2025-03", csv_bytes=b"a", pdf_bytes=b"b",
             attachments=[(1, "grande.pdf", 200 * 1024 * 1024, lambda: b"x")],
         )  # fmt: skip
+
+
+def test_an_employee_gets_neither_the_book_nor_the_package(scene: Scene, login: Login) -> None:
+    api = login(scene.users["staff"])
+
+    assert api.get(_path(scene.fresh.school, "cash-book.csv")).status_code == 403
+    assert api.get(_path(scene.fresh.school, "month-package.zip")).status_code == 403

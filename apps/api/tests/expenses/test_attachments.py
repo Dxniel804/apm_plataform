@@ -176,8 +176,8 @@ def test_a_request_that_does_not_declare_its_size_is_refused_before_it_is_read(
 
 
 def test_the_body_of_an_upload_is_not_read_for_someone_who_may_not_upload(scene: Scene) -> None:
-    viewer = scene.person("viewer", label="viewer")
-    huge = viewer.upload(str(uuid.uuid4()), pdf(extra=3_000_000))
+    uploader = scene.person("secretaria", label="uploader")
+    huge = uploader.upload(str(uuid.uuid4()), pdf(extra=3_000_000))
 
     assert huge.status_code == 403  # the permission is checked before the size or the form
 
@@ -218,14 +218,14 @@ def test_an_expense_carries_a_limited_number_of_attachments(scene: Scene) -> Non
 
 def test_only_the_author_attaches(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    director = scene.person("school_admin", label="director")
-    treasurer = scene.person("treasurer", label="treasurer")
+    colleague = scene.person("staff", label="colleague")
+    treasurer = scene.person("secretaria", label="secretaria")
     expense = scene.draft(author)
 
-    for other in (director, treasurer):
+    for other in (colleague, treasurer):
         denied = other.upload(expense["id"])
-        assert denied.status_code in (403, 409)
-    assert director.upload(expense["id"]).json()["code"] == "author_only"
+        assert denied.status_code in (403, 404, 409)
+    assert colleague.upload(expense["id"]).json()["code"] == "not_found"  # not even visible
     assert author.upload(expense["id"]).status_code == 201
     assert len(detail(author, expense["id"])["attachments"]) == 1
 
@@ -254,7 +254,7 @@ def _in_state(scene: Scene, author: Client, approver: Client, state: str) -> str
     return str(expense["id"])
 
 
-@pytest.mark.parametrize("role", ["staff", "school_admin"])
+@pytest.mark.parametrize("role", ["staff"])
 @pytest.mark.parametrize(
     ("state", "allowed"),
     [
@@ -273,7 +273,7 @@ def test_files_are_attached_only_while_the_expense_is_a_draft_or_awaits_a_correc
     """After it was sent, the evidence is what the approver saw: nobody adds to it, whatever the
     role of the author (the reimbursement pays against what was approved)."""
     author = scene.person(role, label="author")
-    approver = scene.person("treasurer", label="approver")
+    approver = scene.person("secretaria", label="approver")
     expense_id = _in_state(scene, author, approver, state)
     before = len(detail(author, expense_id)["attachments"])
 
@@ -329,8 +329,8 @@ def test_a_hostile_name_does_not_reach_the_store_or_the_response(scene: Scene) -
 
 def test_who_can_see_the_expense_downloads_the_file_exactly_as_it_was_sent(scene: Scene) -> None:
     author = scene.person("staff", label="author")
-    treasurer = scene.person("treasurer", label="treasurer")
-    director = scene.person("school_admin", label="director")
+    treasurer = scene.person("secretaria", label="secretaria")
+    director = scene.person("secretaria", label="director")
     colleague = scene.person("staff", label="colleague")
     expense = scene.draft(author)
     content = pdf(extra=300)

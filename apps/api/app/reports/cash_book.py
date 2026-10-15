@@ -1,7 +1,7 @@
 # ruff: noqa: E501  (openapi blocks, long lines of a PDF)
 """The cash book (Livro Caixa) of a month, and the package of the month.
 
-The book is the ledger as the treasurer reads it: the balance carried from the month before, every
+The book is the ledger as the secretaria reads it: the balance carried from the month before, every
 entry in the order it was settled with the running balance, and the balance at the end. It is
 DERIVED, never stored: the rows are `statement_entries` and the figures are CHECKED against
 `statement_summary` of the same period before anything is written (`ReportMismatch` otherwise).

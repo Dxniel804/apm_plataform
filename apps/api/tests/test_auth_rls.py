@@ -365,8 +365,8 @@ def make_invitation(
 def test_invitations_are_scoped_to_the_tenant(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter_a = users.make("school_admin")
-    inviter_b = users.make("school_admin", org="b")
+    inviter_a = users.make("secretaria")
+    inviter_b = users.make("secretaria", org="b")
     in_a1 = make_invitation(admin_engine, world, inviter_a, school=world.school_a1)
     in_a1_again = make_invitation(admin_engine, world, inviter_a, school=world.school_a1)
     in_b = make_invitation(admin_engine, world, inviter_b, org="b", school=world.school_b1)
@@ -387,7 +387,7 @@ def test_invitations_are_scoped_to_the_tenant(
 def test_the_token_hash_of_an_invitation_cannot_be_read_by_the_application(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    make_invitation(admin_engine, world, users.make("school_admin"))
+    make_invitation(admin_engine, world, users.make("secretaria"))
     context = TenantContext(world.org_a)
 
     for projection in ("token_hash", "*", "i.token_hash", "length(token_hash)"):
@@ -403,8 +403,8 @@ def test_the_token_hash_of_an_invitation_cannot_be_read_by_the_application(
 def test_an_invitation_is_inserted_for_the_active_tenant_by_the_user_in_the_context(
     app_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter = users.make("school_admin")
-    other = users.make("school_admin", org="b")
+    inviter = users.make("secretaria")
+    other = users.make("secretaria", org="b")
     insert = (
         "INSERT INTO invitations (organization_id, school_id, email, role, token_hash, "
         "invited_by_user_id, expires_at{extra}) VALUES (:org, :school, :e, 'staff', :h, :by, "
@@ -443,8 +443,8 @@ def test_an_invitation_is_inserted_for_the_active_tenant_by_the_user_in_the_cont
 def test_only_revoking_an_invitation_can_be_done_and_only_in_the_own_tenant(
     app_engine: Engine, admin_engine: Engine, users: UserFactory, world: World
 ) -> None:
-    inviter_a = users.make("school_admin")
-    inviter_b = users.make("school_admin", org="b")
+    inviter_a = users.make("secretaria")
+    inviter_b = users.make("secretaria", org="b")
     mine = make_invitation(admin_engine, world, inviter_a)
     theirs = make_invitation(admin_engine, world, inviter_b, org="b")
     revoke = "UPDATE invitations SET revoked_at = now(), updated_at = now() WHERE id = :id"
