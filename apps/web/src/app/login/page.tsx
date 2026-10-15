@@ -38,6 +38,10 @@ export default async function LoginPage({ searchParams }: Props) {
           <a href="/sso/start" className={buttonClass("secondary", "lg", "mt-4 w-full")}>
             Entrar com Forklin
           </a>
+          {/* Texto fixo, igual para todo mundo: nao diz se um e-mail existe. A senha da Forklin vale so na Forklin. */}
+          <p className="mt-3 text-center text-foot text-ink-2">
+            Tem conta Forklin? Entre pelo botão acima: a senha da Forklin não vale neste formulário.
+          </p>
         </>
       )}
 
