@@ -23,6 +23,9 @@ CAMPAIGN_TABLES = (
     "contribution_items",
     "campaign_deliveries",
     "contribution_fees",
+    "bank_accounts",
+    "bank_statement_imports",
+    "bank_statement_lines",
 )  # 0013, 0014, 0016
 
 

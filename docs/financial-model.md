@@ -331,6 +331,13 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | | `contribution_items_20_item` | BEFORE INSERT | `contribution_items_check_item`: the product is on sale now (campaign ACTIVE and inside its dates, product active, quantity within its limit) and the copy is its CURRENT name and price |
 | | `contribution_items_90_total` | AFTER INSERT, deferred to COMMIT | `contribution_items_check_total`: the amount of the contribution is the sum of its items |
 | | `contribution_items_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the name of the product) |
+| `bank_accounts` (0017, the accounts where the school receives money) | `bank_accounts_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: scope, author and creation never change |
+| | `bank_accounts_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `bank_accounts_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (never the nickname or the bank name) |
+| `bank_statement_imports` (0017, one OFX file imported) | `bank_statement_imports_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
+| | `bank_statement_imports_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `bank_statement_imports_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
+| `bank_statement_lines` (0017, what the bank says) | `bank_statement_lines_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (the text is stored with the CPF and the CNPJ masked) |
 | `contribution_fees` (0016, the fee of the gateway of a paid contribution) | `contribution_fees_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
 | | `contribution_fees_20_check` | BEFORE INSERT | `contribution_fees_check`: only for a PAID contribution, over the amount of its own ledger row |
 | | `contribution_fees_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |

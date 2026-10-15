@@ -107,6 +107,16 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
     ("contribution_items", "contribution_items_90_total"): _t(
         A, {INS}, "contribution_items_check_total"
     ),
+    # the bank reconciliation (0017)
+    ("bank_accounts", "bank_accounts_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("bank_accounts", "bank_accounts_25_member"): _t(B, {INS}, "assert_active_member"),
+    ("bank_statement_imports", "bank_statement_imports_05_no_update"): _t(
+        B, {UPD}, "forbid_update"
+    ),
+    ("bank_statement_imports", "bank_statement_imports_25_member"): _t(
+        B, {INS}, "assert_active_member"
+    ),
+    ("bank_statement_lines", "bank_statement_lines_05_no_update"): _t(B, {UPD}, "forbid_update"),
     # the fee of the gateway of a paid contribution (0016)
     ("contribution_fees", "contribution_fees_05_no_update"): _t(B, {UPD}, "forbid_update"),
     ("contribution_fees", "contribution_fees_20_check"): _t(B, {INS}, "contribution_fees_check"),
@@ -172,6 +182,8 @@ AUDITED = [
     "contribution_items",
     "campaign_deliveries",
     "contribution_fees",
+    "bank_accounts",
+    "bank_statement_imports",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -184,6 +196,9 @@ for _table in [
     "contribution_items",
     "campaign_deliveries",
     "contribution_fees",
+    "bank_accounts",
+    "bank_statement_imports",
+    "bank_statement_lines",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(

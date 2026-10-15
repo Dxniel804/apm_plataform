@@ -15,6 +15,7 @@ from app.db.posture import PostureError, assert_posture
 from app.db.session import build_engine, build_session_factory
 from app.expenses.router import router as expenses_router
 from app.ocr.router import router as ocr_router
+from app.reconciliation.router import router as reconciliation_router
 from app.reports.routes import router as reports_router
 from app.routers.api import api_router
 from app.school_settings.router import router as school_settings_router
@@ -68,6 +69,7 @@ def create_app(
     app.include_router(staff_requests_router, prefix="/api/v1")  # staff requests (0012)
     app.include_router(campaigns_router, prefix="/api/v1")  # campaigns of the management (0013)
     app.include_router(school_settings_router, prefix="/api/v1")  # settings and public link (0015)
+    app.include_router(reconciliation_router, prefix="/api/v1")  # bank reconciliation (0017)
     app.include_router(statement_router)
     app.include_router(closing_router)
     app.include_router(reports_router)

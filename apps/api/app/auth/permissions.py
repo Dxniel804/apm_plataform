@@ -42,6 +42,8 @@ class Permission(StrEnum):
     # The settings the management of a school edits: the amounts the family is offered, the goals of
     # the month, the public link and its poster (migration 0015).
     SCHOOL_SETTINGS_MANAGE = "school_settings:manage"
+    # The bank accounts of a school and the statements compared with the ledger (migration 0017).
+    RECONCILIATION_MANAGE = "reconciliation:manage"
 
 
 ALL_PERMISSIONS = frozenset(Permission)
@@ -67,6 +69,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             # The management writes the campaigns and their products.
             Permission.CAMPAIGNS_MANAGE,
             Permission.SCHOOL_SETTINGS_MANAGE,
+            Permission.RECONCILIATION_MANAGE,
         }
     ),
     # Staff (funcionario): submit and see their OWN expenses, and ask the management for things.

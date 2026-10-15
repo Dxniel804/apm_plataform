@@ -42,6 +42,9 @@ CAMPAIGN_TABLES = (
     "contribution_items",
     "campaign_deliveries",
     "contribution_fees",
+    "bank_accounts",
+    "bank_statement_imports",
+    "bank_statement_lines",
 )
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
@@ -146,6 +149,14 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         # 0016: the fee of the gateway of a paid contribution (insert-only).
         ("contribution_fees", "contribution_fees_select", "SELECT", "public"),
         ("contribution_fees", "contribution_fees_insert", "INSERT", "public"),
+        # 0017: bank accounts (changeable), imports and their lines (insert-only).
+        ("bank_accounts", "bank_accounts_select", "SELECT", "public"),
+        ("bank_accounts", "bank_accounts_insert", "INSERT", "public"),
+        ("bank_accounts", "bank_accounts_update", "UPDATE", "public"),
+        ("bank_statement_imports", "bank_statement_imports_select", "SELECT", "public"),
+        ("bank_statement_imports", "bank_statement_imports_insert", "INSERT", "public"),
+        ("bank_statement_lines", "bank_statement_lines_select", "SELECT", "public"),
+        ("bank_statement_lines", "bank_statement_lines_insert", "INSERT", "public"),
     }
 )
 
