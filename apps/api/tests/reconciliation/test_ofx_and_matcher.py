@@ -200,3 +200,13 @@ def test_the_answer_does_not_depend_on_the_order() -> None:
         (a.line_id, b.transaction_id) for a, b in backward.matched
     )
     assert len(forward.matched) == 5
+
+
+def test_a_document_next_to_a_pix_id_does_not_eat_the_id() -> None:
+    statement = parse_ofx(
+        sgml([("1", D, "10.00", f"PIX {e2e(12345678901234)} DE 123.456.789-09")], D, D)
+    )
+
+    assert e2e(12345678901234) in statement.lines[0].memo and statement.lines[0].memo.endswith(
+        "***"
+    )

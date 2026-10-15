@@ -19,8 +19,8 @@ MEMO_LENGTH = 120
 
 # The end-to-end id of a Pix: E, then 31 letters and digits.
 _E2E = re.compile(r"(?<![0-9A-Za-z])E[0-9A-Za-z]{31}(?![0-9A-Za-z])")
-_CPF = re.compile(r"(?<![0-9])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![0-9])")
-_CNPJ = re.compile(r"(?<![0-9])\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}(?![0-9])")
+_CPF = re.compile(r"(?<![0-9A-Za-z])\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?![0-9A-Za-z])")
+_CNPJ = re.compile(r"(?<![0-9A-Za-z])\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}(?![0-9A-Za-z])")
 _FEE_WORDS = re.compile(r"tarifa|\btar\b|taxa|iof|anuidade|manuten", re.IGNORECASE)
 
 

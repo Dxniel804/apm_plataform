@@ -104,3 +104,12 @@ describe("Conciliacao", () => {
     await waitFor(() => expect(api.reconciliation.accounts).toHaveBeenCalledTimes(2));
   });
 });
+
+describe("datas do extrato", () => {
+  it("um dia e um dia: 14 de outubro continua 14 de outubro (sem escorregar por causa do fuso)", async () => {
+    const { formatDayLong } = await import("@/lib/format");
+    expect(formatDayLong("2026-10-14")).toBe("14 de outubro de 2026");
+    expect(formatDayLong("2026-01-01")).toBe("1 de janeiro de 2026");
+    expect(formatDayLong("não é data")).toBe("não é data");
+  });
+});

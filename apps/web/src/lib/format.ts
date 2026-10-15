@@ -64,3 +64,9 @@ export function formatMonthShort(month: string): string {
   const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
   return match ? `${MONTHS[Number(match[2]) - 1]!.slice(0, 3)}/${match[1]}` : month;
 }
+
+/** "2026-10-14" -> "14 de outubro de 2026". E um DIA, nao um instante: nao passa por fuso (senao vira o dia anterior). */
+export function formatDayLong(day: string): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])/.exec(day);
+  return match ? `${Number(match[3])} de ${MONTHS[Number(match[2]) - 1]} de ${match[1]}` : day;
+}

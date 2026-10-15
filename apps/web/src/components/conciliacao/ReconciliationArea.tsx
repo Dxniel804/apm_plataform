@@ -7,7 +7,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import type { AccountPurpose, ApiError, ApiResult, BankAccount, BankLine, LedgerEntry, Reconciliation, StatementImport } from "@/lib/api/types";
-import { formatDateLong } from "@/lib/format";
+import { formatDayLong } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { areasFor } from "@/lib/permissions";
 
@@ -119,13 +119,13 @@ export function ReconciliationArea({ schoolId, permissions }: { schoolId: string
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                     <div className="min-w-0 flex-1 basis-56">
                       <p className="font-semibold text-brand-800">
-                        {formatDateLong(item.periodStart)} a {formatDateLong(item.periodEnd)}
+                        {formatDayLong(item.periodStart)} a {formatDayLong(item.periodEnd)}
                       </p>
                       <p className="text-sub text-ink-2">
                         {account?.nickname ?? "Conta"} · {item.lineCount} {item.lineCount === 1 ? "lançamento" : "lançamentos"} ({item.newLineCount} {item.newLineCount === 1 ? "novo" : "novos"})
                       </p>
                     </div>
-                    <Button variant="chip" size="md" aria-expanded={isOpen} aria-label={`${isOpen ? "Fechar" : "Ver"} a comparação do extrato de ${formatDateLong(item.periodStart)}`} onClick={() => setOpenId(isOpen ? null : item.id)} className="rounded-full!">
+                    <Button variant="chip" size="md" aria-expanded={isOpen} aria-label={`${isOpen ? "Fechar" : "Ver"} a comparação do extrato de ${formatDayLong(item.periodStart)}`} onClick={() => setOpenId(isOpen ? null : item.id)} className="rounded-full!">
                       {isOpen ? "Fechar" : "Ver comparação"}
                     </Button>
                   </div>
@@ -332,13 +332,13 @@ function Rows({ items, empty, hint }: { items: Array<{ key: string; line?: BankL
             <div className="min-w-0 flex-1 basis-60">
               {item.line && (
                 <p className="text-sub text-ink [overflow-wrap:anywhere]">
-                  <span className="font-semibold">Banco · {formatDateLong(item.line.postedOn)}</span> · {item.line.memo || "sem descrição"}
+                  <span className="font-semibold">Banco · {formatDayLong(item.line.postedOn)}</span> · {item.line.memo || "sem descrição"}
                   {item.line.looksLikeFee && <span className="ml-2"><StatusPill tone="warning">parece tarifa</StatusPill></span>}
                 </p>
               )}
               {item.entry && (
                 <p className="text-sub text-ink [overflow-wrap:anywhere]">
-                  <span className="font-semibold">Caixa · {formatDateLong(item.entry.day)}</span> · {KIND_LABELS[item.entry.kind] ?? item.entry.kind} nº {item.entry.referenceCode}
+                  <span className="font-semibold">Caixa · {formatDayLong(item.entry.day)}</span> · {KIND_LABELS[item.entry.kind] ?? item.entry.kind} nº {item.entry.referenceCode}
                   {item.entry.netCents !== null && ` · o banco recebe ${formatBRL(item.entry.netCents)} (a tarifa do gateway já saiu)`}
                 </p>
               )}
