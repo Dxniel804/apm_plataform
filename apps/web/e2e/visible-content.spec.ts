@@ -46,7 +46,7 @@ for (const scenario of scenarios) {
 
     test("entrada, login e as duas 404", async ({ page }) => {
       for (const [path, label] of [
-        ["/", "entrada"],
+        ["/escola", "codigo da escola"],
         ["/login", "login"],
         ["/accept-invitation", "convite sem token"],
         ["/accept-invitation?token=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG", "convite"],

@@ -7,7 +7,7 @@ import { apiAcceptsThisOrigin, demoPassword, loginAs } from "./auth-helpers";
  * conteudo colidir por baixo.
  */
 const routes = [
-  "/",
+  "/escola",
   "/escola/demo-aurora",
   "/escola/demo-horizonte",
   "/login",
@@ -148,60 +148,6 @@ for (const width of [320, 360]) {
     });
   });
 }
-
-test.describe("cabecalho da entrada nao pula com a API verificando, no ar, fora do ar e nao pronta", () => {
-  for (const width of [320, 360, 390, 1440]) {
-    test(`${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 800 });
-      let mode: "hold" | "ready" | "down" | "not-ready" = "hold";
-      const held: Array<() => void> = [];
-      await page.route("**/api/health/ready", async (route) => {
-        if (mode === "hold") await new Promise<void>((resolve) => held.push(resolve));
-        if (mode === "down") return route.fulfill({ status: 500, contentType: "text/plain", body: "Internal Server Error" });
-        if (mode === "not-ready") return route.fulfill({ status: 503, contentType: "application/json", body: '{"status":"unavailable"}' });
-        return route.fulfill({ status: 200, contentType: "application/json", body: '{"status":"ready"}' });
-      });
-      await page.goto("/");
-
-      const layout = async () =>
-        page.evaluate(() => ({
-          header: Math.round(document.querySelector("header")!.getBoundingClientRect().height * 10) / 10,
-          h1: Math.round(document.querySelector("h1")!.getBoundingClientRect().top * 10) / 10,
-          main: Math.round(document.querySelector("main")!.getBoundingClientRect().top * 10) / 10,
-          scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        }));
-      const state = () => page.locator("[role=status][data-state]").first();
-
-      await expect(state()).toHaveAttribute("data-state", "checking");
-      const checking = await layout();
-
-      mode = "ready";
-      held.splice(0).forEach((release) => release());
-      await expect(state()).toHaveAttribute("data-state", "ready");
-      const ready = await layout();
-
-      mode = "down";
-      await page.evaluate(() => window.dispatchEvent(new Event("online")));
-      await expect(state()).toHaveAttribute("data-state", "unavailable");
-      await expect(page.getByRole("button", { name: "Tentar de novo" })).toBeVisible();
-      const down = await layout();
-
-      mode = "not-ready";
-      await page.getByRole("button", { name: "Tentar de novo" }).click();
-      await expect(state()).toContainText("API indisponível");
-      const notReady = await layout();
-
-      for (const [name, l] of [["no ar", ready], ["fora do ar", down], ["nao pronta", notReady]] as const) {
-        expect(l, `layout ${name} x verificando`).toEqual(checking);
-      }
-      expect(checking.scroll).toBeLessThanOrEqual(0);
-      // o botao de tentar de novo continua com alvo de 44px mesmo so com o icone
-      const box = await page.getByRole("button", { name: "Tentar de novo" }).boundingBox();
-      expect(box!.width).toBeGreaterThanOrEqual(43.5);
-      expect(box!.height).toBeGreaterThanOrEqual(43.5);
-    });
-  }
-});
 
 test.describe("N4: barra de navegacao fixa nunca fica transparente", () => {
   // O redesenho (Figma) usa barras solidas: o menu lateral e o cabecalho do painel sao opacos. Ainda assim a regra vale

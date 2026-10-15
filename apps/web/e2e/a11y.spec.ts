@@ -4,7 +4,7 @@ import { demoPassword, loginAs } from "./auth-helpers";
 
 const INVITE = "/accept-invitation?token=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
 const routes = [
-  "/",
+  "/escola",
   "/escola/demo-aurora",
   "/login",
   "/accept-invitation",

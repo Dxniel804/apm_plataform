@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: Props) {
         <span className="text-[0.75rem] text-ink-3">é responsável por um aluno?</span>
         <span className="h-px flex-1 bg-line" />
       </div>
-      <Link href="/" className={buttonClass("secondary", "lg", "mt-4 w-full border-pill-line bg-pill")}>
+      <Link href="/escola" className={buttonClass("secondary", "lg", "mt-4 w-full border-pill-line bg-pill")}>
         <CashCoinIcon size={18} />
         Contribuir com a APM, sem login
       </Link>
