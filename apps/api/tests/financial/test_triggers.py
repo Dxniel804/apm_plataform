@@ -293,6 +293,7 @@ EXPECTED_FUNCTIONS = {
     # the public flow (0008, ADR-018) and the expiry job (0009, ADR-019)
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",
+    "request_password_reset", "consume_password_reset",
 }  # fmt: skip
 # The only SECURITY DEFINER functions of the schema (ADR-016, 018 and 019, owned by apm_definer; the financial
 # schema has none). tests/test_app_role.py asserts their owner, search_path and who may execute them.
@@ -300,6 +301,7 @@ DEFINER_FUNCTIONS = {
     "accept_invitation", "find_login_identity", "list_memberships_for_user",
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",
+    "request_password_reset", "consume_password_reset",
 }  # fmt: skip
 
 

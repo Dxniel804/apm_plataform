@@ -4,14 +4,19 @@ import hashlib
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy import text
 
 from app.auth import passwords
 from app.auth import sessions as session_store
 from app.auth.deps import Db, OptionalPrincipal, Principal, Settings, authenticated, public
-from app.auth.emailer import build_sender, password_changed_message
-from app.auth.identity import find_login_identity, list_memberships
+from app.auth.emailer import build_sender, password_changed_message, password_reset_message
+from app.auth.identity import (
+    consume_password_reset,
+    find_login_identity,
+    list_memberships,
+    request_password_reset,
+)
 from app.auth.ratelimit import attempt_keys, blocked_for, client_ip, record_attempt
 from app.auth.responses import (
     clear_session_cookies,
@@ -22,7 +27,14 @@ from app.auth.responses import (
 from app.auth.tokens import hash_token, looks_like_a_token, new_token
 from app.core.errors import ProblemError
 from app.db.request_context import bind_request_context
-from app.schemas.auth import ContextRequest, LoginRequest, PasswordRequest, SessionResponse
+from app.schemas.auth import (
+    ContextRequest,
+    LoginRequest,
+    PasswordRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    SessionResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -272,3 +284,118 @@ def change_password(
     result = Response(status_code=204)
     set_session_cookies(result, settings, token, session_id, expires_at)
     return result
+
+
+# --- forgot the password (docs/adr-password-reset.md) ---------------------------------------------
+
+RESET_LINK_MINUTES = 30
+
+
+def _send_reset_mail(settings: Settings, to: str, token: str) -> None:
+    """After the answer left (a background task), so that the time of the answer does not tell
+    whether the account exists. A failing sender is only logged."""
+    try:
+        build_sender(settings).send(password_reset_message(settings, to, token, RESET_LINK_MINUTES))
+    except OSError:
+        logger.warning("could not send the password reset e-mail")
+
+
+@router.post(
+    "/password-reset/request",
+    operation_id="auth_password_reset_request",
+    summary="Ask for a link to choose a new password (the answer is the same for any e-mail)",
+    status_code=202,
+    responses=problem_responses(422, 429),
+    dependencies=[Depends(public())],
+)
+def password_reset_request(
+    body: PasswordResetRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: Db,
+    settings: Settings,
+) -> dict[str, str]:
+    """Always 202, whether the e-mail has an account or not. The attempts are counted per e-mail and
+    per address BEFORE anything else, so the limit is the same for every e-mail."""
+    bind_request_context(db, actor_type="PUBLIC")
+    keys = attempt_keys(settings.auth_secret, body.email, _ip(request))
+    wait = blocked_for(db, "password_reset", keys)
+    if wait:
+        db.commit()
+        raise _rate_limited(wait)
+    # Every request counts as an attempt (a "failure" for the limiter); a few are free.
+    record_attempt(db, "password_reset", keys, succeeded=False)
+    token = new_token()
+    made = request_password_reset(db, body.email, hash_token(token), RESET_LINK_MINUTES)
+    db.commit()
+    if made:
+        background.add_task(_send_reset_mail, settings, body.email, token)
+    return {"status": "accepted"}
+
+
+@router.post(
+    "/password-reset/confirm",
+    operation_id="auth_password_reset_confirm",
+    summary="Choose the new password with the link of the e-mail (ends every session)",
+    status_code=204,
+    responses=problem_responses(
+        422,
+        429,
+        extra={400: {"description": "reset_invalid (one answer for every reason)"}},
+    ),
+    dependencies=[Depends(public())],
+)
+def password_reset_confirm(
+    body: PasswordResetConfirm,
+    request: Request,
+    background: BackgroundTasks,
+    db: Db,
+    settings: Settings,
+) -> Response:
+    """The token is the credential. Everything happens in ONE transaction: the token is spent, the
+    password is changed and every session ends; if any step fails nothing is kept."""
+    bind_request_context(db, actor_type="PUBLIC")
+    ip = _ip(request)
+    # Keyed by the address alone: guessing tokens must not be able to lock other people out.
+    keys = attempt_keys(settings.auth_secret, ip, ip)
+    wait = blocked_for(db, "password_reset", keys)
+    if wait:
+        db.commit()
+        raise _rate_limited(wait)
+    problem = passwords.password_problem(body.new_password)
+    if problem is not None:
+        db.commit()
+        raise ProblemError(
+            422,
+            "weak_password",
+            "The new password is not acceptable",
+            errors=[{"field": "new_password", "code": problem}],
+        )
+    user_id = (
+        consume_password_reset(db, hash_token(body.token))
+        if looks_like_a_token(body.token)
+        else None
+    )
+    record_attempt(db, "password_reset", keys, succeeded=user_id is not None)
+    if user_id is None:
+        db.commit()
+        raise ProblemError(400, "reset_invalid", "This link is not valid")
+    bind_request_context(db, user_id=user_id)
+    db.execute(
+        text("UPDATE users SET password_hash = :hash, updated_at = now() WHERE id = :id"),
+        {"hash": passwords.hash_password(body.new_password), "id": user_id},
+    )
+    session_store.revoke_all_sessions(db, user_id, "password_reset")
+    email: str = db.execute(
+        text("SELECT email FROM users WHERE id = :id"), {"id": user_id}
+    ).scalar_one()
+    db.commit()
+    background.add_task(_send_changed_notice, settings, email)
+    return Response(status_code=204)
+
+
+def _send_changed_notice(settings: Settings, to: str) -> None:
+    try:
+        build_sender(settings).send(password_changed_message(to))
+    except OSError:
+        logger.warning("could not send the password-changed notice")

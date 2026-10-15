@@ -265,6 +265,8 @@ def test_the_public_routes_are_the_ones_listed_and_nothing_else_works_anonymousl
         ("POST", "/api/v1/auth/login"),
         ("POST", "/api/v1/auth/logout"),
         ("POST", "/api/v1/invitations/accept"),
+        ("POST", "/api/v1/auth/password-reset/request"),
+        ("POST", "/api/v1/auth/password-reset/confirm"),
         # the public contribution flow, the webhooks of the Pix provider and the dev sandbox
         ("GET", "/api/v1/public/schools/{slug}"),
         ("POST", "/api/v1/public/schools/{slug}/contributions"),
@@ -324,7 +326,7 @@ def test_every_operation_has_a_unique_operation_id_and_documents_its_errors(
                 assert "401" in operation["responses"], (method, path)
             documented = (
                 "429"
-                if path.endswith(("login", "accept", "password"))
+                if path.endswith(("login", "accept", "password", "request", "confirm"))
                 else "401"
                 if "401" in operation["responses"]
                 else "403"

@@ -54,6 +54,7 @@ RLS_TABLES = (
     "sessions",
     "login_attempts",
     "invitations",
+    "password_reset_tokens",
     *FINANCIAL_TABLES,
     *REQUEST_TABLES,
     *CAMPAIGN_TABLES,
@@ -114,6 +115,10 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
             "SELECT",
             "apm_definer",
         ),
+        # 0021 (docs/adr-password-reset.md): the two functions of the password reset.
+        ("password_reset_tokens", "password_reset_tokens_definer_select", "SELECT", "apm_definer"),
+        ("password_reset_tokens", "password_reset_tokens_definer_insert", "INSERT", "apm_definer"),
+        ("password_reset_tokens", "password_reset_tokens_definer_update", "UPDATE", "apm_definer"),
         # 0007: a SELECT and an INSERT policy on each financial table, and an UPDATE one on every
         # table but the two that only grow (expense_attachments, audit_logs): 37. None of them is
         # open to apm_definer (the two SELECT policies of 0009 above are the only ones).
@@ -177,6 +182,8 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.resolve_webhook_target(p_provider text, p_secret_hash text)",
         "public.resolve_receipt(p_token_hash text)",
         "public.find_schools_with_stale_contributions(p_after uuid, p_limit integer)",
+        "public.request_password_reset(p_email text, p_token_hash bytea, p_minutes integer)",
+        "public.consume_password_reset(p_token_hash bytea)",
     }
 )
 

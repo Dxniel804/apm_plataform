@@ -117,6 +117,10 @@ PUBLIC_ROUTES: dict[tuple[str, str], str] = {
     ("POST", "/api/v1/auth/login"): "proves who the person is; rate limited and Origin checked",
     ("POST", "/api/v1/auth/logout"): "idempotent; verifies CSRF when a session is presented",
     ("POST", "/api/v1/invitations/accept"): "the invitation token is the credential; rate limited",
+    ("POST", "/api/v1/auth/password-reset/request"): "forgot the password: the same answer for "
+    "any e-mail, rate limited per e-mail and address, Origin checked",
+    ("POST", "/api/v1/auth/password-reset/confirm"): "the e-mailed token is the credential; "
+    "one use, 30 minutes, rate limited per address, ends every session",
     # The public contribution flow (ADR-010, ADR-018): the slug and the receipt token are the scope.
     ("GET", "/api/v1/public/schools/{slug}"): "the public page of a school",
     ("POST", "/api/v1/public/schools/{slug}/contributions"): "a family starts a contribution; "

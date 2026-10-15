@@ -44,6 +44,7 @@ EXPECTED_TABLES = {
     "bank_statement_imports",
     "bank_statement_lines",
     "bank_line_resolutions",
+    "password_reset_tokens",
     *FINANCIAL_TABLES,
 }
 # 30 policies of the tenancy core and of 0006, plus one SELECT, one INSERT and (where a column can
@@ -51,13 +52,13 @@ EXPECTED_TABLES = {
 # expense_attachments having no UPDATE, plus the 4 SELECT policies of apm_definer of 0008 and the
 # 2 of 0009.
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017) + 0018
 # 7 functions of the tenancy core and of 0006 (app_org, app_school, app_session_id, app_user_id and
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.
 EXPECTED_FUNCTIONS = (
-    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2
 )  # + requests (0012) + campaigns (0013) + 0014 + 0016
 CREATED_ROLES = ("apm_app", "apm_owner", "apm_definer")
 
@@ -208,6 +209,8 @@ def test_upgrade_creates_everything_as_a_createrole_admin(clean_cluster: CleanCl
         "find_login_identity": "apm_definer",
         "list_memberships_for_user": "apm_definer",
         "accept_invitation": "apm_definer",
+        "request_password_reset": "apm_definer",
+        "consume_password_reset": "apm_definer",
         "resolve_school_public": "apm_definer",
         "resolve_webhook_target": "apm_definer",
         "resolve_receipt": "apm_definer",

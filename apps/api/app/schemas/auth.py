@@ -60,6 +60,20 @@ class PasswordRequest(Strict):
     new_password: PasswordText
 
 
+class PasswordResetRequest(Strict):
+    email: Text
+
+    @field_validator("email")
+    @classmethod
+    def _normalise(cls, value: str) -> str:
+        return _email(value)
+
+
+class PasswordResetConfirm(Strict):
+    token: Annotated[str, Field(max_length=200), AfterValidator(_storable)]
+    new_password: PasswordText
+
+
 class InvitationRequest(Strict):
     email: Text
     role: Role

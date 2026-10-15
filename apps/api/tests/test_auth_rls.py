@@ -555,6 +555,10 @@ DEFINER_COLUMNS = {
         "revoked_at",
     },
     ("invitations", "UPDATE"): {"accepted_at", "accepted_user_id", "updated_at"},
+    # 0021 (docs/adr-password-reset.md): the two functions of the password reset
+    ("password_reset_tokens", "SELECT"): {"user_id", "token_hash", "expires_at", "used_at"},
+    ("password_reset_tokens", "INSERT"): {"user_id", "token_hash", "expires_at"},
+    ("password_reset_tokens", "UPDATE"): {"used_at"},
     # 0008 (ADR-018): what the three functions of the public flow read
     ("school_settings", "SELECT"): {
         "school_id", "organization_id", "suggested_amounts_cents", "allow_custom_amount",

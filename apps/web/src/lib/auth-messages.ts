@@ -5,7 +5,7 @@ import type { ApiError } from "@/lib/api/types";
  * NUNCA se mostra o title/detail do servidor (ingles, pode mudar, nao e para o usuario).
  * Os textos de login nao distinguem e-mail inexistente, conta inativa e senha errada.
  */
-export type AuthScene = "login" | "logout" | "context" | "invitation" | "password";
+export type AuthScene = "login" | "logout" | "context" | "invitation" | "password" | "reset";
 
 const NETWORK = "Não foi possível falar com o servidor. Confira a conexão e tente de novo.";
 const GENERIC = "Algo deu errado do nosso lado. Tente de novo em instantes.";
@@ -48,12 +48,15 @@ export function describeAuthError(error: ApiError, scene: AuthScene): string {
       return "Este convite não é válido. Ele pode ter expirado, já ter sido usado ou ter sido cancelado. Peça um novo convite a quem convidou você.";
     case "account_exists_login_required":
       return "Já existe uma conta com o e-mail deste convite. Entre com ela (saia da conta atual, se estiver conectado com outra) e abra este link de novo.";
+    case "reset_invalid":
+      return "Este link não vale mais. Ele dura 30 minutos e só pode ser usado uma vez. Peça um link novo.";
     case "current_password_incorrect":
       return "A senha atual está incorreta.";
     case "weak_password":
       return "A senha não atende aos requisitos. Use de 12 a 128 caracteres.";
     case "validation_error":
       if (scene === "login") return "Informe o e-mail e a senha.";
+      if (scene === "reset") return "Confira o e-mail ou a senha informados e tente de novo.";
       return "Confira os dados informados e tente de novo.";
     default:
       return GENERIC;

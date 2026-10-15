@@ -197,6 +197,9 @@ def test_the_closed_list_of_security_definer_functions_is_the_seven_of_adr_016_0
                 "public.resolve_webhook_target(p_provider text, p_secret_hash text)",
                 "public.resolve_receipt(p_token_hash text)",
                 "public.find_schools_with_stale_contributions(p_after uuid, p_limit integer)",
+                "public.request_password_reset(p_email text, p_token_hash bytea, "
+                "p_minutes integer)",
+                "public.consume_password_reset(p_token_hash bytea)",
             }
         )
         == posture.ALLOWED_SECURITY_DEFINER

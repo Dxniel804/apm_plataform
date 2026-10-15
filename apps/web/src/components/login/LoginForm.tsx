@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
@@ -86,7 +87,6 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
         autoComplete="current-password"
         placeholder="Digite a sua senha"
         icon={<LockIcon size={18} />}
-        // Ainda nao existe recuperacao de senha na API (docs/auth.md): o espaco serve ao mostrar/ocultar.
         trailing={
           <button
             type="button"
@@ -101,6 +101,11 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
         inputRef={passwordRef}
         error={fieldErrors.password}
       />
+      <p className="-mt-2 text-right text-foot">
+        <Link href="/esqueci-senha" className="font-semibold text-brand-800 underline underline-offset-2">
+          Esqueci minha senha
+        </Link>
+      </p>
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
           <InfoIcon size={18} className="mt-0.5 shrink-0" />

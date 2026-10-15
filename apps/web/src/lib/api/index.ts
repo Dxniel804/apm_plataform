@@ -7,7 +7,7 @@
  *   `closings` (fechamento mensal e PDF) sao REAIS.
  *   Nada do site e simulado: nao ha mais camada de mocks.
  */
-import { acceptInvitation, changePassword, getMe, login, logout, switchContext } from "./auth";
+import { acceptInvitation, changePassword, confirmPasswordReset, getMe, login, logout, requestPasswordReset, switchContext } from "./auth";
 import { getReadiness } from "./health";
 import { listClosings, createClosing, verifyClosing, reopenClosing, downloadClosingPdf } from "./closings";
 import {
@@ -125,6 +125,8 @@ export const api: {
     me: typeof getMe;
     switchContext: typeof switchContext;
     changePassword: typeof changePassword;
+    requestPasswordReset: typeof requestPasswordReset;
+    confirmPasswordReset: typeof confirmPasswordReset;
     acceptInvitation: typeof acceptInvitation;
   };
 } = {
@@ -169,7 +171,7 @@ export const api: {
     changeDelivery: changeCampaignDelivery,
     report: downloadCampaignReport,
   },
-  auth: { login, logout, me: getMe, switchContext, changePassword, acceptInvitation },
+  auth: { login, logout, me: getMe, switchContext, changePassword, requestPasswordReset, confirmPasswordReset, acceptInvitation },
   expenses: {
     categories: listCategories,
     list: listExpenses,

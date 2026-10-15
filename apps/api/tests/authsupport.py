@@ -169,6 +169,13 @@ def delete_world(connection: Any, world: World, secret: SecretStr) -> None:
         text("DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE :p)"),
         {"p": pattern},
     )
+    connection.execute(
+        text(
+            "DELETE FROM password_reset_tokens WHERE user_id IN "
+            "(SELECT id FROM users WHERE email LIKE :p)"
+        ),
+        {"p": pattern},
+    )
     connection.execute(text("DELETE FROM invitations WHERE organization_id = ANY(:o)"), {"o": orgs})
     connection.execute(text("DELETE FROM memberships WHERE organization_id = ANY(:o)"), {"o": orgs})
     connection.execute(text("DELETE FROM users WHERE email LIKE :p"), {"p": pattern})

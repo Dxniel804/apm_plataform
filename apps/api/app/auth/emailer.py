@@ -108,6 +108,21 @@ def invitation_message(settings: ApiSettings, to: str, token: str, organization:
     )
 
 
+def password_reset_message(settings: ApiSettings, to: str, token: str, minutes: int) -> Message:
+    link = f"{settings.public_base_url.rstrip('/')}/redefinir-senha?token={token}"
+    return Message(
+        to=to,
+        kind="password-reset",
+        subject="Redefinir a senha do APM Digital",
+        body=(
+            "Recebemos um pedido para redefinir a senha da sua conta no APM Digital.\n"
+            f"Para escolher uma senha nova, abra o link (vale por {minutes} minutos, uso unico):\n"
+            f"{link}\n\n"
+            "Se nao foi voce, ignore este e-mail: nada sera alterado."
+        ),
+    )
+
+
 def password_changed_message(to: str) -> Message:
     return Message(
         to=to,

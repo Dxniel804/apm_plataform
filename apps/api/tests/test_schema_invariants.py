@@ -193,6 +193,12 @@ def test_a_slug_with_a_good_format_is_accepted(
 # --- S4 to S6: the foreign keys exist, with the exact shape and RESTRICT -------------------------
 
 EXPECTED_FOREIGN_KEYS = {
+    "fk_password_reset_tokens_user_id_users": (
+        "password_reset_tokens",
+        "users",
+        "user_id",
+        "id",
+    ),
     "fk_invitations_accepted_user_id_users": (
         "invitations",
         "users",
@@ -361,13 +367,14 @@ EXPECTED_AUTH_CHECKS = {
     "ck_sessions_revoked_reason_valid": (
         "sessions",
         "CHECK (((revoked_reason IS NULL) OR (revoked_reason = ANY (ARRAY['logout'::text, "
-        "'rotated'::text, 'password_changed'::text, 'membership_inactive'::text, "
-        "'user_inactive'::text]))))",
+        "'rotated'::text, 'password_changed'::text, 'password_reset'::text, "
+        "'membership_inactive'::text, 'user_inactive'::text]))))",
     ),
     "ck_login_attempts_kind_valid": (
         "login_attempts",
         "CHECK ((kind = ANY (ARRAY['login'::text, 'password'::text, 'invitation'::text, "
-        "'public_contribution'::text, 'public_token'::text, 'webhook'::text])))",
+        "'public_contribution'::text, 'public_token'::text, 'webhook'::text, "
+        "'password_reset'::text])))",
     ),
     "ck_login_attempts_hmacs_are_sha256": (
         "login_attempts",

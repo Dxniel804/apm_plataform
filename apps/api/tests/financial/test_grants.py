@@ -233,6 +233,7 @@ DEFINER_FUNCTIONS = {
     "accept_invitation", "find_login_identity", "list_memberships_for_user",
     "resolve_school_public", "resolve_webhook_target", "resolve_receipt",
     "find_schools_with_stale_contributions",
+    "request_password_reset", "consume_password_reset",
 }  # fmt: skip
 # The only functions of the financial schema the application role may call.
 CALLABLE_FUNCTIONS = {

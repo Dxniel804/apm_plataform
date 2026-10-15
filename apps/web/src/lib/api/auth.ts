@@ -126,6 +126,16 @@ export function changePassword(
   );
 }
 
+/** POST /auth/password-reset/request: 202 e a MESMA resposta para qualquer e-mail (a API nao diz se a conta existe). */
+export function requestPasswordReset(email: string, options?: SendOptions): Promise<ApiResult<true>> {
+  return apiSend("POST", `${BASE}/auth/password-reset/request`, { email: email.trim() }, (_b, status) => (status === 202 ? (true as const) : null), options);
+}
+
+/** POST /auth/password-reset/confirm: 204. O token vem do link do e-mail; a API encerra todas as sessoes. */
+export function confirmPasswordReset(token: string, newPassword: string, options?: SendOptions): Promise<ApiResult<true>> {
+  return apiSend("POST", `${BASE}/auth/password-reset/confirm`, { token, new_password: newPassword }, parseNoContent, options);
+}
+
 function parseAccepted(body: unknown, status: number): AcceptedInvitation | null {
   if (status !== 201 || !isRecord(body)) return null;
   const userId = str(body.user_id);

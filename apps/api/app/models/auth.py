@@ -31,10 +31,11 @@ SESSION_REVOKED_REASONS = (
     "logout",
     "rotated",
     "password_changed",
+    "password_reset",
     "membership_inactive",
     "user_inactive",
 )
-ATTEMPT_KINDS = ("login", "password", "invitation")
+ATTEMPT_KINDS = ("login", "password", "invitation", "password_reset")
 
 
 def _in_list(column: str, values: tuple[str, ...]) -> str:
@@ -152,3 +153,27 @@ class Invitation(TimestampMixin, Base):
         Uuid, ForeignKey("users.id", ondelete="RESTRICT")
     )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PasswordResetToken(Base):
+    """A link to choose a new password (migration 0021, docs/adr-password-reset.md). Only the
+    SHA-256 of the token is kept; single use; the application role has NO access to this table,
+    only the two functions of `apm_definer` read and write it."""
+
+    __tablename__ = "password_reset_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_password_reset_tokens_token_hash"),
+        CheckConstraint("octet_length(token_hash) = 32", name="hash_is_a_sha256"),
+        CheckConstraint("expires_at > created_at", name="expires_after_creation"),
+        Index("ix_password_reset_tokens_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="RESTRICT", name="fk_password_reset_tokens_user_id_users"),
+    )
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

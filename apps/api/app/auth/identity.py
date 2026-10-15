@@ -48,6 +48,23 @@ def find_login_identity(db: Session, email: str) -> LoginIdentity | None:
     return None if row is None else LoginIdentity(row[0], row[1], row[2])
 
 
+def request_password_reset(db: Session, email: str, token_hash: bytes, minutes: int) -> bool:
+    """True when the e-mail has an active account and a link was made (see the password ADR)."""
+    found: bool = db.execute(
+        text("SELECT public.request_password_reset(:email, :hash, :minutes)"),
+        {"email": email, "hash": token_hash, "minutes": minutes},
+    ).scalar_one()
+    return bool(found)
+
+
+def consume_password_reset(db: Session, token_hash: bytes) -> UUID | None:
+    """The user the live token belongs to (and the token is spent), or None for every other case."""
+    found: UUID | None = db.execute(
+        text("SELECT public.consume_password_reset(:hash)"), {"hash": token_hash}
+    ).scalar_one()
+    return found
+
+
 def list_memberships(db: Session, user_id: UUID) -> list[MembershipRow]:
     rows = db.execute(
         text(
