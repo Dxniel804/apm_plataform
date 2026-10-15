@@ -59,6 +59,7 @@ services:
       EMAIL_SENDER: ${EMAIL_SENDER:-file}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      PIX_LIVE_ENABLED: ${PIX_LIVE_ENABLED:-false}
       # Expense attachments (TASK-007): files on a volume, never in the database or the repository.
       ATTACHMENTS_DIR: /attachments
       ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-10485760}

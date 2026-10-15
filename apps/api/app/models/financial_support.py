@@ -34,7 +34,7 @@ from app.models.financial_common import (
 )
 from app.models.mixins import TimestampMixin
 
-PROVIDERS = ("BB", "SANDBOX")
+PROVIDERS = ("BB", "SANDBOX", "ASAAS", "PAGARME")
 REPORT_GROUPS = ("CONTRIBUTIONS", "OTHER_INCOME", "EXPENSES_REIMBURSEMENTS", "REFUNDS")
 IDENTIFICATION_FIELDS = (
     "ARRAY['guardian_name', 'contributor_email', 'contributor_phone', 'student_name', "
@@ -188,7 +188,7 @@ class PaymentAccount(ScopeMixin, TimestampMixin, Base):
         ),
         # Global for the lookup without a tenant; the hash of a 128-bit secret reveals nothing.
         UniqueConstraint("webhook_secret_hash", name="uq_payment_accounts_webhook_secret_hash"),
-        CheckConstraint("provider IN ('BB', 'SANDBOX')", name="provider_valid"),
+        CheckConstraint("provider IN ('BB', 'SANDBOX', 'ASAAS', 'PAGARME')", name="provider_valid"),
         CheckConstraint(
             "length(btrim(external_account_id)) BETWEEN 1 AND 100",
             name="external_account_id_length",
@@ -251,7 +251,7 @@ class PixCharge(ScopeMixin, TimestampMixin, Base):
         UniqueConstraint(
             "school_id", "provider", "txid", name="uq_pix_charges_school_id_provider_txid"
         ),
-        CheckConstraint("provider IN ('BB', 'SANDBOX')", name="provider_valid"),
+        CheckConstraint("provider IN ('BB', 'SANDBOX', 'ASAAS', 'PAGARME')", name="provider_valid"),
         CheckConstraint("txid ~ '^[A-Za-z0-9]{26,35}$'", name="txid_format"),
         CheckConstraint(
             "status IN ('PENDING', 'PAID', 'REVIEW_REQUIRED', 'EXPIRED', 'CANCELLED')",
@@ -354,7 +354,7 @@ class WebhookEvent(Base):
             "idempotency_key",
             name="uq_webhook_events_school_id_provider_idempotency_key",
         ),
-        CheckConstraint("provider IN ('BB', 'SANDBOX')", name="provider_valid"),
+        CheckConstraint("provider IN ('BB', 'SANDBOX', 'ASAAS', 'PAGARME')", name="provider_valid"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 200", name="idempotency_key_length"),
         CheckConstraint(
             "end_to_end_id IS NULL OR end_to_end_id ~ '^E[A-Za-z0-9]{31}$'",

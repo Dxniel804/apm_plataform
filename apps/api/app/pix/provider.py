@@ -8,9 +8,11 @@ credentials of the school behind `secret_ref`) is M2; until then the only implem
 development and tests only: a restart forgets its charges, and ENV=production never uses it.
 """
 
+import os
 import secrets
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
@@ -18,6 +20,9 @@ from typing import Protocol
 from app.core.errors import ProblemError
 
 SANDBOX = "SANDBOX"
+# The providers the platform may be connected to. Only the sandbox exists in code today; a real one
+# is added to `REAL_PROVIDERS` (name -> a function that builds it) when its adapter is written.
+REAL_NAMES = ("BB", "ASAAS", "PAGARME")
 # The fee the fake bank keeps from every payment (R$ 0,80, like a real gateway), never above it.
 SANDBOX_FEE_CENTS = 80
 
@@ -132,9 +137,27 @@ def sandbox_provider() -> SandboxPixProvider:
     return _SANDBOX
 
 
+REAL_PROVIDERS: dict[str, Callable[[], PixProvider]] = {}
+
+
+def live_payments_enabled() -> bool:
+    """The kill switch of every REAL provider: PIX_LIVE_ENABLED=true in the environment of the API.
+    Off by default, so connecting a gateway never starts charging anyone by itself, and turning it
+    off stops new real charges at once (the sandbox does not depend on it)."""
+    return os.environ.get("PIX_LIVE_ENABLED", "").strip().lower() == "true"
+
+
 def get_provider(name: str, env: str) -> PixProvider:
     """The provider of a payment account (its `provider` column). The sandbox is a fake bank that
-    lives in the memory of one process: it is never served in production."""
+    lives in the memory of one process: it is never served in production. A real provider is served
+    only when its adapter exists AND the kill switch is on."""
     if name == SANDBOX and env != "production":
         return _SANDBOX
-    raise ProblemError(501, "provider_not_configured", "This payment provider is not available yet")
+    build = REAL_PROVIDERS.get(name)
+    if build is None:
+        raise ProblemError(
+            501, "provider_not_configured", "This payment provider is not available yet"
+        )
+    if not live_payments_enabled():
+        raise ProblemError(503, "payments_paused", "Payments are paused right now")
+    return build()
