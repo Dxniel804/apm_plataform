@@ -23,6 +23,8 @@ ENVIRONMENT = (
     "PUBLIC_BASE_URL",
     "EMAIL_SENDER",
     "OUTBOX_DIR",
+    "RESEND_API_KEY",
+    "MAIL_FROM",
 )
 
 
@@ -111,11 +113,40 @@ def test_production_refuses_what_is_not_safe_to_serve(
         build(**{**PRODUCTION, **changes})
 
 
-def test_production_cannot_start_today_because_there_is_no_real_e_mail_sender() -> None:
+def test_production_refuses_the_file_sender_because_the_links_would_land_in_a_file() -> None:
     """Even with everything else right: invitations would be written to a file (with the accept
-    link, so the token) on the server. That is for development only, until a real sender exists."""
+    link, so the token) on the server. That is for development only."""
     with pytest.raises(ValidationError, match="no e-mail sender is available"):
         build(**PRODUCTION)
+
+
+def test_production_starts_with_the_resend_sender_and_its_settings() -> None:
+    settings = build(
+        **PRODUCTION,
+        email_sender="resend",
+        resend_api_key="re_test_not_a_real_key",
+        mail_from="APM Digital <no-reply@example.test>",
+    )
+
+    assert settings.email_sender == "resend"
+    assert "re_test_not_a_real_key" not in repr(settings)  # a SecretStr never prints
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {},
+        {"resend_api_key": "re_x"},
+        {"mail_from": "a@example.test"},
+        {"resend_api_key": " ", "mail_from": "a@example.test"},
+    ],
+    ids=["nothing", "no-from", "no-key", "blank-key"],
+)
+def test_the_resend_sender_needs_both_the_key_and_the_sender_address(
+    changes: dict[str, Any],
+) -> None:
+    with pytest.raises(ValidationError, match="needs RESEND_API_KEY and MAIL_FROM"):
+        build(email_sender="resend", **changes)
 
 
 @pytest.mark.parametrize("env", ["development", "test"])

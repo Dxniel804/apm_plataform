@@ -6,7 +6,10 @@ sender is development only and the API refuses to start in production without a 
 password-changed notice never contains a password.
 """
 
+import json
 import os
+import urllib.error
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,10 +25,54 @@ class Message:
     subject: str
     body: str
     kind: str
+    # Resend only: sending the same key twice sends one e-mail (a retry never duplicates).
+    idempotency_key: str | None = None
+
+
+class EmailDeliveryError(OSError):
+    """The e-mail was not sent. An OSError on purpose: every caller already treats a failing sender
+    as "log and go on". The text never carries the key, the address or what the server said."""
 
 
 class EmailSender(Protocol):
     def send(self, message: Message) -> None: ...
+
+
+RESEND_URL = "https://api.resend.com/emails"
+RESEND_TIMEOUT_SECONDS = 10
+
+
+class ResendSender:
+    """Sends through the HTTP API of Resend (the same carrier the Forklin Central uses)."""
+
+    def __init__(self, api_key: str, mail_from: str) -> None:
+        self._api_key = api_key
+        self._mail_from = mail_from
+
+    def send(self, message: Message) -> None:
+        payload = {
+            "from": self._mail_from,
+            "to": [message.to],
+            "subject": message.subject,
+            "text": message.body,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "apm-digital/1.0",
+        }
+        if message.idempotency_key:
+            headers["Idempotency-Key"] = message.idempotency_key
+        request = urllib.request.Request(  # noqa: S310  (a fixed https URL)
+            RESEND_URL, data=json.dumps(payload).encode(), headers=headers, method="POST"
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=RESEND_TIMEOUT_SECONDS):  # noqa: S310
+                return
+        except urllib.error.HTTPError as error:
+            raise EmailDeliveryError(f"the e-mail provider answered {error.code}") from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            raise EmailDeliveryError("the e-mail provider could not be reached") from None
 
 
 class FileOutbox:
@@ -43,6 +90,8 @@ class FileOutbox:
 
 
 def build_sender(settings: ApiSettings) -> EmailSender:
+    if settings.email_sender == "resend" and settings.resend_api_key and settings.mail_from:
+        return ResendSender(settings.resend_api_key.get_secret_value(), settings.mail_from)
     return FileOutbox(settings.outbox_dir)
 
 

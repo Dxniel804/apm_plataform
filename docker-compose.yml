@@ -55,6 +55,10 @@ services:
       PUBLIC_ORIGINS: ${PUBLIC_ORIGINS:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       OUTBOX_DIR: /outbox
+      # E-mail: "file" (development) or "resend". The key is only read from the environment/.env.
+      EMAIL_SENDER: ${EMAIL_SENDER:-file}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       # Expense attachments (TASK-007): files on a volume, never in the database or the repository.
       ATTACHMENTS_DIR: /attachments
       ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-10485760}

@@ -4,12 +4,20 @@ a static look at the code for habits that would leak (SQL from strings, log mess
 import ast
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 from argon2 import PasswordHasher
 
 from app.auth import passwords
-from app.auth.emailer import FileOutbox, Message, invitation_message, password_changed_message
+from app.auth.emailer import (
+    EmailDeliveryError,
+    FileOutbox,
+    Message,
+    ResendSender,
+    invitation_message,
+    password_changed_message,
+)
 from app.auth.passwords import MAX_LENGTH, MIN_LENGTH
 from app.auth.tokens import b64url, hash_token, keyed_digest, looks_like_a_token, new_token
 from tests.dbsupport import API_DIR
@@ -184,6 +192,71 @@ def test_the_password_notice_has_no_secret_in_it() -> None:
 
     assert message.kind == "password-changed"
     assert not re.search(r"token|argon2|password:|senha:", message.body, re.IGNORECASE)
+
+
+# --- the Resend sender ---------------------------------------------------------------------------
+
+
+class _Answer:
+    def __enter__(self) -> "_Answer":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+def test_the_resend_sender_posts_the_message_with_the_key_in_a_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[Any] = []
+
+    def fake_urlopen(request: Any, timeout: float) -> _Answer:
+        seen.append((request, timeout))
+        return _Answer()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    ResendSender("re_fake_key", "APM <no-reply@example.test>").send(
+        Message(to="a@example.test", subject="Oi", body="Texto", kind="x", idempotency_key="k-1")
+    )
+
+    request, timeout = seen[0]
+    assert request.full_url == "https://api.resend.com/emails" and timeout == 10
+    assert request.get_header("Authorization") == "Bearer re_fake_key"
+    assert request.get_header("Idempotency-key") == "k-1"
+    body = __import__("json").loads(request.data)
+    assert body == {
+        "from": "APM <no-reply@example.test>",
+        "to": ["a@example.test"],
+        "subject": "Oi",
+        "text": "Texto",
+    }
+
+
+@pytest.mark.parametrize("failure", ["http", "network"])
+def test_a_failing_provider_raises_an_error_that_leaks_nothing(
+    monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    import email.message
+    import urllib.error
+
+    def boom(request: Any, timeout: float) -> None:
+        if failure == "http":
+            headers = email.message.Message()
+            raise urllib.error.HTTPError(
+                request.full_url, 422, "bad re_fake_key a@example.test", headers, None
+            )
+        raise urllib.error.URLError("dns re_fake_key a@example.test")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+
+    with pytest.raises(EmailDeliveryError) as raised:
+        ResendSender("re_fake_key", "APM <no-reply@example.test>").send(
+            Message(to="a@example.test", subject="Oi", body="Texto", kind="x")
+        )
+
+    assert "re_fake_key" not in str(raised.value) and "a@example.test" not in str(raised.value)
+    assert isinstance(raised.value, OSError)  # the callers already log and go on
 
 
 # --- habits that leak, looked for in the code -----------------------------------------------------

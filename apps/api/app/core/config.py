@@ -161,9 +161,13 @@ class ApiSettings(Settings):
     public_origins: str = ""
     # Where the links in e-mails point (the web app).
     public_base_url: str = "http://localhost:3000"
-    # The only sender implemented writes e-mails to files (development); production needs one.
-    email_sender: Literal["file"] = "file"
+    # "file" writes e-mails to files (development only); "resend" sends them through the Resend HTTP
+    # API (needs RESEND_API_KEY and MAIL_FROM, a sender of a domain verified in Resend). The key
+    # lives ONLY in the environment of the API, never in the repository, the database or a log.
+    email_sender: Literal["file", "resend"] = "file"
     outbox_dir: str = "/outbox"
+    resend_api_key: SecretStr | None = None
+    mail_from: str | None = None
 
     @field_validator("auth_secret")
     @classmethod
@@ -180,6 +184,16 @@ class ApiSettings(Settings):
         return value
 
     @model_validator(mode="after")
+    def _resend_needs_its_settings(self) -> Self:
+        if self.email_sender == "resend" and (
+            self.resend_api_key is None
+            or not self.resend_api_key.get_secret_value().strip()
+            or not (self.mail_from or "").strip()
+        ):
+            raise ValueError("EMAIL_SENDER=resend needs RESEND_API_KEY and MAIL_FROM")
+        return self
+
+    @model_validator(mode="after")
     def _production_rules(self) -> Self:
         if not self.is_production:
             return self
@@ -192,7 +206,8 @@ class ApiSettings(Settings):
             )
         if self.email_sender == "file":
             raise ValueError(
-                "no e-mail sender is available for ENV=production yet: the API cannot start there"
+                "no e-mail sender is available for ENV=production: set EMAIL_SENDER=resend "
+                "(with RESEND_API_KEY and MAIL_FROM)"
             )
         return self
 
