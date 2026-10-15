@@ -9,7 +9,6 @@ import {
   BoxArrowInRightIcon,
   ChevronDownThinIcon,
   ChevronUpThinIcon,
-  KeyIcon,
   XLgIcon,
 } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Logo";
@@ -30,10 +29,6 @@ interface SidebarProps {
   switcher: ReactNode;
   userName: string;
   roleLabel: string;
-  /** Abre a janela "Alterar senha" (a gaveta do celular fecha antes). */
-  onChangePassword: () => void;
-  /** A janela esta aberta: o item do menu fica marcado. */
-  passwordOpen: boolean;
   onSignOut: () => void;
   signingOut: boolean;
 }
@@ -57,8 +52,6 @@ export function Sidebar({
   switcher,
   userName,
   roleLabel,
-  onChangePassword,
-  passwordOpen,
   onSignOut,
   signingOut,
 }: SidebarProps) {
@@ -191,20 +184,6 @@ export function Sidebar({
             <span className="block truncate text-[0.75rem] text-ink-3">{roleLabel}</span>
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            onClose?.();
-            onChangePassword();
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={passwordOpen}
-          title={collapsed ? "Alterar senha" : undefined}
-          className={`${itemBase} ${layout} ${itemIdle}`}
-        >
-          <KeyIcon size={20} />
-          {label("Alterar senha")}
-        </button>
         <button
           type="button"
           onClick={onSignOut}

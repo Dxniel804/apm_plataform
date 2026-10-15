@@ -143,8 +143,6 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
       }
       userName={session.user.fullName}
       roleLabel={ROLE_LABELS[active.role]}
-      onChangePassword={() => router.push("/painel/configuracoes#senha")}
-      passwordOpen={false}
       onSignOut={signOut}
       signingOut={signingOut}
     />
