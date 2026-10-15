@@ -7,8 +7,9 @@ import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
 import { ReconciliationArea } from "@/components/conciliacao/ReconciliationArea";
 import { SettingsArea } from "@/components/configuracoes/SettingsArea";
 import { CampaignsArea } from "@/components/personalizacao/CampaignsArea";
+import { TeamArea } from "@/components/equipe/TeamArea";
 import { RequestsArea } from "@/components/solicitacoes/RequestsArea";
-import { BagIcon, BarChartIcon, BoxArrowInRightIcon, BankIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, SettingsIcon } from "@/components/ui/icons";
+import { BagIcon, BarChartIcon, BoxArrowInRightIcon, BankIcon, CalendarCheckIcon, Cart4Icon, ChatLeftTextIcon, PeopleIcon, SettingsIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
@@ -198,6 +199,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} campaignId={campaignId} tab={campaignTab} />
           ) : shownArea === "conciliacao" ? (
             <ReconciliationArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
+          ) : shownArea === "equipe" ? (
+            <TeamArea key={schoolId} />
           ) : shownArea === "configuracoes" ? (
             <SettingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : shownArea === "fechamento" ? (
@@ -231,6 +234,7 @@ function titleFor(area: PainelArea, section: PainelSection, manageExpenses: bool
   if (area === "campanhas") return { title: "Campanhas", icon: <BagIcon size={20} /> };
   if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={20} /> };
   if (area === "conciliacao") return { title: "Conciliação", icon: <BankIcon size={20} /> };
+  if (area === "equipe") return { title: "Equipe", icon: <PeopleIcon size={20} /> };
   if (area === "configuracoes") return { title: "Configurações", icon: <SettingsIcon size={20} /> };
   if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={20} /> };
   return { title: KIND_META[section].plural, icon: KIND_META[section].icon };

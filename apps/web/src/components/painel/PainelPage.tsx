@@ -40,7 +40,9 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
               ? areas.manageCampaigns
               : area === "conciliacao"
                 ? areas.manageReconciliation
-                : areas.manageExpenses || areas.myExpenses);
+                : area === "equipe"
+                  ? areas.manageTeam
+                  : areas.manageExpenses || areas.myExpenses);
     const home = homeArea(areas);
     if (!allowed && home !== area) redirect(areaHref(home));
   }

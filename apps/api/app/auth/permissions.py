@@ -70,6 +70,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.CAMPAIGNS_MANAGE,
             Permission.SCHOOL_SETTINGS_MANAGE,
             Permission.RECONCILIATION_MANAGE,
+            # ...and brings the employees of the school in (and out), see INVITABLE_ROLES.
+            Permission.INVITATIONS_CREATE,
         }
     ),
     # Staff (funcionario): submit and see their OWN expenses, and ask the management for things.
@@ -88,6 +90,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
 # Roles an inviter may grant, by the inviter's own role (always into the inviter's own school).
 INVITABLE_ROLES: dict[str, frozenset[str]] = {
     "school_admin": frozenset({"school_admin", "treasurer", "staff", "viewer"}),
+    # The management (treasurer) brings the employees in, and only them.
+    "treasurer": frozenset({"staff"}),
 }
 
 

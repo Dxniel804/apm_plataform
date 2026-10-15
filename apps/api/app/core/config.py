@@ -168,6 +168,11 @@ class ApiSettings(Settings):
     outbox_dir: str = "/outbox"
     resend_api_key: SecretStr | None = None
     mail_from: str | None = None
+    # The Forklin ecosystem (Central API + SSO). NOT connected yet: employees come in by an
+    # invitation e-mail. When it is, people are created in the Central, get the e-mail of the
+    # Forklin App and enter by SSO (docs/forklin-employees.md). The flag gives that day a name;
+    # turning it on today is refused at startup.
+    forklin_core_enabled: bool = False
 
     @field_validator("auth_secret")
     @classmethod
@@ -182,6 +187,14 @@ class ApiSettings(Settings):
         for origin in (part for part in value.split(",") if part.strip()):
             _normalise_origin(origin)
         return value
+
+    @model_validator(mode="after")
+    def _the_central_is_not_connected_yet(self) -> Self:
+        if self.forklin_core_enabled:
+            raise ValueError(
+                "FORKLIN_CORE_ENABLED is not available yet: the Central is not connected"
+            )
+        return self
 
     @model_validator(mode="after")
     def _resend_needs_its_settings(self) -> Self:

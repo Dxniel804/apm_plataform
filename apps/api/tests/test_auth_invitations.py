@@ -104,7 +104,10 @@ def test_an_invitation_is_created_for_the_active_tenant_and_the_token_goes_by_e_
         ("school_admin", "viewer", None, 201),  # defaults to its own school
         ("school_admin", "organization_admin", "1", 422),  # the role of a network no longer exists
         ("school_admin", "staff", "2", 403),  # never into another school (ADR-020)
-        ("treasurer", "staff", "1", 403),
+        ("treasurer", "staff", "1", 201),  # the management brings employees in...
+        ("treasurer", "treasurer", "1", 403),  # ...and nobody above them
+        ("treasurer", "school_admin", "1", 403),
+        ("treasurer", "viewer", "1", 403),
         ("staff", "staff", "1", 403),
         ("viewer", "viewer", "1", 403),
     ],

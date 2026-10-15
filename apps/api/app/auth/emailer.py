@@ -95,14 +95,17 @@ def build_sender(settings: ApiSettings) -> EmailSender:
     return FileOutbox(settings.outbox_dir)
 
 
-def invitation_message(settings: ApiSettings, to: str, token: str, organization: str) -> Message:
+def invitation_message(
+    settings: ApiSettings, to: str, token: str, organization: str, full_name: str | None = None
+) -> Message:
     link = f"{settings.public_base_url.rstrip('/')}/accept-invitation?token={token}"
     return Message(
         to=to,
         kind="invitation",
         subject=f"Convite para {organization} no APM Digital",
         body=(
-            f"Voce foi convidado(a) para {organization} no APM Digital.\n"
+            (f"Ola, {full_name}.\n" if full_name else "")
+            + f"Voce foi convidado(a) para {organization} no APM Digital.\n"
             f"Para aceitar e definir sua senha, abra o link (vale por 72 horas, uso unico):\n{link}"
         ),
     )

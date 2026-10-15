@@ -60,6 +60,48 @@ class PasswordRequest(Strict):
     new_password: PasswordText
 
 
+class EmployeeCreate(Strict):
+    """The management brings a person in: name and e-mail (the person chooses the password)."""
+
+    full_name: Annotated[str, Field(min_length=2, max_length=200), AfterValidator(_storable)]
+    email: Text
+    role: Role = "staff"
+
+    @field_validator("email")
+    @classmethod
+    def _normalise(cls, value: str) -> str:
+        return _email(value)
+
+    @field_validator("full_name")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+
+class MemberOut(BaseModel):
+    membership_id: uuid.UUID
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+    role: Role
+    status: str
+    is_you: bool
+    can_manage: bool  # suspend or bring back: only roles the caller may invite, never oneself
+
+
+class PendingInvitationOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    role: Role
+    expires_at: datetime
+    can_manage: bool
+
+
+class TeamOut(BaseModel):
+    members: list[MemberOut]
+    pending: list[PendingInvitationOut]
+
+
 class PasswordResetRequest(Strict):
     email: Text
 

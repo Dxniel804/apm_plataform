@@ -7,7 +7,7 @@ from app.public.campaigns import media_router as public_media_router
 from app.public.campaigns import router as public_campaigns_router
 from app.public.router import router as public_router
 from app.routers import health
-from app.routers.v1 import auth, invitations
+from app.routers.v1 import auth, employees, invitations
 
 # Web and API share one origin behind a proxy; the API lives under /api (no CORS).
 api_router = APIRouter(prefix="/api")
@@ -16,6 +16,7 @@ api_router.include_router(health.router)
 v1_router = APIRouter(prefix="/v1")
 v1_router.include_router(auth.router)
 v1_router.include_router(invitations.router)
+v1_router.include_router(employees.router)
 v1_router.include_router(public_router)
 v1_router.include_router(public_campaigns_router)
 v1_router.include_router(public_media_router)

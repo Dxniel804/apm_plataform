@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
-from app.auth.permissions import ROLE_PERMISSIONS, Permission, permissions_for
+from app.auth.permissions import INVITABLE_ROLES, ROLE_PERMISSIONS, Permission, permissions_for
 from app.routers.deps import get_tenant_db
 from tests.authsupport import Api, ApiFactory, UserFactory, World
 
@@ -315,6 +315,7 @@ def test_what_each_role_may_do() -> None:
         Permission.CAMPAIGNS_MANAGE,
         Permission.SCHOOL_SETTINGS_MANAGE,
         Permission.RECONCILIATION_MANAGE,
+        Permission.INVITATIONS_CREATE,  # the management brings the employees in (and only them)
     }
     assert permissions_for("staff") == {
         Permission.EXPENSES_SUBMIT,
@@ -332,4 +333,6 @@ def test_only_the_school_admin_can_reopen_a_month_and_nobody_else_manages_access
     can_invite = {r for r, p in ROLE_PERMISSIONS.items() if Permission.INVITATIONS_CREATE in p}
 
     assert can_reopen == {"school_admin"}
-    assert can_invite == {"school_admin"}
+    # the management invites too, but INVITABLE_ROLES lets it bring in employees only
+    assert can_invite == {"school_admin", "treasurer"}
+    assert INVITABLE_ROLES["treasurer"] == {"staff"}

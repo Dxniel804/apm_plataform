@@ -792,3 +792,38 @@ export interface ClosingVerification {
   verified: boolean;
   entriesHash: string;
 }
+
+
+// ---------------------------------------------------------------- REAL: a equipe da escola (/employees)
+
+export interface TeamMember {
+  membershipId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: Role;
+  /** active | suspended | invited */
+  status: string;
+  isYou: boolean;
+  /** A API diz se o botao de suspender ou reativar vale para esta pessoa (so cargos que quem olha pode convidar, nunca a si). */
+  canManage: boolean;
+}
+
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  role: Role;
+  expiresAt: string;
+  canManage: boolean;
+}
+
+export interface Team {
+  members: TeamMember[];
+  pending: PendingInvitation[];
+}
+
+export interface EmployeeInput {
+  fullName: string;
+  email: string;
+  role?: Role;
+}

@@ -20,6 +20,7 @@ import {
 } from "./staff-requests";
 import { getGoal, getPending, getSeries, getStatement, getSummary, recordCashContribution } from "./statement";
 import { actOnBankLine, createBankAccount, getClosingBalance, getReconciliation, importStatement, listBankAccounts, previewStatement, listStatementImports, setBankAccountActive } from "./reconciliation";
+import { activateMember, cancelInvitation, createEmployee, getTeam, resendInvitation, suspendMember } from "./team";
 import { downloadPoster, getPublicLink, getSchoolSettings, updateSchoolSettings } from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
@@ -52,6 +53,14 @@ export const api: {
     compare: typeof getReconciliation;
     actOnLine: typeof actOnBankLine;
     closingBalance: typeof getClosingBalance;
+  };
+  team: {
+    list: typeof getTeam;
+    create: typeof createEmployee;
+    resend: typeof resendInvitation;
+    cancel: typeof cancelInvitation;
+    suspend: typeof suspendMember;
+    activate: typeof activateMember;
   };
   schoolSettings: {
     get: typeof getSchoolSettings;
@@ -153,6 +162,7 @@ export const api: {
     actOnLine: actOnBankLine,
     closingBalance: getClosingBalance,
   },
+  team: { list: getTeam, create: createEmployee, resend: resendInvitation, cancel: cancelInvitation, suspend: suspendMember, activate: activateMember },
   schoolSettings: { get: getSchoolSettings, update: updateSchoolSettings, publicLink: getPublicLink, poster: downloadPoster },
   campaigns: {
     list: listCampaigns,

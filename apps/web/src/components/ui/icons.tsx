@@ -403,3 +403,12 @@ export const ArrowLeftRightIcon = (p: IconProps) => (
     <path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4" />
   </Svg>
 );
+
+export const PeopleIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3 19c.5-3.2 3-5 6-5s5.5 1.8 6 5" />
+    <circle cx="17" cy="9.5" r="2.4" />
+    <path d="M16.5 14.2c2.4.2 4 1.7 4.5 4.3" />
+  </Svg>
+);

@@ -2,20 +2,17 @@
 
 import logging
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
 
 from app.auth import passwords
 from app.auth.deps import Db, OptionalPrincipal, Principal, Settings, public, require
-from app.auth.emailer import build_sender, invitation_message
 from app.auth.identity import accept_invitation, list_memberships
-from app.auth.permissions import INVITABLE_ROLES, Permission
+from app.auth.invite import issue_invitation
+from app.auth.permissions import Permission
 from app.auth.ratelimit import attempt_keys, blocked_for, client_ip, record_attempt
 from app.auth.responses import membership_out, problem_responses
-from app.auth.tokens import hash_token, looks_like_a_token, new_token
+from app.auth.tokens import hash_token, looks_like_a_token
 from app.core.errors import ProblemError
 from app.db.request_context import bind_request_context
 from app.schemas.auth import (
@@ -28,8 +25,6 @@ from app.schemas.auth import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
-
-INVITATION_LIFETIME_HOURS = 72
 
 
 def _ip(request: Request) -> str:
@@ -65,80 +60,8 @@ def create_invitation(
     """The tenant is the one of the ACTIVE membership; nothing about it comes from the body. A
     school admin invites into its own school, and only into it (ADR-020). The token travels by
     e-mail and is never in the response."""
-    active = principal.active
-    if active is None:  # require() already guarantees it; never rely on an assert for this
-        raise ProblemError(
-            409, "context_required", "Choose which school or organization to act for"
-        )
-    if body.role not in INVITABLE_ROLES.get(active.role, frozenset()):
-        raise ProblemError(403, "permission_denied", "You may not invite that role")
-
-    # Every membership is of ONE school, so an invitation always goes into the inviter's school. A
-    # school_id in the body is only accepted when it is that same school.
-    if body.school_id not in (None, active.school_id):
-        raise ProblemError(403, "permission_denied", "You may only invite into your school")
-    school_id: UUID = active.school_id
-
-    # Visible only if it belongs to the active organization and school: row level security.
-    found = db.execute(text("SELECT 1 FROM schools WHERE id = :id"), {"id": school_id}).first()
-    if found is None:
-        raise _field_error("school_id", "not_found")
-
-    # An existing member of the SAME scope is visible to this tenant (never one of another tenant).
-    already = db.execute(
-        text(
-            "SELECT 1 FROM memberships m JOIN users u ON u.id = m.user_id "
-            "WHERE lower(u.email) = :email AND m.school_id = :school "
-            "AND m.status IN ('active', 'invited', 'suspended')"
-        ),
-        {"email": body.email, "school": school_id},
-    ).first()
-    if already is not None:
-        raise ProblemError(409, "already_member", "That person already has access here")
-
-    # An expired invitation still occupies the "one live invitation per scope" slot: free it.
-    db.execute(
-        text(
-            "UPDATE invitations SET revoked_at = now(), updated_at = now() "
-            "WHERE email = :email AND school_id = :school "
-            "AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at <= now()"
-        ),
-        {"email": body.email, "school": school_id},
-    )
-
-    token = new_token()
-    try:
-        row = db.execute(
-            text(
-                "INSERT INTO invitations (organization_id, school_id, email, role, token_hash, "
-                "invited_by_user_id, expires_at) VALUES (:org, :school, :email, :role, :hash, "
-                ":by, now() + make_interval(hours => :hours)) "
-                "RETURNING id, expires_at"
-            ),
-            {
-                "org": active.organization_id,
-                "school": school_id,
-                "email": body.email,
-                "role": body.role,
-                "hash": hash_token(token),
-                "by": principal.user_id,
-                "hours": INVITATION_LIFETIME_HOURS,
-            },
-        ).one()
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise ProblemError(
-            409, "invitation_pending", "There is already a pending invitation for that person here"
-        ) from None
-    try:
-        build_sender(settings).send(
-            invitation_message(settings, body.email, token, active.organization_name)
-        )
-    except OSError:
-        logger.warning("could not write the invitation e-mail to the outbox")
-    return InvitationOut(
-        id=row[0], email=body.email, role=body.role, school_id=school_id, expires_at=row[1]
+    return issue_invitation(
+        db, settings, principal, email=body.email, role=body.role, school_id=body.school_id
     )
 
 

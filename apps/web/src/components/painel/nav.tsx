@@ -10,6 +10,7 @@ import {
   ReplyAllIcon,
   SettingsIcon,
   BankIcon,
+  PeopleIcon,
 } from "@/components/ui/icons";
 import { sectionHref } from "@/lib/painel-section";
 import { areaHref, type Areas, type PainelArea } from "@/lib/permissions";
@@ -105,6 +106,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       label: "Conciliação",
       href: areaHref("conciliacao"),
       icon: <BankIcon size={22} />,
+    });
+  }
+  if (areas.manageTeam) {
+    items.push({
+      area: "equipe",
+      label: "Equipe",
+      href: areaHref("equipe"),
+      icon: <PeopleIcon size={22} />,
     });
   }
   // Para todos: a troca de senha mora aqui. As configuracoes da escola so aparecem para quem pode mexer.

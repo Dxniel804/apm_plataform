@@ -26,6 +26,8 @@ export interface Areas {
   manageSettings: boolean;
   /** "Conciliacao": as contas bancarias e a comparacao do extrato com o caixa (reconciliation:manage). */
   manageReconciliation: boolean;
+  /** "Equipe": quem traz os funcionarios para a escola (invitations:create). */
+  manageTeam: boolean;
 }
 
 export function areasFor(permissions: readonly string[]): Areas {
@@ -44,10 +46,11 @@ export function areasFor(permissions: readonly string[]): Areas {
     manageCampaigns: has("campaigns:manage"),
     manageSettings: has("school_settings:manage"),
     manageReconciliation: has("reconciliation:manage"),
+    manageTeam: has("invitations:create"),
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "conciliacao" | "configuracoes" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "conciliacao" | "equipe" | "configuracoes" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;
