@@ -97,3 +97,59 @@ def accept_invitation(
         },
     ).one()
     return AcceptResult(*row)
+
+
+@dataclass(frozen=True)
+class SsoSignIn:
+    outcome: str
+    user_id: UUID | None
+    membership_id: UUID | None
+
+
+def sso_sign_in(
+    db: Session,
+    *,
+    central_user_id: UUID,
+    central_org_id: UUID,
+    email: str,
+    full_name: str,
+    role: str,
+) -> SsoSignIn:
+    """Finds, links by e-mail or creates the person that the Central vouched for and makes sure of
+    the membership (docs/adr-forklin-sso.md). The outcome is `ok` or the reason it was refused."""
+    row = db.execute(
+        text(
+            "SELECT outcome, user_id, membership_id "
+            "FROM public.sso_sign_in(:central_user, :central_org, :email, :full_name, :role)"
+        ),
+        {
+            "central_user": central_user_id,
+            "central_org": central_org_id,
+            "email": email,
+            "full_name": full_name,
+            "role": role,
+        },
+    ).one()
+    return SsoSignIn(*row)
+
+
+@dataclass(frozen=True)
+class ProvisionedSchool:
+    organization_id: UUID
+    school_id: UUID
+    created: bool
+
+
+def provision_forklin_school(
+    db: Session, *, central_org_id: UUID, name: str, slug: str
+) -> ProvisionedSchool | None:
+    """The empty account (organization and school) of an organization of the Central, created if it
+    does not exist yet. None when it could not be made (no free slug)."""
+    row = db.execute(
+        text(
+            "SELECT organization_id, school_id, created "
+            "FROM public.provision_forklin_school(:central_org, :name, :slug)"
+        ),
+        {"central_org": central_org_id, "name": name, "slug": slug},
+    ).one_or_none()
+    return None if row is None else ProvisionedSchool(*row)

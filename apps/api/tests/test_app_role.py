@@ -207,6 +207,20 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "provision_forklin_school(uuid,text,text)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "v",
+    ),
+    "sso_sign_in(uuid,uuid,text,text,text)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "v",
+    ),
     "list_memberships_for_user(uuid)": (
         "apm_definer",
         True,
@@ -303,6 +317,14 @@ DEFINER_POLICIES = {
     "password_reset_tokens.password_reset_tokens_definer_select",
     "password_reset_tokens.password_reset_tokens_definer_insert",
     "password_reset_tokens.password_reset_tokens_definer_update",
+    # 0023 (docs/adr-forklin-sso.md)
+    "users.users_definer_link",
+    "memberships.memberships_definer_update",
+    "organizations.organizations_definer_insert",
+    "schools.schools_definer_insert",
+    "school_settings.school_settings_definer_insert",
+    "categories.categories_definer_insert",
+    "audit_logs.audit_logs_definer_insert",
     "memberships.memberships_definer_insert",
     "memberships.memberships_definer_select",
     "organizations.organizations_definer_select",
@@ -454,7 +476,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # 30 of TASK-003 and 0006 + 37 of the financial schema (0007) + 4 of the public flow (0008)
     # + 2 of the expiry job (0009) + 5 of the staff requests (0012) + 8 of the campaigns (0013)
     # + 3 of the deliveries (0014)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3
+    # + the 7 of the Forklin sign-in (0023)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":

@@ -123,6 +123,13 @@ PUBLIC_ROUTES: dict[tuple[str, str], str] = {
     "any e-mail, rate limited per e-mail and address, Origin checked",
     ("POST", "/api/v1/auth/password-reset/confirm"): "the e-mailed token is the credential; "
     "one use, 30 minutes, rate limited per address, ends every session",
+    # The Forklin Central (docs/adr-forklin-sso.md): each answers 404 unless FORKLIN_CORE_ENABLED.
+    ("GET", "/api/v1/forklin/sso/start"): "sends the browser to the Forklin App with a random "
+    "state; no data is read or written",
+    ("GET", "/api/v1/forklin/sso/callback"): "the one-time code is the credential: it is exchanged "
+    "with the Central and the token verified (EdDSA, audience, issuer, lifetime) before anything",
+    ("POST", "/api/v1/forklin/events"): "server to server, no Origin: the EdDSA token of the "
+    "Central (audience of this product, lifetime of two minutes) is the credential; idempotent",
     # The public contribution flow (ADR-010, ADR-018): the slug and the receipt token are the scope.
     ("GET", "/api/v1/public/schools/{slug}"): "the public page of a school",
     ("POST", "/api/v1/public/schools/{slug}/contributions"): "a family starts a contribution; "

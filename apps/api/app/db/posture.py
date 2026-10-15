@@ -119,6 +119,16 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("password_reset_tokens", "password_reset_tokens_definer_select", "SELECT", "apm_definer"),
         ("password_reset_tokens", "password_reset_tokens_definer_insert", "INSERT", "apm_definer"),
         ("password_reset_tokens", "password_reset_tokens_definer_update", "UPDATE", "apm_definer"),
+        # 0023 (docs/adr-forklin-sso.md): the sign-in of a person of the Central and the empty
+        # account of an organization of the Central; each INSERT policy is tied to such an
+        # organization.
+        ("users", "users_definer_link", "UPDATE", "apm_definer"),
+        ("memberships", "memberships_definer_update", "UPDATE", "apm_definer"),
+        ("organizations", "organizations_definer_insert", "INSERT", "apm_definer"),
+        ("schools", "schools_definer_insert", "INSERT", "apm_definer"),
+        ("school_settings", "school_settings_definer_insert", "INSERT", "apm_definer"),
+        ("categories", "categories_definer_insert", "INSERT", "apm_definer"),
+        ("audit_logs", "audit_logs_definer_insert", "INSERT", "apm_definer"),
         # 0007: a SELECT and an INSERT policy on each financial table, and an UPDATE one on every
         # table but the two that only grow (expense_attachments, audit_logs): 37. None of them is
         # open to apm_definer (the two SELECT policies of 0009 above are the only ones).
@@ -184,6 +194,9 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.find_schools_with_stale_contributions(p_after uuid, p_limit integer)",
         "public.request_password_reset(p_email text, p_token_hash bytea, p_minutes integer)",
         "public.consume_password_reset(p_token_hash bytea)",
+        "public.provision_forklin_school(p_central_org_id uuid, p_name text, p_slug text)",
+        "public.sso_sign_in(p_central_user_id uuid, p_central_org_id uuid, p_email text, "
+        "p_full_name text, p_role text)",
     }
 )
 

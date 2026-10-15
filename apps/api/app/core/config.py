@@ -168,11 +168,18 @@ class ApiSettings(Settings):
     outbox_dir: str = "/outbox"
     resend_api_key: SecretStr | None = None
     mail_from: str | None = None
-    # The Forklin ecosystem (Central API + SSO). NOT connected yet: employees come in by an
-    # invitation e-mail. When it is, people are created in the Central, get the e-mail of the
-    # Forklin App and enter by SSO (docs/forklin-employees.md). The flag gives that day a name;
-    # turning it on today is refused at startup.
+    # The Forklin ecosystem (docs/adr-forklin-sso.md). Off by default: the local e-mail and password
+    # login and the invitations work as always. On, the Central signs people in (SSO) and tells this
+    # product when an organization contracts it; the other four values are then required.
     forklin_core_enabled: bool = False
+    # Server to server address of the Central API (the code exchange and the key set).
+    api_central_url: str | None = None
+    # Where the browser goes for "Entrar com Forklin" (the Forklin App).
+    forklin_app_url: str | None = None
+    # The slug this product has in the Central: the `aud` of every token it accepts.
+    forklin_product_slug: str = "apm-digital"
+    # The credential of the product (shown once by the Central). Only in the environment.
+    forklin_product_secret: SecretStr | None = None
 
     @field_validator("auth_secret")
     @classmethod
@@ -189,11 +196,31 @@ class ApiSettings(Settings):
         return value
 
     @model_validator(mode="after")
-    def _the_central_is_not_connected_yet(self) -> Self:
-        if self.forklin_core_enabled:
+    def _the_central_needs_its_settings(self) -> Self:
+        if not self.forklin_core_enabled:
+            return self
+        secret = self.forklin_product_secret
+        if (
+            not (self.api_central_url or "").strip()
+            or not (self.forklin_app_url or "").strip()
+            or secret is None
+            or not secret.get_secret_value().strip()
+        ):
             raise ValueError(
-                "FORKLIN_CORE_ENABLED is not available yet: the Central is not connected"
+                "FORKLIN_CORE_ENABLED needs API_CENTRAL_URL, FORKLIN_APP_URL and "
+                "FORKLIN_PRODUCT_SECRET"
             )
+        for name, value in (
+            ("API_CENTRAL_URL", self.api_central_url),
+            ("FORKLIN_APP_URL", self.forklin_app_url),
+        ):
+            parts = urlsplit((value or "").strip())
+            if parts.scheme not in ("http", "https") or not parts.netloc:
+                raise ValueError(f"{name} must be a http(s) URL")
+            if parts.username or parts.password or parts.query or parts.fragment:
+                raise ValueError(f"{name} must be a plain URL, without credentials or query")
+            if self.is_production and parts.scheme != "https":
+                raise ValueError(f"{name} must be https when ENV=production")
         return self
 
     @model_validator(mode="after")

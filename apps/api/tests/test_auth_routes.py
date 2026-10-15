@@ -267,6 +267,10 @@ def test_the_public_routes_are_the_ones_listed_and_nothing_else_works_anonymousl
         ("POST", "/api/v1/invitations/accept"),
         ("POST", "/api/v1/auth/password-reset/request"),
         ("POST", "/api/v1/auth/password-reset/confirm"),
+        # the Forklin Central (docs/adr-forklin-sso.md): 404 unless FORKLIN_CORE_ENABLED
+        ("GET", "/api/v1/forklin/sso/start"),
+        ("GET", "/api/v1/forklin/sso/callback"),
+        ("POST", "/api/v1/forklin/events"),
         # the public contribution flow, the webhooks of the Pix provider and the dev sandbox
         ("GET", "/api/v1/public/schools/{slug}"),
         ("POST", "/api/v1/public/schools/{slug}/contributions"),
@@ -289,8 +293,11 @@ def test_the_public_routes_are_the_ones_listed_and_nothing_else_works_anonymousl
 def test_only_the_webhooks_are_exempt_from_the_origin_check_and_they_need_their_secret(
     api: Api,
 ) -> None:
-    assert {"/api/v1/webhooks/pix/sandbox", "/api/v1/webhooks/pix/bb"} == ORIGIN_EXEMPT_PATHS
-    for path in sorted(ORIGIN_EXEMPT_PATHS):
+    webhooks = {"/api/v1/webhooks/pix/sandbox", "/api/v1/webhooks/pix/bb"}
+    # The notice of the Forklin Central is exempt too: signed by it, and 404 unless enabled.
+    assert webhooks | {"/api/v1/forklin/events"} == ORIGIN_EXEMPT_PATHS
+    assert api.client.post("/api/v1/forklin/events", json={"token": "x" * 40}).status_code == 404
+    for path in sorted(webhooks):
         body = {"event_id": "e1", "txid": "a" * 32}
         response = api.client.post(path, json=body)  # no Origin, no secret
         assert response.status_code == 401, path

@@ -534,11 +534,26 @@ def test_the_application_cannot_read_a_password_hash_or_create_a_user(
 # --- apm_definer ----------------------------------------------------------------------------------
 
 DEFINER_COLUMNS = {
-    ("users", "SELECT"): {"id", "email", "password_hash", "is_active"},
-    ("users", "INSERT"): {"email", "full_name", "password_hash"},
+    ("users", "SELECT"): {"id", "email", "password_hash", "is_active", "central_user_id"},
+    ("users", "INSERT"): {"email", "full_name", "password_hash", "central_user_id"},
+    # 0023 (docs/adr-forklin-sso.md): link a person of the Central, change a role, make the
+    # empty account of an organization of the Central
+    ("users", "UPDATE"): {"central_user_id", "updated_at"},
+    ("memberships", "UPDATE"): {"role", "updated_at"},
+    ("organizations", "INSERT"): {"name", "slug", "central_org_id"},
+    ("schools", "INSERT"): {"organization_id", "name", "slug"},
+    ("school_settings", "INSERT"): {"school_id", "organization_id"},
+    ("categories", "INSERT"): {
+        "organization_id", "school_id", "key", "name", "applies_to", "report_group",
+        "requires_approval",
+    },
+    ("audit_logs", "INSERT"): {
+        "organization_id", "school_id", "action", "entity_type", "entity_id", "entity_reference",
+        "before_data", "after_data",
+    },
     ("memberships", "SELECT"): {"id", "user_id", "organization_id", "school_id", "role", "status"},
     ("memberships", "INSERT"): {"user_id", "organization_id", "school_id", "role", "status"},
-    ("organizations", "SELECT"): {"id", "name", "slug"},
+    ("organizations", "SELECT"): {"id", "name", "slug", "central_org_id"},
     ("schools", "SELECT"): {"id", "organization_id", "name", "slug"},
     (
         "invitations",
@@ -657,7 +672,7 @@ def test_apm_definer_alone_sees_users_and_only_through_its_four_columns(
         "UPDATE users SET is_active = false",
         "DELETE FROM users",
         "DELETE FROM memberships",
-        "UPDATE memberships SET role = 'organization_admin'",
+        "UPDATE memberships SET status = 'active'",
         "SELECT created_at FROM invitations",
         "UPDATE invitations SET role = 'organization_admin'",
     ):
