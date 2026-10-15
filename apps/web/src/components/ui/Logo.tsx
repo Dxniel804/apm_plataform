@@ -12,7 +12,7 @@ interface WordmarkProps {
   priority?: boolean;
 }
 
-/** Logo "fknelo" (arquivos do Figma, em /public/brand). */
+/** Logo "fknelo": as letras do Figma, com o arco (pais, mestres e o aluno) no lugar do "n". Arquivos em /public/brand; fonte em docs/brand. */
 export function Wordmark({ tone = "dark", width = 132, className = "", priority = false }: WordmarkProps) {
   return (
     <Image
@@ -24,6 +24,20 @@ export function Wordmark({ tone = "dark", width = 132, className = "", priority 
       // self-center + h-auto: dentro de um contêiner flex/grid o logo mantem a proporcao (antes esticava na vertical).
       className={`h-auto select-none self-center object-contain ${className}`.trim()}
       style={{ width }}
+    />
+  );
+}
+
+/** So o simbolo (o arco com o ponto), para onde nao cabe o nome: menu recolhido, selos. */
+export function Mark({ size = 32, className = "" }: { size?: number; className?: string }) {
+  return (
+    <Image
+      src="/brand/mark.png"
+      alt="fknelo"
+      width={size}
+      height={size}
+      className={`select-none self-center object-contain ${className}`.trim()}
+      style={{ width: size, height: size }}
     />
   );
 }

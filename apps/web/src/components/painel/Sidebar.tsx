@@ -11,7 +11,7 @@ import {
   ChevronUpThinIcon,
   XLgIcon,
 } from "@/components/ui/icons";
-import { Wordmark } from "@/components/ui/Logo";
+import { Mark, Wordmark } from "@/components/ui/Logo";
 import type { PainelSection } from "@/lib/painel-section";
 import type { PainelArea } from "@/lib/permissions";
 import type { NavItem } from "./nav";
@@ -65,7 +65,7 @@ export function Sidebar({
     <div className="flex h-full min-h-0 flex-col gap-5 px-3.5 py-5">
       <div className={`flex items-center gap-2 ${collapsed ? "flex-col" : "justify-between"}`}>
         <Link href="/painel" onClick={onClose} className="inline-flex min-h-11 items-center rounded-lg px-1.5">
-          {collapsed ? <Wordmark width={64} /> : <Wordmark width={104} />}
+          {collapsed ? <Mark size={32} /> : <Wordmark width={104} />}
         </Link>
         {onClose ? (
           <button
