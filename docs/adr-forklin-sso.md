@@ -15,7 +15,7 @@ Hoje o APM tem login próprio (e-mail e senha, sessão em cookie HttpOnly, convi
 
 **Os três casos do botão ENTRAR COM FORKLIN** (é o `/entrar` do App, o mesmo do Diário): **com sessão no App e com acesso** entra direto, sem pedir senha; **com sessão e sem acesso ao APM** volta ao login do APM com `?erro=acesso` (frase "sem acesso", sem ir ao App); **sem sessão** vai ao login do App e segue ao APM depois de entrar. Quem entra pelo **App** (login direto em `localhost:3100`) cai na Visão Geral, com os produtos, e o **Acessar** do produto leva ao APM sem login.
 
-Onde mora: as rotas são da API (`/api/v1/forklin/sso/start|callback`, `GET`) e o site as expõe como `/sso/start` e `/sso/callback` por dois route handlers do Next que só repassam (cookies, query, `Location` e `Set-Cookie`), sem seguir o redirecionamento. Fora de desenvolvimento, `FORKLIN_APP_URL` e `API_CENTRAL_URL` têm de ser `https`.
+Onde mora: as rotas são da API (`/api/v1/forklin/sso/start|callback`, `GET`) e o site as expõe como `/sso/start` e `/sso/callback` por dois route handlers do Next que só repassam (cookies, query, `Location` e `Set-Cookie`), sem seguir o redirecionamento. Em produção, `FORKLIN_APP_URL` tem de ser `https`; `API_CENTRAL_URL` é `https` ou o nome interno do serviço na rede do deploy (`http://api-central:8000`, como o App faz): só o servidor a chama.
 
 ### 2. Dados novos (migração 0023)
 `users.central_user_id uuid UNIQUE NULL` e `organizations.central_org_id uuid UNIQUE NULL` (a organização do APM **é** a conta de uma escola: ADR-020). As duas são opcionais: nada muda para quem nunca veio da Central. No ORM as duas são `deferred` (o papel da aplicação não as lê).

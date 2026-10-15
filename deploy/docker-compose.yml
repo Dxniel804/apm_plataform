@@ -1,0 +1,120 @@
+# APM Digital em PRODUCAO (Dokploy: aplicacao do tipo "Docker Compose", repositorio + este caminho).
+# Guia completo, variaveis e ordem de implantacao: docs/deploy-dokploy.md
+#
+# O BANCO NAO esta aqui: e um Postgres 16 so do APM, criado como servico "Postgres" do Dokploy (com
+# backup agendado). Este arquivo so tem o que roda o codigo: migracao, API, job de expiracao e site.
+# Nenhuma porta e publicada: o Traefik do Dokploy alcança os servicos pela rede interna (dominio ->
+# site, e o caminho /api -> api; ver o guia).
+name: apm-digital
+
+x-api-build: &api-build
+  context: ../apps/api
+  target: runtime
+
+x-database: &database
+  # O papel apm_app so existe depois da migracao; a senha dele vem desta mesma URL.
+  DATABASE_URL: postgresql+psycopg://apm_app:${APP_DB_PASSWORD:?defina APP_DB_PASSWORD}@${DB_HOST:?defina DB_HOST}:5432/${DB_NAME:-apm}
+
+services:
+  # Uma vez por versao: cria os papeis (apm_owner, apm_app, apm_definer), as tabelas, as politicas e as
+  # permissoes. E o UNICO lugar que conhece o usuario administrador do banco.
+  migrate:
+    build: *api-build
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *database
+      ENV: production
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET}
+      DATABASE_ADMIN_URL: postgresql+psycopg://${DB_ADMIN_USER:?defina DB_ADMIN_USER}:${DB_ADMIN_PASSWORD:?defina DB_ADMIN_PASSWORD}@${DB_HOST}:5432/${DB_NAME:-apm}
+
+  api:
+    build: *api-build
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *database
+      ENV: production
+      AUTH_SECRET: ${AUTH_SECRET}
+      COOKIE_SECURE: "true"
+      PUBLIC_ORIGINS: https://${APM_DOMAIN:?defina APM_DOMAIN}
+      PUBLIC_BASE_URL: https://${APM_DOMAIN}
+      # E-mail real (convites, recuperacao de senha). A chave so existe aqui, nunca no repositorio.
+      EMAIL_SENDER: resend
+      RESEND_API_KEY: ${RESEND_API_KEY:?defina RESEND_API_KEY}
+      MAIL_FROM: ${MAIL_FROM:?defina MAIL_FROM}
+      # Sem gateway escolhido: contribuicoes respondem "pagamentos pausados". Ligar so no ensaio com
+      # o gateway (docs/gateway-integration.md).
+      PIX_LIVE_ENABLED: ${PIX_LIVE_ENABLED:-false}
+      ATTACHMENTS_DIR: /attachments
+      OCR_ENABLED: "false"
+      # Quem o uvicorn aceita como proxy (X-Forwarded-For, para os limites por endereço): o Traefik. A
+      # API nao tem porta publicada, so ele a alcança; "*" e seguro aqui.
+      FORWARDED_ALLOW_IPS: ${TRUSTED_PROXY_IPS:-*}
+      # Entrada pela Central Forklin (docs/adr-forklin-sso.md). Desligada = tudo como sempre.
+      FORKLIN_CORE_ENABLED: ${FORKLIN_CORE_ENABLED:-false}
+      API_CENTRAL_URL: ${API_CENTRAL_URL:-}
+      FORKLIN_APP_URL: ${FORKLIN_APP_URL:-}
+      FORKLIN_PRODUCT_SLUG: ${FORKLIN_PRODUCT_SLUG:-apm-digital}
+      FORKLIN_PRODUCT_SECRET: ${FORKLIN_PRODUCT_SECRET:-}
+    volumes:
+      # Fotos das notas e comprovantes: ENTRAM NO BACKUP junto com o banco.
+      - attachments:/attachments
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # A cada minuto expira os Pix e as contribuicoes que ninguem pagou. Mesma imagem e mesma identidade
+  # de banco da API (apm_app); nao tem porta.
+  jobs:
+    build: *api-build
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *database
+      ENV: production
+    command: ["python", "-m", "app.jobs.expire", "--loop", "--interval", "60"]
+
+  web:
+    build:
+      context: ../apps/web
+      args:
+        # Destino do rewrite de /api/* gravado no build (so usado se o dominio apontar so para o site).
+        API_PROXY_URL: http://api:8000
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # O servidor do site chama a API por aqui (sessao, /sso/*): rede interna.
+      API_PROXY_URL: http://api:8000
+      PUBLIC_BASE_URL: https://${APM_DOMAIN}
+      FORKLIN_CORE_ENABLED: ${FORKLIN_CORE_ENABLED:-false}
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  attachments:

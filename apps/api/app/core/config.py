@@ -219,8 +219,15 @@ class ApiSettings(Settings):
                 raise ValueError(f"{name} must be a http(s) URL")
             if parts.username or parts.password or parts.query or parts.fragment:
                 raise ValueError(f"{name} must be a plain URL, without credentials or query")
-            if self.is_production and parts.scheme != "https":
-                raise ValueError(f"{name} must be https when ENV=production")
+            # In production the browser-facing URL must be https. The Central URL is called by the
+            # server only, so it may be the plain-http name of a service on the private network of
+            # the deployment (one label, no dots: `http://api-central:8000`), as the App does.
+            internal = name == "API_CENTRAL_URL" and "." not in (parts.hostname or ".")
+            if self.is_production and parts.scheme != "https" and not internal:
+                raise ValueError(
+                    f"{name} must be https when ENV=production "
+                    "(API_CENTRAL_URL may also be http://<service>:<port> on the private network)"
+                )
         return self
 
     @model_validator(mode="after")
