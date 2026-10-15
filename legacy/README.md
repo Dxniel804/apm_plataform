@@ -24,7 +24,7 @@ Documentação: [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) ·
 ## Rodando localmente
 
 ```bash
-cp .env.example .env        # preencha APP_ENCRYPTION_KEY
+# crie um .env e preencha APP_ENCRYPTION_KEY
 npm install
 npm run db:migrate          # usa DATABASE_ADMIN_URL
 npm run db:seed

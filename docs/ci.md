@@ -20,7 +20,8 @@ the demo seed and the dev server, and they write to the demo database. Run them 
 There is no `uv` and no Postgres to install: everything runs in Docker, as in CI.
 
 ```
-cp .env.example .env     # and put random values in POSTGRES_PASSWORD, APP_DB_PASSWORD, AUTH_SECRET
+# create .env at the repo root (git-ignored) with the variables docker-compose.yml asks for:
+# ENV, POSTGRES_USER, POSTGRES_DB, and random values in POSTGRES_PASSWORD, APP_DB_PASSWORD, AUTH_SECRET
 docker compose --profile tools build tools
 docker compose up -d --wait db
 docker compose --profile tools up -d --wait db-clean

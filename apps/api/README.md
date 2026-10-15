@@ -17,11 +17,7 @@ The API answers under the `/api` prefix (web and API share one origin behind a p
 
 From the repository root:
 
-```bash
-cp .env.example .env
-```
-
-`.env` is git-ignored. The values in `.env.example` are development placeholders, not secrets. If you set your own passwords (`POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, and the same passwords inside `DATABASE_URL` / `DATABASE_ADMIN_URL`):
+Create `.env` at the repository root (it is git-ignored) with the variables `docker-compose.yml` asks for: `ENV`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `APP_DB_PASSWORD` and `AUTH_SECRET` (generate the secrets with `openssl rand -hex 24` / `openssl rand -hex 32`). If you set your own passwords (`POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, and the same passwords inside `DATABASE_URL` / `DATABASE_ADMIN_URL`):
 
 - **They must be URL-safe: no `@ : / ? #` and no whitespace.** Compose embeds them, unescaped, in the database URLs. An unescaped `@` makes the URL parse part of the password as the host, so the app and the tools **refuse to start** when they detect a URL they cannot read safely (the error message never prints the value) instead of leaking it in connection errors.
 - Generate safe ones with `openssl rand -hex 24`. Use a different value for each password.

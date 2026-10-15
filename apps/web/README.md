@@ -8,7 +8,7 @@ devolve.
 
 ```bash
 cd apps/web
-cp .env.example .env.local   # opcional: só tem API_PROXY_URL
+# opcional: crie .env.local com API_PROXY_URL=http://127.0.0.1:8001
 npm ci
 npm run dev                  # http://127.0.0.1:3101
 ```

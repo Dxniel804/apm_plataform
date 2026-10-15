@@ -33,7 +33,7 @@ requisições), nunca repassar o valor enviado pelo cliente.
 
 ## Variáveis de ambiente
 
-Ver `.env.example`. Além delas, é possível sobrescrever as URLs do BB
+Ver as variáveis em `legacy/README.md`. Além delas, é possível sobrescrever as URLs do BB
 (`BB_PIX_URL_PRODUCAO`, `BB_OAUTH_URL_PRODUCAO`, `..._HOMOLOGACAO`), o nome do
 parâmetro da chave de aplicação (`BB_APP_KEY_PARAM`) e os escopos (`BB_ESCOPOS`)
 caso o Portal Developers BB indique valores diferentes dos padrões do código.

@@ -27,7 +27,26 @@ jobs:
       # Throwaway values for this run only: the database lives and dies inside the runner.
       - name: Create .env with random throwaway secrets
         run: |
-          cp .env.example .env
+          cat > .env <<'EOF'
+          ENV=development
+          POSTGRES_USER=apm
+          POSTGRES_PASSWORD=
+          POSTGRES_DB=apm
+          APP_DB_PASSWORD=
+          AUTH_SECRET=
+          COOKIE_SECURE=false
+          PUBLIC_ORIGINS=
+          PUBLIC_BASE_URL=http://localhost:3000
+          EMAIL_SENDER=file
+          RESEND_API_KEY=
+          MAIL_FROM=
+          TRUSTED_PROXY_IPS=127.0.0.1
+          ATTACHMENT_MAX_BYTES=10485760
+          OCR_ENABLED=false
+          OCR_TOKEN=
+          DB_HOST_PORT=5435
+          API_HOST_PORT=8001
+          EOF
           for name in POSTGRES_PASSWORD APP_DB_PASSWORD; do
             value="$(openssl rand -hex 24)"; echo "::add-mask::$value"
             sed -i "s|^${name}=.*|${name}=${value}|" .env
