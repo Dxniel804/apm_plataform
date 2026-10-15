@@ -225,7 +225,7 @@ def test_the_same_file_twice_is_refused_and_an_overlapping_file_adds_only_what_i
 
 @pytest.mark.parametrize(
     ("data", "status", "code"),
-    [(b"not a statement", 422, "not_an_ofx_file"), (b"<OFX></OFX>", 422, "ofx_without_lines")],
+    [(b"not a statement", 422, "csv_needs_mapping"), (b"<OFX></OFX>", 422, "ofx_without_lines")],
 )
 def test_a_bad_file_is_refused_with_a_code_and_stores_nothing(
     apis: ApiFactory,

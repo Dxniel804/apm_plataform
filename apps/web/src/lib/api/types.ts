@@ -443,6 +443,32 @@ export interface BankAccount {
   accountLast4: string | null;
   purpose: AccountPurpose;
   isActive: boolean;
+  /** Como o CSV deste banco e lido (colunas, formato de data), guardado na primeira vez. */
+  csvProfile: CsvProfile | null;
+}
+
+/** O mapa de colunas de um CSV de banco. As colunas contam a partir de 0. */
+export interface CsvProfile {
+  delimiter: ";" | "," | "\t";
+  has_header: boolean;
+  date_col: number;
+  date_order: "DMY" | "YMD";
+  memo_col: number;
+  decimal: "," | ".";
+  amount_col: number | null;
+  debit_positive: boolean;
+  credit_col: number | null;
+  debit_col: number | null;
+  id_col: number | null;
+}
+
+/** O que o site mostra antes de importar um CSV: as primeiras linhas e as colunas que o arquivo parece ter. */
+export interface StatementPreview {
+  kind: "OFX" | "CSV" | "PDF";
+  header: string[] | null;
+  sample: string[][];
+  suggestedProfile: CsvProfile | null;
+  savedProfile: CsvProfile | null;
 }
 
 export interface BankAccountInput {
@@ -461,6 +487,8 @@ export interface StatementImport {
   newLineCount: number;
   closingBalanceCents: Cents | null;
   createdAt: string;
+  /** De onde veio o extrato. Linhas de PDF precisam de conferencia antes de virar lancamento. */
+  source: "OFX" | "CSV" | "PDF";
 }
 
 export interface BankLine {
@@ -471,6 +499,8 @@ export interface BankLine {
   memo: string;
   endToEndId: string | null;
   looksLikeFee: boolean;
+  /** Veio de um PDF: a gestao confere antes de registrar. */
+  needsReview: boolean;
 }
 
 export interface LedgerEntry {
@@ -502,8 +532,8 @@ export interface Reconciliation {
 
 /** O que a gestao decide sobre uma linha que esta no banco e nao no caixa. Sempre confirmado por uma pessoa. */
 export type LineActionInput =
-  | { action: "REGISTER_INCOME"; method?: "PIX_DIRECT" | "TRANSFER"; categoryKey?: "parent_contribution" | "donation" | "other_income" | "apm_revenue"; guardianName?: string }
-  | { action: "REGISTER_FEE" }
+  | { action: "REGISTER_INCOME"; method?: "PIX_DIRECT" | "TRANSFER"; categoryKey?: "parent_contribution" | "donation" | "other_income" | "apm_revenue"; guardianName?: string; reviewed?: boolean }
+  | { action: "REGISTER_FEE"; reviewed?: boolean }
   | { action: "IGNORE"; reason: string };
 
 export interface LineActionResult {

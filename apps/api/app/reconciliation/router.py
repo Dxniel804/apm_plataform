@@ -17,18 +17,19 @@ from app.auth.permissions import Permission
 from app.auth.responses import problem_responses
 from app.expenses.access import SchoolScope, school_scope
 from app.reconciliation import service
-from app.reconciliation.ofx import MAX_BYTES
 from app.reconciliation.schemas import (
     AccountCreate,
     AccountOut,
     AccountPatch,
     ClosingBalanceOut,
+    CsvPreviewOut,
     ImportList,
     ImportOut,
     LineAction,
     LineActionOut,
     ReconciliationOut,
 )
+from app.reconciliation.service import UPLOAD_MAX_BYTES
 from app.routers.deps import get_tenant_db
 from app.storage.uploads import check_declared_length
 
@@ -42,7 +43,7 @@ _UPLOAD_ERRORS = problem_responses(
     401, 403, 404, 409, 422,
     extra={
         411: {"description": "length_required: the request must declare its size"},
-        413: {"description": "payload_too_large: an OFX file is at most 2 MiB"},
+        413: {"description": "payload_too_large: OFX and CSV are at most 2 MiB, a PDF 5 MiB"},
     },
 )  # fmt: skip
 _UPLOAD_BODY: dict[str, Any] = {
@@ -57,9 +58,13 @@ _UPLOAD_BODY: dict[str, Any] = {
                         "file": {
                             "type": "string",
                             "format": "binary",
-                            "description": "An OFX file, up to 2 MiB.",
+                            "description": "An OFX or CSV file (up to 2 MiB) or a PDF (up to 5 MiB).",
                         },
                         "bank_account_id": {"type": "string", "format": "uuid"},
+                        "profile": {
+                            "type": "string",
+                            "description": "CSV only: the column map (JSON), kept on the account.",
+                        },
                     },
                 }
             }
@@ -96,12 +101,12 @@ def list_imports(scope: Manage, db: TenantDb) -> ImportList:
 
 
 @router.post("/imports", operation_id="reconciliation_import", status_code=201,
-             response_model=ImportOut, summary="Import an OFX statement (multipart)",
+             response_model=ImportOut, summary="Import a statement: OFX, CSV or PDF (multipart)",
              responses=_UPLOAD_ERRORS,
              openapi_extra={**_PERMISSION, **_UPLOAD_BODY})  # fmt: skip
 async def import_statement(request: Request, scope: Manage, db: TenantDb) -> ImportOut:
-    check_declared_length(request, MAX_BYTES)
-    form = await request.form(max_files=1, max_fields=3)
+    check_declared_length(request, UPLOAD_MAX_BYTES)
+    form = await request.form(max_files=1, max_fields=4)
     try:
         upload = form.get("file")
         raw_account = form.get("bank_account_id")
@@ -111,7 +116,11 @@ async def import_statement(request: Request, scope: Manage, db: TenantDb) -> Imp
             account_id = UUID(str(raw_account))
         except ValueError:
             raise service._invalid("bank_account_id", "required") from None
-        return await run_in_threadpool(service.import_ofx, db, scope, account_id, upload.file)
+        raw_profile = form.get("profile")
+        profile = raw_profile if isinstance(raw_profile, str) else None
+        return await run_in_threadpool(
+            service.import_file, db, scope, account_id, upload.file, profile
+        )
     finally:
         await form.close()
 
@@ -139,3 +148,23 @@ def closing_balance(
     scope: Manage, db: TenantDb, period: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
 ) -> ClosingBalanceOut:
     return service.closing_balance(db, scope, period)
+
+
+@router.post("/imports/preview", operation_id="reconciliation_import_preview", response_model=CsvPreviewOut,
+             summary="Look at a file before importing it: the first rows of a CSV and the columns it looks like",
+             responses=_UPLOAD_ERRORS, openapi_extra={**_PERMISSION, **_UPLOAD_BODY})  # fmt: skip
+async def preview_statement(request: Request, scope: Manage, db: TenantDb) -> CsvPreviewOut:
+    check_declared_length(request, UPLOAD_MAX_BYTES)
+    form = await request.form(max_files=1, max_fields=4)
+    try:
+        upload = form.get("file")
+        raw_account = form.get("bank_account_id")
+        if not isinstance(upload, UploadFile):
+            raise service._invalid("file", "required")
+        try:
+            account_id = UUID(str(raw_account))
+        except ValueError:
+            raise service._invalid("bank_account_id", "required") from None
+        return await run_in_threadpool(service.preview, db, scope, account_id, upload.file)
+    finally:
+        await form.close()

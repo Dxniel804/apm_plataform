@@ -6,7 +6,7 @@ import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
-import type { AccountPurpose, ApiError, ApiResult, BankAccount, BankLine, LedgerEntry, LineActionInput, Reconciliation, StatementImport } from "@/lib/api/types";
+import type { AccountPurpose, ApiError, ApiResult, BankAccount, BankLine, CsvProfile, LedgerEntry, LineActionInput, Reconciliation, StatementImport, StatementPreview } from "@/lib/api/types";
 import { formatDayLong } from "@/lib/format";
 import { formatBRL } from "@/lib/money";
 import { areasFor } from "@/lib/permissions";
@@ -28,6 +28,22 @@ function describeError(error: ApiError, fallback = "Não foi possível concluir.
       return "Não conseguimos ler um dos lançamentos do arquivo. Exporte o extrato de novo.";
     case "ofx_too_many_lines":
       return "O extrato tem lançamentos demais. Exporte um período menor (até 5.000 lançamentos).";
+    case "not_a_csv_file":
+      return "Não conseguimos ler este arquivo como planilha CSV. Exporte o extrato de novo.";
+    case "not_a_pdf_file":
+      return "Este PDF não pôde ser aberto. Baixe o extrato de novo no site do banco.";
+    case "pdf_without_text":
+      return "Este PDF é uma imagem (escaneado) e não dá para ler. Peça ao banco o extrato em OFX ou CSV.";
+    case "pdf_encrypted":
+      return "Este PDF tem senha. Baixe uma versão sem senha ou use OFX ou CSV.";
+    case "pdf_too_many_pages":
+      return "O PDF tem páginas demais. Escolha um período menor.";
+    case "pdf_year_unknown":
+      return "Não achamos o ano no PDF. Use OFX ou CSV, ou baixe o extrato com as datas completas.";
+    case "csv_profile_invalid":
+      return "O mapa de colunas não está certo. Confira as colunas e tente de novo.";
+    case "review_required":
+      return "Esta linha veio de um PDF. Marque que você conferiu a linha com o extrato original.";
     case "already_imported":
       return "Este arquivo já foi enviado antes.";
     case "account_inactive":
@@ -226,29 +242,55 @@ function ImportCard({ schoolId, accounts, onImported }: { schoolId: string; acco
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mapping, setMapping] = useState<{ file: File; preview: StatementPreview } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const chosen = accountId || accounts[0]?.id || "";
+  const account = accounts.find((a) => a.id === chosen);
+
+  async function finish(file: File, profile: CsvProfile | null) {
+    const result = await api.reconciliation.import(schoolId, chosen, file, profile);
+    setBusy(false);
+    if (input.current) input.current.value = "";
+    if (!result.ok) {
+      if (result.error.code === "csv_needs_mapping") return setProblem("Não conseguimos achar as colunas deste CSV. Envie de novo e escolha as colunas.");
+      return setProblem(describeError(result.error, "Não foi possível enviar o extrato."));
+    }
+    setMapping(null);
+    const review = result.data.source === "PDF" ? " As linhas de PDF precisam ser conferidas uma a uma antes de virar lançamento." : "";
+    setNotice(`Extrato enviado: ${result.data.newLineCount} ${result.data.newLineCount === 1 ? "lançamento novo" : "lançamentos novos"}.${review}`);
+    onImported(result.data);
+  }
 
   async function send(file: File) {
     if (busy || !chosen) return;
     setBusy(true);
     setProblem(null);
     setNotice(null);
-    const result = await api.reconciliation.import(schoolId, chosen, file);
-    setBusy(false);
-    if (input.current) input.current.value = "";
-    if (!result.ok) return setProblem(describeError(result.error, "Não foi possível enviar o extrato."));
-    setNotice(`Extrato enviado: ${result.data.newLineCount} ${result.data.newLineCount === 1 ? "lançamento novo" : "lançamentos novos"}.`);
-    onImported(result.data);
+    // Um CSV de uma conta que ainda nao tem o mapa de colunas passa antes pela confirmacao das colunas.
+    if (/\.csv$/i.test(file.name) && !account?.csvProfile) {
+      const preview = await api.reconciliation.preview(schoolId, chosen, file);
+      if (!preview.ok) {
+        setBusy(false);
+        if (input.current) input.current.value = "";
+        return setProblem(describeError(preview.error, "Não foi possível ler o arquivo."));
+      }
+      if (preview.data.kind === "CSV") {
+        setBusy(false);
+        return setMapping({ file, preview: preview.data });
+      }
+    }
+    await finish(file, null);
   }
 
   return (
-    <Card title="Enviar extrato (OFX)">
+    <Card title="Enviar extrato (OFX, CSV ou PDF)">
       {accounts.length === 0 ? (
         <p className="text-body text-ink-2">Cadastre uma conta bancária ativa para poder enviar um extrato.</p>
       ) : (
         <div className="space-y-4">
-          <p className="max-w-[62ch] text-sub text-ink-2">No site ou app do seu banco, exporte o extrato no formato <strong className="font-semibold text-ink">OFX</strong> e envie aqui. O arquivo não fica guardado: só os lançamentos, sem CPF nem CNPJ.</p>
+          <p className="max-w-[62ch] text-sub text-ink-2">
+            No site ou app do seu banco, exporte o extrato. O melhor é <strong className="font-semibold text-ink">OFX</strong>; também lemos <strong className="font-semibold text-ink">CSV</strong> (planilha) e <strong className="font-semibold text-ink">PDF</strong> com texto. O arquivo não fica guardado: só os lançamentos, sem CPF nem CNPJ. Linhas vindas de PDF precisam ser conferidas por você.
+          </p>
           <div className="flex flex-wrap items-end gap-4">
             <div className="min-w-0 basis-60">
               <label htmlFor="import-account" className="mb-2 block text-sub font-semibold text-ink">Conta</label>
@@ -259,8 +301,8 @@ function ImportCard({ schoolId, accounts, onImported }: { schoolId: string; acco
               </select>
             </div>
             <div>
-              <label htmlFor="import-file" className="sr-only">Arquivo OFX do extrato</label>
-              <input id="import-file" ref={input} type="file" accept=".ofx,application/x-ofx,text/plain" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) void send(file); }} className="block min-h-11 max-w-full text-sub file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-line-strong file:bg-white file:px-5 file:text-sub file:font-semibold file:text-brand-800" />
+              <label htmlFor="import-file" className="sr-only">Arquivo do extrato (OFX, CSV ou PDF)</label>
+              <input id="import-file" ref={input} type="file" accept=".ofx,.csv,.pdf,application/x-ofx,application/pdf,text/csv,text/plain" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; if (file) void send(file); }} className="block min-h-11 max-w-full text-sub file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-line-strong file:bg-white file:px-5 file:text-sub file:font-semibold file:text-brand-800" />
             </div>
           </div>
           <div aria-live="polite" aria-busy={busy}>
@@ -270,7 +312,114 @@ function ImportCard({ schoolId, accounts, onImported }: { schoolId: string; acco
           </div>
         </div>
       )}
+      {mapping && (
+        <CsvMapping
+          preview={mapping.preview}
+          busy={busy}
+          onCancel={() => {
+            setMapping(null);
+            if (input.current) input.current.value = "";
+          }}
+          onConfirm={(profile) => {
+            setBusy(true);
+            void finish(mapping.file, profile);
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+const DEFAULT_PROFILE: CsvProfile = { delimiter: ";", has_header: true, date_col: 0, date_order: "DMY", memo_col: 1, decimal: ",", amount_col: 2, debit_positive: false, credit_col: null, debit_col: null, id_col: null };
+
+/** A pessoa confere (ou escolhe) quais colunas do CSV sao a data, o texto e o valor. Guardado na conta para as proximas vezes. */
+function CsvMapping({ preview, busy, onCancel, onConfirm }: { preview: StatementPreview; busy: boolean; onCancel: () => void; onConfirm: (profile: CsvProfile) => void }) {
+  const [profile, setProfile] = useState<CsvProfile>(preview.suggestedProfile ?? DEFAULT_PROFILE);
+  const [split, setSplit] = useState(profile.credit_col !== null);
+  const width = Math.max(1, ...preview.sample.map((r) => r.length), preview.header?.length ?? 0);
+  const names = Array.from({ length: width }, (_, i) => preview.header?.[i]?.trim() || `Coluna ${i + 1}`);
+  const select = (id: string, label: string, value: number | null, set: (n: number | null) => void, optional = false) => (
+    <div>
+      <label htmlFor={id} className="mb-2 block text-sub font-semibold text-ink">{label}</label>
+      <select id={id} value={value ?? ""} onChange={(e) => set(e.target.value === "" ? null : Number(e.target.value))} className="block min-h-[3.375rem] w-full rounded-ctl border-[1.5px] border-field-border bg-white px-4 text-[1rem] text-ink">
+        {optional && <option value="">Nenhuma</option>}
+        {names.map((n, i) => (
+          <option key={i} value={i}>{n}</option>
+        ))}
+      </select>
+    </div>
+  );
+  const valid = split ? profile.credit_col !== null && profile.debit_col !== null : profile.amount_col !== null;
+  return (
+    <FormModal
+      open
+      title="Confirme as colunas do CSV"
+      intro={preview.suggestedProfile ? "Achamos as colunas abaixo. Confira com as primeiras linhas do arquivo. Guardamos para os próximos envios desta conta." : "Não conseguimos achar as colunas sozinhos. Diga qual é a data, o texto e o valor."}
+      onClose={onCancel}
+      busy={busy}
+    >
+      <form method="post" noValidate aria-label="Colunas do CSV" onSubmit={(e) => { e.preventDefault(); if (valid) onConfirm({ ...profile, amount_col: split ? null : profile.amount_col, credit_col: split ? profile.credit_col : null, debit_col: split ? profile.debit_col : null }); }} className="space-y-5">
+        <div className="max-h-44 overflow-auto rounded-[var(--r-md)] border border-line">
+          <table className="w-full text-foot">
+            <tbody>
+              {preview.sample.map((row, r) => (
+                <tr key={r} className={r === 0 && preview.header ? "bg-bg font-semibold" : ""}>
+                  {names.map((_, c) => (
+                    <td key={c} className="whitespace-nowrap px-2 py-1">{row[c] ?? ""}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {select("csv-date", "Coluna da data", profile.date_col, (n) => setProfile({ ...profile, date_col: n ?? 0 }))}
+          {select("csv-memo", "Coluna do texto", profile.memo_col, (n) => setProfile({ ...profile, memo_col: n ?? 0 }))}
+        </div>
+        <fieldset>
+          <legend className="mb-2 text-sub font-semibold text-ink">Como o valor aparece</legend>
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" aria-pressed={!split} onClick={() => setSplit(false)} className={chipClass(!split)}>Uma coluna de valor</button>
+            <button type="button" aria-pressed={split} onClick={() => setSplit(true)} className={chipClass(split)}>Crédito e débito separados</button>
+          </div>
+        </fieldset>
+        {!split ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {select("csv-amount", "Coluna do valor", profile.amount_col, (n) => setProfile({ ...profile, amount_col: n }))}
+            <label className="flex min-h-11 items-center gap-3 self-end text-sub text-ink">
+              <input type="checkbox" checked={profile.debit_positive} onChange={(e) => setProfile({ ...profile, debit_positive: e.target.checked })} className="size-5" />
+              Saídas aparecem como número positivo
+            </label>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {select("csv-credit", "Coluna de crédito (entrada)", profile.credit_col, (n) => setProfile({ ...profile, credit_col: n }))}
+            {select("csv-debit", "Coluna de débito (saída)", profile.debit_col, (n) => setProfile({ ...profile, debit_col: n }))}
+          </div>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="csv-order" className="mb-2 block text-sub font-semibold text-ink">Formato da data</label>
+            <select id="csv-order" value={profile.date_order} onChange={(e) => setProfile({ ...profile, date_order: e.target.value as "DMY" | "YMD" })} className="block min-h-[3.375rem] w-full rounded-ctl border-[1.5px] border-field-border bg-white px-4 text-[1rem] text-ink">
+              <option value="DMY">31/12/2026 (dia/mês/ano)</option>
+              <option value="YMD">2026-12-31 (ano-mês-dia)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="csv-decimal" className="mb-2 block text-sub font-semibold text-ink">Separador dos centavos</label>
+            <select id="csv-decimal" value={profile.decimal} onChange={(e) => setProfile({ ...profile, decimal: e.target.value as "," | "." })} className="block min-h-[3.375rem] w-full rounded-ctl border-[1.5px] border-field-border bg-white px-4 text-[1rem] text-ink">
+              <option value=",">Vírgula (1.234,56)</option>
+              <option value=".">Ponto (1234.56)</option>
+            </select>
+          </div>
+        </div>
+        <label className="flex min-h-11 items-center gap-3 text-sub text-ink">
+          <input type="checkbox" checked={profile.has_header} onChange={(e) => setProfile({ ...profile, has_header: e.target.checked })} className="size-5" />
+          A primeira linha é o título das colunas
+        </label>
+        <FormButtons onCancel={onCancel} cancelLabel="Cancelar" submitLabel="Usar estas colunas e enviar" pendingLabel="Enviando…" pending={busy} />
+      </form>
+    </FormModal>
   );
 }
 
@@ -386,6 +535,7 @@ function Rows({ items, empty, hint }: { items: Array<{ key: string; line?: BankL
                 <p className="text-sub text-ink [overflow-wrap:anywhere]">
                   <span className="font-semibold">Banco · {formatDayLong(item.line.postedOn)}</span> · {item.line.memo || "sem descrição"}
                   {item.line.looksLikeFee && <span className="ml-2"><StatusPill tone="warning">parece tarifa</StatusPill></span>}
+                  {item.line.needsReview && <span className="ml-2"><StatusPill tone="warning">veio de PDF: confira</StatusPill></span>}
                 </p>
               )}
               {item.entry && (
@@ -418,6 +568,7 @@ function LineActions({ schoolId, line, onDone }: { schoolId: string; line: BankL
   const [category, setCategory] = useState<(typeof INCOME_CATEGORIES)[number]["key"]>("parent_contribution");
   const [who, setWho] = useState("");
   const [reason, setReason] = useState("");
+  const [reviewed, setReviewed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -429,13 +580,14 @@ function LineActions({ schoolId, line, onDone }: { schoolId: string; line: BankL
   async function confirm() {
     if (busy || !mode) return;
     if (mode === "ignore" && reason.trim().length < 3) return setProblem("Explique o motivo (pelo menos 3 letras).");
+    if (mode !== "ignore" && line.needsReview && !reviewed) return setProblem("Marque que você conferiu esta linha com o extrato original.");
     setBusy(true);
     setProblem(null);
     const input: LineActionInput =
       mode === "income"
-        ? { action: "REGISTER_INCOME", method, categoryKey: category, ...(who.trim() ? { guardianName: who.trim() } : {}) }
+        ? { action: "REGISTER_INCOME", method, categoryKey: category, ...(who.trim() ? { guardianName: who.trim() } : {}), ...(reviewed ? { reviewed: true } : {}) }
         : mode === "fee"
-          ? { action: "REGISTER_FEE" }
+          ? { action: "REGISTER_FEE", ...(reviewed ? { reviewed: true } : {}) }
           : { action: "IGNORE", reason: reason.trim() };
     const result = await api.reconciliation.actOnLine(schoolId, line.lineId, input);
     setBusy(false);
@@ -500,6 +652,12 @@ function LineActions({ schoolId, line, onDone }: { schoolId: string; line: BankL
               </div>
               <TextField label="Quem enviou" optional name="line-who" autoComplete="off" maxLength={120} value={who} onChange={(e) => setWho(e.target.value)} />
             </>
+          )}
+          {mode !== "ignore" && line.needsReview && (
+            <label className="flex items-start gap-3 rounded-[var(--r-md)] bg-warn-soft px-4 py-3 text-sub text-ink">
+              <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 size-5 shrink-0" />
+              Esta linha foi lida de um PDF. Conferi a data, o valor e o texto com o extrato original.
+            </label>
           )}
           {mode === "ignore" && <TextField label="Motivo" name="line-reason" autoComplete="off" maxLength={200} hint="Obrigatório. Ex.: pago pela prefeitura, não é da APM." value={reason} onChange={(e) => setReason(e.target.value)} />}
           <div aria-live="polite">{problem && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{problem}</p>}</div>

@@ -6,8 +6,9 @@ and from the ledger as it is now."""
 
 import datetime as dt
 import hashlib
+import json
 import uuid
-from typing import BinaryIO
+from typing import BinaryIO, Literal
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -16,8 +17,16 @@ from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, not_found
 from app.expenses.db_errors import database_rules
 from app.reconciliation import repository
+from app.reconciliation.csv_statement import (
+    CsvError,
+    CsvProfile,
+    detect,
+    parse_csv,
+    profile_from_dict,
+)
 from app.reconciliation.matcher import BankLine, Divergence, LedgerItem, pair
 from app.reconciliation.ofx import MAX_BYTES, OfxError, parse_ofx
+from app.reconciliation.pdf_statement import PdfError, parse_pdf
 from app.reconciliation.schemas import (
     AccountCreate,
     AccountOut,
@@ -25,6 +34,7 @@ from app.reconciliation.schemas import (
     BankLineOut,
     ClosingBalanceItem,
     ClosingBalanceOut,
+    CsvPreviewOut,
     DivergenceOut,
     ImportList,
     ImportOut,
@@ -36,12 +46,20 @@ from app.reconciliation.schemas import (
     ResolvedOut,
 )
 
-OFX_PROBLEMS = {
+UPLOAD_MAX_BYTES = 5 * 1024 * 1024  # a PDF may be larger; OFX and CSV stay at MAX_BYTES
+READ_PROBLEMS = {
     "file_too_large": (413, "payload_too_large"),
     "not_ofx": (422, "not_an_ofx_file"),
+    "not_csv": (422, "not_a_csv_file"),
+    "not_pdf": (422, "not_a_pdf_file"),
     "bad_line": (422, "ofx_line_unreadable"),
+    "bad_profile": (422, "csv_profile_invalid"),
     "too_many_lines": (422, "ofx_too_many_lines"),
     "no_lines": (422, "ofx_without_lines"),
+    "pdf_without_text": (422, "pdf_without_text"),
+    "pdf_encrypted": (422, "pdf_encrypted"),
+    "pdf_too_many_pages": (422, "pdf_too_many_pages"),
+    "pdf_year_unknown": (422, "pdf_year_unknown"),
 }
 
 
@@ -101,31 +119,111 @@ def _import_out(row: repository.Row) -> ImportOut:
     return ImportOut.model_validate(dict(row))
 
 
-def import_ofx(
+def _kind_of(data: bytes) -> Literal["OFX", "CSV", "PDF"]:
+    """What the bytes are, whatever the name says: a PDF, an OFX or (anything else) a CSV."""
+    if data.lstrip()[:5] == b"%PDF-":
+        return "PDF"
+    head = data[:4096].upper()
+    if b"OFXHEADER" in head or b"<OFX" in head:
+        return "OFX"
+    return "CSV"
+
+
+def _problem(error: OfxError | CsvError | PdfError) -> ProblemError:
+    status, code = READ_PROBLEMS.get(error.code, (422, "statement_unreadable"))
+    return ProblemError(status, code, "The file could not be read")
+
+
+def _profile_from(raw: str | None) -> CsvProfile | None:
+    if raw is None or not raw.strip():
+        return None
+    try:
+        return profile_from_dict(json.loads(raw))
+    except (json.JSONDecodeError, CsvError):
+        raise ProblemError(422, "csv_profile_invalid", "The column map is not valid") from None
+
+
+def _read_upload(stream: BinaryIO) -> bytes:
+    data = stream.read(UPLOAD_MAX_BYTES + 1)
+    if len(data) > UPLOAD_MAX_BYTES:
+        raise ProblemError(413, "payload_too_large", "The file is too large")
+    return data
+
+
+def preview(
     db: Session, scope: SchoolScope, account_id: uuid.UUID, stream: BinaryIO
+) -> CsvPreviewOut:
+    """For a CSV: its first rows and the columns it looks like (nothing is stored)."""
+    account = _account(db, scope, account_id)
+    data = _read_upload(stream)
+    kind = _kind_of(data)
+    if kind != "CSV":
+        return CsvPreviewOut(kind=kind, header=None, sample=[], suggested_profile=None,
+                             saved_profile=None)  # fmt: skip
+    if len(data) > MAX_BYTES:
+        raise ProblemError(413, "payload_too_large", "The file is too large")
+    try:
+        header, sample, profile = detect(data)
+    except CsvError as error:
+        raise _problem(error) from None
+    return CsvPreviewOut(
+        kind="CSV", header=header, sample=sample,
+        suggested_profile=None if profile is None else profile.as_dict(),
+        saved_profile=account.csv_profile,
+    )  # fmt: skip
+
+
+def import_file(
+    db: Session,
+    scope: SchoolScope,
+    account_id: uuid.UUID,
+    stream: BinaryIO,
+    profile_raw: str | None = None,
 ) -> ImportOut:
-    """Read the file (bounded), refuse the same file twice, store the lines the bank had not sent
-    yet. The file itself is not kept."""
+    """Read the file (bounded; OFX, CSV or PDF, told apart by what is inside it), refuse the same
+    file twice, store the lines the bank had not sent yet. The file itself is not kept. A line from
+    a PDF is stored marked for review."""
     account = _account(db, scope, account_id)
     if not account.is_active:
         raise ProblemError(409, "account_inactive", "This bank account is switched off")
-    data = stream.read(MAX_BYTES + 1)
+    data = _read_upload(stream)
+    kind = _kind_of(data)
+    if kind != "PDF" and len(data) > MAX_BYTES:
+        raise ProblemError(413, "payload_too_large", "The file is too large")
+    explicit = _profile_from(profile_raw) if kind == "CSV" else None
     try:
-        statement = parse_ofx(data)
-    except OfxError as error:
-        status, code = OFX_PROBLEMS.get(error.code, (422, "ofx_unreadable"))
-        raise ProblemError(status, code, "The file could not be read") from None
+        if kind == "OFX":
+            statement = parse_ofx(data)
+        elif kind == "PDF":
+            statement = parse_pdf(data)
+        else:
+            profile = explicit
+            if profile is None and account.csv_profile is not None:
+                profile = profile_from_dict(account.csv_profile)
+            if profile is None:
+                profile = detect(data)[2]
+            if profile is None:
+                raise ProblemError(
+                    422,
+                    "csv_needs_mapping",
+                    "Tell which column is the date, the text and the amount",
+                )
+            statement = parse_csv(data, profile)
+    except (OfxError, CsvError, PdfError) as error:
+        raise _problem(error) from None
     sha256 = hashlib.sha256(data).hexdigest()
     if repository.import_exists(db, scope.school_id, sha256):
         raise ProblemError(409, "already_imported", "This file was already imported")
     refs = list(dict.fromkeys(line.bank_ref for line in statement.lines))
     new = len(refs) - len(repository.existing_refs(db, scope.school_id, account_id, refs))
+    review = kind == "PDF"
     with database_rules(db):
         import_id = repository.insert_import(
             db, organization_id=scope.organization_id, school_id=scope.school_id,
             user_id=scope.user_id, account_id=account_id, sha256=sha256,
             start=statement.period_start, end=statement.period_end, line_count=len(statement.lines),
             new_line_count=new, closing_balance_cents=statement.closing_balance_cents,
+            source=kind,
         )  # fmt: skip
         for line in statement.lines:
             repository.insert_line(
@@ -133,7 +231,12 @@ def import_ofx(
                 import_id=import_id, account_id=account_id, posted_on=line.posted_on,
                 amount_cents=line.amount_cents, memo=line.memo, bank_ref=line.bank_ref,
                 end_to_end_id=line.end_to_end_id, looks_like_fee=line.looks_like_fee,
+                needs_review=review,
             )  # fmt: skip
+        if explicit is not None:
+            repository.set_csv_profile(
+                db, scope.school_id, account_id, json.dumps(explicit.as_dict())
+            )
         db.commit()
     return _import_out(repository.imports(db, scope.school_id, import_id)[0])
 
@@ -145,11 +248,11 @@ def list_imports(db: Session, scope: SchoolScope) -> ImportList:
 # --- comparing ------------------------------------------------------------------------------------
 
 
-def _line_out(line: BankLine, memos: dict[uuid.UUID, tuple[str, bool]]) -> BankLineOut:
-    memo, fee = memos[line.line_id]
+def _line_out(line: BankLine, memos: dict[uuid.UUID, tuple[str, bool, bool]]) -> BankLineOut:
+    memo, fee, review = memos[line.line_id]
     return BankLineOut(
         line_id=line.line_id, posted_on=line.posted_on, amount_cents=line.amount_cents, memo=memo,
-        end_to_end_id=line.end_to_end_id, looks_like_fee=fee,
+        end_to_end_id=line.end_to_end_id, looks_like_fee=fee, needs_review=review,
     )  # fmt: skip
 
 
@@ -172,7 +275,9 @@ def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> Reconcilia
         statement["period_start"],
         statement["period_end"],
     )
-    memos = {r["line_id"]: (r["memo"], bool(r["looks_like_fee"])) for r in rows}
+    memos = {
+        r["line_id"]: (r["memo"], bool(r["looks_like_fee"]), bool(r["needs_review"])) for r in rows
+    }
     lines = [
         BankLine(r["line_id"], r["posted_on"], int(r["amount_cents"]), r["end_to_end_id"])
         for r in rows
@@ -252,6 +357,8 @@ def _act_on_line(
         if line["resolution"] is not None:
             raise ProblemError(409, "already_resolved", "This line was already resolved")
         amount = int(line["amount_cents"])
+        if body.action != "IGNORE" and line["needs_review"] and not body.reviewed:
+            raise _invalid("reviewed", "review_required")
         transaction_id: uuid.UUID | None = None
         reference_code: int | None = None
         kind: str | None = None

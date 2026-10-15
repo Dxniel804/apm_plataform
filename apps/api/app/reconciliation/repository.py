@@ -38,7 +38,7 @@ def accounts(
     return (
         db.execute(
             text(
-                "SELECT id, nickname, bank_name, account_last4, purpose, is_active FROM bank_accounts "
+                "SELECT id, nickname, bank_name, account_last4, purpose, is_active, csv_profile FROM bank_accounts "
                 "WHERE school_id = :school_id AND (CAST(:id AS uuid) IS NULL OR id = :id) "
                 "ORDER BY is_active DESC, nickname"
             ),
@@ -78,20 +78,20 @@ def update_account(
 def insert_import(
     db: Session, *, organization_id: uuid.UUID, school_id: uuid.UUID, user_id: uuid.UUID,
     account_id: uuid.UUID, sha256: str, start: dt.date, end: dt.date, line_count: int,
-    new_line_count: int, closing_balance_cents: int | None,
+    new_line_count: int, closing_balance_cents: int | None, source: str = "OFX",
 ) -> uuid.UUID:  # fmt: skip
     created: uuid.UUID = db.execute(
         text(
             "INSERT INTO bank_statement_imports (organization_id, school_id, bank_account_id, "
             "file_sha256, period_start, period_end, line_count, new_line_count, "
-            "closing_balance_cents, uploaded_by_user_id) VALUES (:org, :school, :account, :sha, "
-            ":start, :end, :count, :new, :closing, :user) RETURNING id"
+            "closing_balance_cents, uploaded_by_user_id, source) VALUES (:org, :school, :account, "
+            ":sha, :start, :end, :count, :new, :closing, :user, :source) RETURNING id"
         ),
         {
             "org": organization_id, "school": school_id, "account": account_id, "sha": sha256,
             "start": start, "end": end, "count": line_count, "new": new_line_count,
             "closing": closing_balance_cents,
-            "user": user_id,
+            "user": user_id, "source": source,
         },
     ).scalar_one()  # fmt: skip
     return created
@@ -100,20 +100,21 @@ def insert_import(
 def insert_line(
     db: Session, *, organization_id: uuid.UUID, school_id: uuid.UUID, import_id: uuid.UUID,
     account_id: uuid.UUID, posted_on: dt.date, amount_cents: int, memo: str, bank_ref: str,
-    end_to_end_id: str | None, looks_like_fee: bool,
+    end_to_end_id: str | None, looks_like_fee: bool, needs_review: bool = False,
 ) -> bool:  # fmt: skip
     """True when the line is new (a line the bank already sent in an earlier file is skipped)."""
     result = db.execute(
         text(
             "INSERT INTO bank_statement_lines (organization_id, school_id, import_id, "
-            "bank_account_id, posted_on, amount_cents, memo, bank_ref, end_to_end_id, looks_like_fee) "
-            "VALUES (:org, :school, :import, :account, :day, :amount, :memo, :ref, :e2e, :fee) "
+            "bank_account_id, posted_on, amount_cents, memo, bank_ref, end_to_end_id, looks_like_fee, "
+            "needs_review) VALUES (:org, :school, :import, :account, :day, :amount, :memo, :ref, "
+            ":e2e, :fee, :review) "
             "ON CONFLICT (school_id, bank_account_id, bank_ref) DO NOTHING"
         ),
         {
             "org": organization_id, "school": school_id, "import": import_id, "account": account_id,
             "day": posted_on, "amount": amount_cents, "memo": memo, "ref": bank_ref,
-            "e2e": end_to_end_id, "fee": looks_like_fee,
+            "e2e": end_to_end_id, "fee": looks_like_fee, "review": needs_review,
         },
     )  # fmt: skip
     return bool(result.rowcount == 1)  # type: ignore[attr-defined]
@@ -152,7 +153,7 @@ def imports(
         db.execute(
             text(
                 "SELECT id, bank_account_id, period_start, period_end, line_count, new_line_count, "
-                "closing_balance_cents, created_at FROM bank_statement_imports "
+                "closing_balance_cents, created_at, source FROM bank_statement_imports "
                 "WHERE school_id = :school_id AND (CAST(:id AS uuid) IS NULL OR id = :id) "
                 "ORDER BY created_at DESC, id DESC LIMIT :limit"
             ),
@@ -169,7 +170,7 @@ def bank_lines(
     return (
         db.execute(
             text(
-                "SELECT id AS line_id, posted_on, amount_cents, memo, end_to_end_id, looks_like_fee "
+                "SELECT id AS line_id, posted_on, amount_cents, memo, end_to_end_id, looks_like_fee, needs_review "
                 "FROM bank_statement_lines WHERE school_id = :school_id AND bank_account_id = :account "
                 "AND posted_on BETWEEN :start AND :end ORDER BY posted_on, id"
             ),
@@ -218,7 +219,7 @@ def line_by_id(db: Session, school_id: uuid.UUID, line_id: uuid.UUID) -> Row | N
     return (
         db.execute(
             text(
-                "SELECT l.id, l.posted_on, l.amount_cents, l.memo, l.end_to_end_id, "
+                "SELECT l.id, l.posted_on, l.amount_cents, l.memo, l.end_to_end_id, l.needs_review, "
                 "(SELECT r.action FROM bank_line_resolutions r WHERE r.school_id = l.school_id "
                 "AND r.line_id = l.id) AS resolution "
                 "FROM bank_statement_lines l WHERE l.id = :id AND l.school_id = :school_id"
@@ -384,4 +385,17 @@ def closing_balances(db: Session, school_id: uuid.UUID, month_end: dt.date) -> S
         )
         .mappings()
         .all()
+    )
+
+
+def set_csv_profile(
+    db: Session, school_id: uuid.UUID, account_id: uuid.UUID, profile_json: str
+) -> None:
+    """Keep how this bank's CSV is read, so the next file of the account needs no mapping."""
+    db.execute(
+        text(
+            "UPDATE bank_accounts SET csv_profile = CAST(:profile AS jsonb), updated_at = now() "
+            "WHERE id = :id AND school_id = :school_id"
+        ),
+        {"profile": profile_json, "id": account_id, "school_id": school_id},
     )

@@ -8,8 +8,8 @@ import { SCHOOL_ID } from "@/test-utils/statement-fixtures";
 import { ReconciliationArea } from "./ReconciliationArea";
 
 const MANAGER = ["reconciliation:manage", "statement:read"];
-const ACCOUNT: BankAccount = { id: "a1", nickname: "Conta principal", bankName: "Banco do Brasil", accountLast4: "4567", purpose: "GENERAL", isActive: true };
-const IMPORT: StatementImport = { id: "i1", bankAccountId: "a1", periodStart: "2026-10-01", periodEnd: "2026-10-31", lineCount: 4, newLineCount: 3, closingBalanceCents: null, createdAt: "2026-10-14T20:00:00Z" };
+const ACCOUNT: BankAccount = { id: "a1", nickname: "Conta principal", bankName: "Banco do Brasil", accountLast4: "4567", purpose: "GENERAL", isActive: true, csvProfile: null };
+const IMPORT: StatementImport = { id: "i1", bankAccountId: "a1", periodStart: "2026-10-01", periodEnd: "2026-10-31", lineCount: 4, newLineCount: 3, closingBalanceCents: null, createdAt: "2026-10-14T20:00:00Z", source: "OFX" };
 
 const line = (id: string, amount: number, memo: string, extra: Record<string, unknown> = {}) => ({ line_id: id, posted_on: "2026-10-05", amount_cents: amount, memo, end_to_end_id: null, looks_like_fee: false, ...extra });
 const entry = (id: string, code: number, amount: number, net: number | null = null) => ({ transaction_id: id, reference_code: code, kind: "CONTRIBUTION", day: "2026-10-05", amount_cents: amount, net_cents: net });
@@ -105,10 +105,51 @@ describe("Conciliacao", () => {
     render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
     const file = new File(["<OFX></OFX>"], "extrato.ofx", { type: "application/x-ofx" });
 
-    await user.upload(await screen.findByLabelText("Arquivo OFX do extrato"), file);
+    await user.upload(await screen.findByLabelText("Arquivo do extrato (OFX, CSV ou PDF)"), file);
 
-    await waitFor(() => expect(send).toHaveBeenCalledWith(SCHOOL_ID, "a1", file));
+    await waitFor(() => expect(send).toHaveBeenCalledWith(SCHOOL_ID, "a1", file, null));
     expect(await screen.findByRole("status")).toHaveTextContent("3 lançamentos novos");
+  });
+
+  it("um CSV de conta sem mapa passa pela confirmacao das colunas e manda o mapa junto", async () => {
+    const profile = { delimiter: ";", has_header: true, date_col: 0, date_order: "DMY", memo_col: 1, decimal: ",", amount_col: 3, debit_positive: false, credit_col: null, debit_col: null, id_col: null } as const;
+    vi.spyOn(api.reconciliation, "preview").mockResolvedValue({ ok: true, data: { kind: "CSV", header: ["Data", "Histórico", "Doc", "Valor"], sample: [["Data", "Histórico", "Doc", "Valor"], ["03/10/2026", "Compra", "1", "-10,00"]], suggestedProfile: profile, savedProfile: null } });
+    const send = vi.spyOn(api.reconciliation, "import").mockResolvedValue({ ok: true, data: { ...IMPORT, source: "CSV" } });
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: REPORT });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    const file = new File(["Data;Histórico"], "extrato.csv", { type: "text/csv" });
+
+    await user.upload(await screen.findByLabelText(/Arquivo do extrato/), file);
+    const dialog = await screen.findByRole("dialog", { name: "Confirme as colunas do CSV" });
+    expect(send).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Usar estas colunas e enviar" }));
+
+    await waitFor(() => expect(send).toHaveBeenCalledWith(SCHOOL_ID, "a1", file, profile));
+  });
+
+  it("uma linha de PDF so vira lancamento depois de a pessoa marcar que conferiu", async () => {
+    const pdfReport = parseReconciliation({
+      statement: { id: "i1", bank_account_id: "a1", period_start: "2026-10-01", period_end: "2026-10-31", line_count: 1, new_line_count: 1, closing_balance_cents: null, created_at: "2026-10-14T20:00:00Z", source: "PDF" },
+      matched: [], missing_in_system: [line("l2", -80, "TARIFA PIX", { looks_like_fee: true, needs_review: true })], missing_in_bank: [], divergences: [],
+    })!;
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: pdfReport });
+    const act = vi.spyOn(api.reconciliation, "actOnLine").mockResolvedValue({ ok: true, data: { lineId: "l2", action: "REGISTERED", transactionId: "t9", referenceCode: "APM-000031" } });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    await user.click(await screen.findByRole("button", { name: /Ver a comparação do extrato/ }));
+    await user.click(await screen.findByRole("button", { name: "Faltam no sistema (1)" }));
+    expect(screen.getByText("veio de PDF: confira")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Registrar a tarifa/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Registrar tarifa bancária" });
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar e registrar" }));
+    expect(within(dialog).getByText(/Marque que você conferiu/)).toBeInTheDocument();
+    expect(act).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("checkbox"));
+    await user.click(within(dialog).getByRole("button", { name: "Confirmar e registrar" }));
+
+    await waitFor(() => expect(act).toHaveBeenCalledWith(SCHOOL_ID, "l2", { action: "REGISTER_FEE", reviewed: true }));
   });
 
   it("os erros do envio viram frases em portugues", async () => {
@@ -116,7 +157,7 @@ describe("Conciliacao", () => {
     const user = userEvent.setup();
     render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
 
-    await user.upload(await screen.findByLabelText("Arquivo OFX do extrato"), new File(["x"], "extrato.ofx", { type: "application/x-ofx" }));
+    await user.upload(await screen.findByLabelText("Arquivo do extrato (OFX, CSV ou PDF)"), new File(["x"], "extrato.ofx", { type: "application/x-ofx" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("não é um extrato OFX");
   });

@@ -2,7 +2,7 @@
 
 import datetime as dt
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, StringConstraints
 
@@ -40,6 +40,7 @@ class AccountOut(BaseModel):
     account_last4: str | None
     purpose: Purpose
     is_active: bool
+    csv_profile: dict[str, Any] | None = None  # how the CSV of this bank is read, once known
 
 
 class ImportOut(BaseModel):
@@ -51,6 +52,7 @@ class ImportOut(BaseModel):
     new_line_count: int
     closing_balance_cents: int | None
     created_at: dt.datetime
+    source: Literal["OFX", "CSV", "PDF"] = "OFX"
 
 
 class ImportList(BaseModel):
@@ -64,6 +66,7 @@ class BankLineOut(BaseModel):
     memo: str
     end_to_end_id: str | None
     looks_like_fee: bool
+    needs_review: bool = False  # read from a PDF: confer it before it becomes an entry
 
 
 class LedgerEntryOut(BaseModel):
@@ -129,6 +132,8 @@ class LineAction(Strict):
     guardian_name: Person | None = None
     # IGNORE: required, and kept.
     reason: Reason | None = None
+    # A line read from a PDF only becomes an entry when the management says it conferred it.
+    reviewed: bool = False
 
 
 class LineActionOut(BaseModel):
@@ -150,3 +155,13 @@ class ClosingBalanceOut(BaseModel):
 
     items: list[ClosingBalanceItem]
     total_cents: int | None  # the sum of the general accounts; none when there is no statement
+
+
+class CsvPreviewOut(BaseModel):
+    """What the site needs to let the management confirm (or map by hand) a CSV."""
+
+    kind: Literal["OFX", "CSV", "PDF"]
+    header: list[str] | None
+    sample: list[list[str]]
+    suggested_profile: dict[str, Any] | None
+    saved_profile: dict[str, Any] | None

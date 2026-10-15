@@ -20,6 +20,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -44,6 +45,11 @@ class BankAccount(ScopeMixin, Base):
             "account_last4 IS NULL OR account_last4 ~ '^[0-9]{1,4}$'", name="last4_format"
         ),
         CheckConstraint(in_list("purpose", ("GENERAL", "PDDE")), name="purpose_valid"),
+        CheckConstraint(
+            "csv_profile IS NULL OR (jsonb_typeof(csv_profile) = 'object' "
+            "AND length(csv_profile::text) <= 1000)",
+            name="csv_profile_shape",
+        ),
         Index("ix_bank_accounts_school_id", "school_id"),
     )
 
@@ -52,6 +58,7 @@ class BankAccount(ScopeMixin, Base):
     bank_name: Mapped[str] = mapped_column(Text)
     account_last4: Mapped[str | None] = mapped_column(Text)
     purpose: Mapped[str] = mapped_column(Text, server_default=text("'GENERAL'"))
+    csv_profile: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -80,6 +87,7 @@ class BankStatementImport(ScopeMixin, Base):
         ),
         CheckConstraint("file_sha256 ~ '^[0-9a-f]{64}$'", name="sha256_format"),
         CheckConstraint("period_start <= period_end", name="period_in_order"),
+        CheckConstraint(in_list("source", ("OFX", "CSV", "PDF")), name="source_valid"),
         CheckConstraint(
             "line_count BETWEEN 1 AND 5000 AND new_line_count BETWEEN 0 AND line_count",
             name="line_counts",
@@ -95,6 +103,7 @@ class BankStatementImport(ScopeMixin, Base):
     line_count: Mapped[int] = mapped_column(Integer)
     new_line_count: Mapped[int] = mapped_column(Integer)
     closing_balance_cents: Mapped[int | None] = mapped_column(BigInteger)
+    source: Mapped[str] = mapped_column(Text, server_default=text("'OFX'"))
     uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -146,6 +155,7 @@ class BankStatementLine(ScopeMixin, Base):
     bank_ref: Mapped[str] = mapped_column(Text)
     end_to_end_id: Mapped[str | None] = mapped_column(Text)
     looks_like_fee: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    needs_review: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

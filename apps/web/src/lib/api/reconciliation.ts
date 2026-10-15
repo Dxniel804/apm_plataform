@@ -1,7 +1,7 @@
 import { apiGet, apiSend, apiUpload, type RequestOptions, type SendOptions } from "./client";
 import type {
-  AccountPurpose, ApiResult, BankAccount, BankAccountInput, BankLine, ClosingBalance, Divergence, LedgerEntry, LineActionInput, LineActionResult, Reconciliation,
-  StatementImport,
+  AccountPurpose, ApiResult, BankAccount, BankAccountInput, BankLine, ClosingBalance, CsvProfile, Divergence, LedgerEntry, LineActionInput, LineActionResult, Reconciliation,
+  StatementImport, StatementPreview,
 } from "./types";
 
 /**
@@ -25,7 +25,8 @@ function parseAccount(v: unknown): BankAccount | null {
   const last4 = optStr(v.account_last4);
   const purpose = PURPOSES.find((p) => p === v.purpose);
   if (!id || !nickname || !bankName || last4 === undefined || !purpose || typeof v.is_active !== "boolean") return null;
-  return { id, nickname, bankName, accountLast4: last4, purpose, isActive: v.is_active };
+  const csvProfile = isRecord(v.csv_profile) ? (v.csv_profile as unknown as CsvProfile) : null;
+  return { id, nickname, bankName, accountLast4: last4, purpose, isActive: v.is_active, csvProfile };
 }
 
 export function parseImport(v: unknown): StatementImport | null {
@@ -40,7 +41,8 @@ export function parseImport(v: unknown): StatementImport | null {
   const closing = v.closing_balance_cents === null || v.closing_balance_cents === undefined ? null : int(v.closing_balance_cents);
   if (!id || !bankAccountId || !periodStart || !periodEnd || lineCount === null || newLineCount === null || !createdAt) return null;
   if (v.closing_balance_cents != null && closing === null) return null;
-  return { id, bankAccountId, periodStart, periodEnd, lineCount, newLineCount, closingBalanceCents: closing, createdAt };
+  const source = v.source === "CSV" || v.source === "PDF" ? v.source : "OFX";
+  return { id, bankAccountId, periodStart, periodEnd, lineCount, newLineCount, closingBalanceCents: closing, createdAt, source };
 }
 
 function parseLine(v: unknown): BankLine | null {
@@ -50,7 +52,7 @@ function parseLine(v: unknown): BankLine | null {
   const amountCents = int(v.amount_cents);
   const e2e = optStr(v.end_to_end_id);
   if (!lineId || !postedOn || amountCents === null || typeof v.memo !== "string" || e2e === undefined || typeof v.looks_like_fee !== "boolean") return null;
-  return { lineId, postedOn, amountCents, memo: v.memo, endToEndId: e2e, looksLikeFee: v.looks_like_fee };
+  return { lineId, postedOn, amountCents, memo: v.memo, endToEndId: e2e, looksLikeFee: v.looks_like_fee, needsReview: v.needs_review === true };
 }
 
 function parseEntry(v: unknown): LedgerEntry | null {
@@ -130,9 +132,10 @@ export function listStatementImports(schoolId: string, options?: RequestOptions)
 }
 
 /** POST multipart: o arquivo OFX vai so no corpo. A API le, mascara CPF e CNPJ do texto e nao guarda o arquivo. */
-export function importStatement(schoolId: string, accountId: string, file: File, options?: SendOptions): Promise<ApiResult<StatementImport>> {
+export function importStatement(schoolId: string, accountId: string, file: File, profile?: CsvProfile | null, options?: SendOptions): Promise<ApiResult<StatementImport>> {
   const form = new FormData();
   form.append("bank_account_id", accountId);
+  if (profile) form.append("profile", JSON.stringify(profile));
   form.append("file", file, file.name);
   return apiUpload(`${base(schoolId)}/imports`, form, (b, status) => (status === 201 ? parseImport(b) : null), options);
 }
@@ -151,9 +154,36 @@ function parseAction(v: unknown, status: number): LineActionResult | null {
   return { lineId, action, transactionId, referenceCode };
 }
 
+/** POST .../imports/preview: as primeiras linhas de um CSV e as colunas que ele parece ter. Nada e guardado. */
+export function previewStatement(schoolId: string, accountId: string, file: File, options?: SendOptions): Promise<ApiResult<StatementPreview>> {
+  const form = new FormData();
+  form.append("bank_account_id", accountId);
+  form.append("file", file, file.name);
+  return apiUpload(
+    `${base(schoolId)}/imports/preview`,
+    form,
+    (b, status) => {
+      if (status !== 200 || !isRecord(b)) return null;
+      const kind = b.kind === "CSV" || b.kind === "PDF" || b.kind === "OFX" ? b.kind : null;
+      const header = Array.isArray(b.header) ? (b.header as unknown[]).map(String) : null;
+      const sample = Array.isArray(b.sample) ? (b.sample as unknown[]).map((r) => (Array.isArray(r) ? r.map(String) : [])) : null;
+      if (!kind || !sample) return null;
+      return {
+        kind,
+        header,
+        sample,
+        suggestedProfile: isRecord(b.suggested_profile) ? (b.suggested_profile as unknown as CsvProfile) : null,
+        savedProfile: isRecord(b.saved_profile) ? (b.saved_profile as unknown as CsvProfile) : null,
+      };
+    },
+    options,
+  );
+}
+
 /** POST .../lines/{id}/actions: registra o que o banco mostra (Pix, transferencia, tarifa) ou ignora a linha, com motivo. */
 export function actOnBankLine(schoolId: string, lineId: string, input: LineActionInput, options?: SendOptions): Promise<ApiResult<LineActionResult>> {
   const body: Record<string, unknown> = { action: input.action };
+  if (input.action !== "IGNORE" && input.reviewed) body.reviewed = true;
   if (input.action === "REGISTER_INCOME") {
     if (input.method) body.method = input.method;
     if (input.categoryKey) body.category_key = input.categoryKey;
