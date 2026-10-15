@@ -431,6 +431,73 @@ export interface StaffRequestInput {
 
 export type CampaignStatus = "DRAFT" | "ACTIVE" | "ENDED";
 
+// ---------------------------------------------------------------- REAL: conciliacao bancaria (migracao 0017)
+
+export type AccountPurpose = "GENERAL" | "PDDE";
+
+export interface BankAccount {
+  id: string;
+  nickname: string;
+  bankName: string;
+  /** So os ultimos digitos: o numero da conta nunca e guardado. */
+  accountLast4: string | null;
+  purpose: AccountPurpose;
+  isActive: boolean;
+}
+
+export interface BankAccountInput {
+  nickname: string;
+  bankName: string;
+  accountLast4?: string | null;
+  purpose?: AccountPurpose;
+}
+
+export interface StatementImport {
+  id: string;
+  bankAccountId: string;
+  periodStart: string;
+  periodEnd: string;
+  lineCount: number;
+  newLineCount: number;
+  closingBalanceCents: Cents | null;
+  createdAt: string;
+}
+
+export interface BankLine {
+  lineId: string;
+  postedOn: string;
+  /** Com sinal, como o banco escreve: entrada positiva, saida negativa. */
+  amountCents: Cents;
+  memo: string;
+  endToEndId: string | null;
+  looksLikeFee: boolean;
+}
+
+export interface LedgerEntry {
+  transactionId: string;
+  referenceCode: number;
+  kind: string;
+  day: string;
+  amountCents: Cents;
+  /** O que o banco recebe quando o gateway ficou com uma tarifa. */
+  netCents: Cents | null;
+}
+
+export interface Divergence {
+  line: BankLine;
+  candidates: LedgerEntry[];
+  reason: "ambiguous" | "amount_differs";
+}
+
+/** O extrato ao lado do caixa. Nada e gravado: e so a comparacao. */
+export interface Reconciliation {
+  statement: StatementImport;
+  matched: Array<{ line: BankLine; entry: LedgerEntry }>;
+  missingInSystem: BankLine[];
+  missingInBank: LedgerEntry[];
+  divergences: Divergence[];
+}
+
 // ---------------------------------------------------------------- REAL: configuracoes da escola e link publico
 
 export interface SchoolSettings {

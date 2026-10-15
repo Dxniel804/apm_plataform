@@ -9,6 +9,7 @@ import {
   CounterclockwiseIcon,
   ReplyAllIcon,
   SettingsIcon,
+  BankIcon,
 } from "@/components/ui/icons";
 import { sectionHref } from "@/lib/painel-section";
 import { areaHref, type Areas, type PainelArea } from "@/lib/permissions";
@@ -96,6 +97,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       label: "Fechamento",
       href: areaHref("fechamento", { period }),
       icon: <CalendarCheckIcon size={22} />,
+    });
+  }
+  if (areas.manageReconciliation) {
+    items.push({
+      area: "conciliacao",
+      label: "Conciliação",
+      href: areaHref("conciliacao"),
+      icon: <BankIcon size={22} />,
     });
   }
   if (areas.manageSettings) {
