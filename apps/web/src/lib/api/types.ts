@@ -820,6 +820,8 @@ export interface PendingInvitation {
 export interface Team {
   members: TeamMember[];
   pending: PendingInvitation[];
+  /** Os cargos que quem olha pode trazer (a tela so oferece estes). */
+  invitableRoles: Role[];
 }
 
 export interface EmployeeInput {

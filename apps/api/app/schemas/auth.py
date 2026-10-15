@@ -100,6 +100,8 @@ class PendingInvitationOut(BaseModel):
 class TeamOut(BaseModel):
     members: list[MemberOut]
     pending: list[PendingInvitationOut]
+    # The roles the caller may bring in (the screen offers only these).
+    invitable_roles: list[Role]
 
 
 class PasswordResetRequest(Strict):

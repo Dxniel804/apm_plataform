@@ -175,3 +175,13 @@ def test_another_school_does_not_see_the_team(apis: ApiFactory, users: UserFacto
 
     assert all("mine-staff" not in email for email in seen)
     assert len(mine.get(BASE).json()["members"]) >= 2
+
+
+def test_the_team_says_which_roles_the_caller_may_bring_in(
+    apis: ApiFactory, users: UserFactory
+) -> None:
+    management = _as(apis, users, "treasurer").get(BASE).json()
+    director = _as(apis, users, "school_admin", label="director").get(BASE).json()
+
+    assert management["invitable_roles"] == ["staff"]
+    assert director["invitable_roles"] == ["school_admin", "staff", "treasurer", "viewer"]

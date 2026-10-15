@@ -72,6 +72,7 @@ def list_team(principal: Team, db: Db) -> TeamOut:
         {"school": school},
     ).all()
     return TeamOut(
+        invitable_roles=sorted(manageable),  # type: ignore[arg-type]
         members=[
             MemberOut(
                 membership_id=row[0],

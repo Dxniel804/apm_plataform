@@ -40,7 +40,9 @@ export function parseTeam(body: unknown, status: number): Team | null {
   const members = body.members.map(parseMember);
   const pending = body.pending.map(parsePending);
   if (members.some((m) => m === null) || pending.some((p) => p === null)) return null;
-  return { members: members as TeamMember[], pending: pending as PendingInvitation[] };
+  const invitable = Array.isArray(body.invitable_roles) ? body.invitable_roles.map(role) : [];
+  if (invitable.some((r) => r === null)) return null;
+  return { members: members as TeamMember[], pending: pending as PendingInvitation[], invitableRoles: invitable as Role[] };
 }
 
 const BASE = "/api/v1/employees";

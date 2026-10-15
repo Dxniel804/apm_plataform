@@ -38,8 +38,12 @@ const STATUS: Record<string, { label: string; tone: "success" | "warning" | "neu
   invited: { label: "Convidado", tone: "neutral" },
 };
 
-/** Os cargos que a gestao pode escolher ao trazer alguem (a API ainda confere): por padrao, funcionario. */
-const CHOICES: Role[] = ["staff", "viewer", "treasurer", "school_admin"];
+/**
+ * Os cargos que a tela oferece: so FUNCIONARIO e GESTAO (os dois da escola, mais o responsavel, que nao tem login).
+ * "Administrador da escola" e "Leitura" existem no sistema mas nao sao escolhidos aqui. Cada pessoa so ve os que a
+ * API diz que ela pode trazer (a gestao traz funcionarios; o administrador traz os dois).
+ */
+const OFFERED: Role[] = ["staff", "treasurer"];
 
 /**
  * Equipe da escola: quem faz parte, quem foi convidado e ainda nao entrou, e o botao de trazer um funcionario.
@@ -168,6 +172,7 @@ export function TeamArea() {
 
       {adding && (
         <AddEmployee
+          choices={OFFERED.filter((r) => team.invitableRoles.includes(r))}
           onClose={() => setAdding(false)}
           onDone={(email) => {
             setAdding(false);
@@ -181,10 +186,10 @@ export function TeamArea() {
   );
 }
 
-function AddEmployee({ onClose, onDone }: { onClose: () => void; onDone: (email: string) => void }) {
+function AddEmployee({ choices, onClose, onDone }: { choices: Role[]; onClose: () => void; onDone: (email: string) => void }) {
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
-  const [role, setRole] = useState<Role>("staff");
+  const [role, setRole] = useState<Role>(choices[0] ?? "staff");
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
   const [general, setGeneral] = useState<string | null>(null);
@@ -212,11 +217,13 @@ function AddEmployee({ onClose, onDone }: { onClose: () => void; onDone: (email:
       <form method="post" noValidate aria-label="Adicionar funcionário" onSubmit={(e) => { e.preventDefault(); void save(); }} className="space-y-5">
         <TextField label="Nome completo" name="employee-name" autoComplete="off" maxLength={200} inputRef={nameRef} error={errors.name} />
         <TextField label="E-mail" name="employee-email" type="email" inputMode="email" autoComplete="off" spellCheck={false} autoCapitalize="none" inputRef={emailRef} error={errors.email} />
-        <SelectField id="employee-role" label="Cargo" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-          {CHOICES.map((r) => (
-            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-          ))}
-        </SelectField>
+        {choices.length > 1 && (
+          <SelectField id="employee-role" label="Cargo" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            {choices.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            ))}
+          </SelectField>
+        )}
         <div aria-live="polite">{general && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{general}</p>}</div>
         <FormButtons onCancel={onClose} submitLabel="Enviar o convite" pendingLabel="Enviando…" pending={busy} />
       </form>
