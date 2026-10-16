@@ -134,6 +134,10 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         # Central makes records its first address.
         ("school_slug_history", "school_slug_history_definer_select", "SELECT", "apm_definer"),
         ("school_slug_history", "school_slug_history_definer_insert", "INSERT", "apm_definer"),
+        # 0025 (docs/adr-forklin-sso.md, section 9): ending the sessions of a person of the Central;
+        # both policies are tied to a person who has a `central_user_id`.
+        ("sessions", "sessions_definer_select", "SELECT", "apm_definer"),
+        ("sessions", "sessions_definer_update", "UPDATE", "apm_definer"),
         # 0007: a SELECT and an INSERT policy on each financial table, and an UPDATE one on every
         # table but the two that only grow (expense_attachments, audit_logs): 37. None of them is
         # open to apm_definer (the two SELECT policies of 0009 above are the only ones).
@@ -204,6 +208,7 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.provision_forklin_school(p_central_org_id uuid, p_name text, p_slug text)",
         "public.sso_sign_in(p_central_user_id uuid, p_central_org_id uuid, p_email text, "
         "p_full_name text, p_role text)",
+        "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
     }
 )
 

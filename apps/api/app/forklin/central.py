@@ -25,6 +25,21 @@ JWKS_LIFESPAN_SECONDS = 300
 # Only EdDSA: `none`, HS256 (a public key used as a secret) and every other algorithm are refused.
 ALGORITHMS = ["EdDSA"]
 EVENT_PRODUCT_CONTRACTED = "organization.product_contracted"
+# The events that END the open sessions of one person (docs/adr-forklin-sso.md, section 9). The
+# list is an ALLOWLIST: any other name is ignored. `organization.<status>` is one entry per status
+# of the Central other than `active` (enum OrganizationStatus: suspended, inactive); a new status
+# of the Central has to be added here.
+REVOKING_EVENTS = frozenset(
+    {
+        "access.revoked",
+        "access.suspended",
+        "user.disabled",
+        "access.role_changed",
+        "organization.suspended",
+        "organization.inactive",
+        "product.inactive",
+    }
+)
 MAX_EVENT_LIFETIME_SECONDS = 120
 
 
@@ -46,10 +61,20 @@ class AccessClaims:
 
 
 @dataclass(frozen=True)
-class ContractedEvent:
+class CentralEvent:
+    """A signed event whose signature, audience, issuer and lifetime were verified. `event` is the
+    name as the Central sent it (the receiver decides what it does with it). `organization_id` and
+    `user_id` are filled for the events this product handles (`user_id` only for revoking ones)."""
+
+    event: str
     jti: str
-    organization_id: uuid.UUID
+    organization_id: uuid.UUID | None
     organization_name: str | None
+    user_id: uuid.UUID | None
+
+
+class MalformedEventError(CentralError):
+    """The signature is right but the claims an event of this kind needs are missing or wrong."""
 
 
 def _central_url(settings: ApiSettings) -> str:
@@ -168,15 +193,38 @@ def verify_access_token(settings: ApiSettings, token: str) -> AccessClaims:
     )
 
 
-def verify_event(settings: ApiSettings, token: str) -> ContractedEvent:
-    claims = _decode(settings, token, ["exp", "iat", "jti", "event", "organization_id"])
+def verify_event(settings: ApiSettings, token: str) -> CentralEvent:
+    claims = _decode(settings, token, ["exp", "iat", "jti", "event"])
     lifetime = int(claims["exp"]) - int(claims["iat"])
     if lifetime <= 0 or lifetime > MAX_EVENT_LIFETIME_SECONDS:
         raise CentralError("expirado", "event with a lifetime out of the accepted range")
-    if claims.get("event") != EVENT_PRODUCT_CONTRACTED:
-        raise CentralError("acesso", "event of a kind this product does not handle")
-    return ContractedEvent(
-        jti=str(claims["jti"])[:64],
-        organization_id=_uuid(claims["organization_id"], "organization_id"),
-        organization_name=_text(claims.get("organization_name"), 120),
+    event = claims["event"]
+    if not isinstance(event, str):
+        raise CentralError("acesso", "event without a name")
+    jti = str(claims["jti"])[:64]
+    if event == EVENT_PRODUCT_CONTRACTED:
+        return CentralEvent(
+            event=event,
+            jti=jti,
+            organization_id=_uuid(claims.get("organization_id"), "organization_id"),
+            organization_name=_text(claims.get("organization_name"), 120),
+            user_id=None,
+        )
+    if event in REVOKING_EVENTS:
+        try:
+            organization_id = uuid.UUID(str(claims.get("organization_id")))
+            user_id = uuid.UUID(str(claims.get("user_id")))
+        except ValueError:
+            raise MalformedEventError(
+                "acesso", "revoking event without a valid organization_id and user_id"
+            ) from None
+        return CentralEvent(
+            event=event,
+            jti=jti,
+            organization_id=organization_id,
+            organization_name=None,
+            user_id=user_id,
+        )
+    return CentralEvent(
+        event=event, jti=jti, organization_id=None, organization_name=None, user_id=None
     )

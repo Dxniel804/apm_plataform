@@ -153,3 +153,14 @@ def provision_forklin_school(
         {"central_org": central_org_id, "name": name, "slug": slug},
     ).one_or_none()
     return None if row is None else ProvisionedSchool(*row)
+
+
+def revoke_forklin_sessions(db: Session, *, central_user_id: UUID, central_org_id: UUID) -> int:
+    """Ends every open session of the person the Central names, if they belong to that
+    organization. How many were ended (0 for an unknown person, another organization, or none open);
+    memberships, status and password are never touched (docs/adr-forklin-sso.md, section 9)."""
+    revoked: int = db.execute(
+        text("SELECT public.revoke_forklin_sessions(:central_user, :central_org)"),
+        {"central_user": central_user_id, "central_org": central_org_id},
+    ).scalar_one()
+    return revoked

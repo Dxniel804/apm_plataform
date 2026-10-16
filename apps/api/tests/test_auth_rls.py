@@ -573,6 +573,9 @@ DEFINER_COLUMNS = {
         "revoked_at",
     },
     ("invitations", "UPDATE"): {"accepted_at", "accepted_user_id", "updated_at"},
+    # 0025 (docs/adr-forklin-sso.md, section 9): ending the sessions of a person of the Central
+    ("sessions", "SELECT"): {"user_id", "revoked_at"},
+    ("sessions", "UPDATE"): {"revoked_at", "revoked_reason"},
     # 0021 (docs/adr-password-reset.md): the two functions of the password reset
     ("password_reset_tokens", "SELECT"): {"user_id", "token_hash", "expires_at", "used_at"},
     ("password_reset_tokens", "INSERT"): {"user_id", "token_hash", "expires_at"},
@@ -631,8 +634,9 @@ def test_apm_definer_has_exactly_these_column_privileges_and_no_others(
 
     assert found == DEFINER_COLUMNS
     assert table_level == []  # nothing at table level: every grant is by column
-    for untouched in ("sessions", "login_attempts"):
-        assert all(table != untouched for table, _ in found)
+    # The sessions are reachable only by the two columns the revocation needs (and never INSERT).
+    assert all(table != "login_attempts" for table, _ in found)
+    assert ("sessions", "INSERT") not in found
 
 
 def test_apm_definer_has_no_other_reach_in_the_database(admin_engine: Engine) -> None:
@@ -670,7 +674,9 @@ def test_apm_definer_alone_sees_users_and_only_through_its_four_columns(
     for sql in (
         "SELECT full_name FROM users",
         "SELECT * FROM users",
-        "SELECT count(*) FROM sessions",
+        "SELECT id FROM sessions",
+        "UPDATE sessions SET expires_at = now()",
+        "DELETE FROM sessions",
         "SELECT count(*) FROM login_attempts",
         "UPDATE users SET is_active = false",
         "DELETE FROM users",

@@ -58,16 +58,17 @@ EXPECTED_TABLES = {
 # the financial schema (13 select, 13 insert, 11 update) + 4 of the public flow (0008) + 2 of the
 # expiry job (0009)
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017)
 # + 0018 + the 7 of the Forklin sign-in (0023) + the 4 of the school identity (0024)
+# + the 2 of the revocation by the Central (0025)
 # 7 of TASK-003 and 0006 (app_org, app_school, app_session_id, app_user_id + the 3 SECURITY
 # DEFINER) + 35 financial functions (all SECURITY INVOKER, see test_financial_triggers) + the
 # pix_charges consistency function + the 3 SECURITY DEFINER of the public flow (0008) + the one of
 # the expiry job (0009); the consolidated statement of a network (0007) was dropped by 0010
 EXPECTED_FUNCTIONS = (
-    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2
-)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2)
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2 + 1
+)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2) + 0025 (1)
 EXPECTED_CATALOG = {
     "tables": EXPECTED_TABLES,
     "policies": EXPECTED_POLICIES,
@@ -124,7 +125,7 @@ def test_upgrade_from_an_empty_database_creates_everything(scratch_db: ScratchDb
     assert result.returncode == 0, result.stderr
     assert _catalog(scratch_db) == EXPECTED_CATALOG
     current = run_alembic(scratch_db, "current")
-    assert "0024_school_identity (head)" in current.stdout + current.stderr
+    assert "0025_forklin_revocation (head)" in current.stdout + current.stderr
     admin = _admin_engine(scratch_db)
     try:
         assert _role(admin, "apm_app") == (False, False, True, False, False)

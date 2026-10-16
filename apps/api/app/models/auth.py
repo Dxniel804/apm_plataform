@@ -34,6 +34,7 @@ SESSION_REVOKED_REASONS = (
     "password_reset",
     "membership_inactive",
     "user_inactive",
+    "central_revoked",
 )
 ATTEMPT_KINDS = ("login", "password", "invitation", "password_reset")
 

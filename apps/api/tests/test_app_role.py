@@ -221,6 +221,13 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "revoke_forklin_sessions(uuid,uuid)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "v",
+    ),
     "list_memberships_for_user(uuid)": (
         "apm_definer",
         True,
@@ -321,6 +328,9 @@ DEFINER_POLICIES = {
     "password_reset_tokens.password_reset_tokens_definer_update",
     # 0023 (docs/adr-forklin-sso.md)
     "users.users_definer_link",
+    # 0025 (docs/adr-forklin-sso.md, section 9)
+    "sessions.sessions_definer_select",
+    "sessions.sessions_definer_update",
     "memberships.memberships_definer_update",
     "organizations.organizations_definer_insert",
     "schools.schools_definer_insert",
@@ -483,7 +493,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + 3 of the deliveries (0014)
     # + the 7 of the Forklin sign-in (0023)
     # + the 4 of the school identity (0024: 2 of the application, 2 of the definer)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4
+    # + the 2 of the revocation by the Central (0025, both of the definer)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
