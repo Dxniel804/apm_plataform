@@ -20,7 +20,7 @@ Onde mora: as rotas são da API (`/api/v1/forklin/sso/start|callback`, `GET`) e 
 ### 2. Dados novos (migração 0023)
 `users.central_user_id uuid UNIQUE NULL` e `organizations.central_org_id uuid UNIQUE NULL` (a organização do APM **é** a conta de uma escola: ADR-020). As duas são opcionais: nada muda para quem nunca veio da Central. No ORM as duas são `deferred` (o papel da aplicação não as lê).
 
-### 3. O perímetro privilegiado: duas funções `SECURITY DEFINER` e o que elas precisam
+### 3. O perímetro privilegiado: duas funções `SECURITY DEFINER` e o que elas precisam (a terceira, da revogação, está na seção 9)
 Antes de existir sessão não há contexto de escola e a RLS é forçada: o mesmo problema do login e da recuperação de senha. A lista fechada do ADR-016 cresce por **duas funções**:
 - **`provision_forklin_school(central_org_id, name, slug)`**: cria a conta vazia (organização + a única escola; os gatilhos já existentes criam as configurações e as 12 categorias padrão). **Idempotente**: achar a organização devolve a escola e não muda nada; se o endereço (`slug`) estiver ocupado, acrescenta 4 caracteres; corrida entre dois pedidos é tratada.
 - **`sso_sign_in(central_user_id, central_org_id, email, full_name, role)`**: acha a pessoa pelo id da Central; senão **vincula por e-mail** a uma conta local **sem vínculo** (e só ativa); senão cria a pessoa **sem senha**; garante a matrícula com o cargo que a Central mandou (a Central manda no cargo; uma matrícula **suspensa** localmente continua recusada). Nunca mescla: e-mail já ligado a outra pessoa da Central é `conflict`. Devolve `ok`, `org_unknown`, `conflict`, `inactive`, `suspended` ou `invalid`.
@@ -50,8 +50,26 @@ Tabela fixa: `secretaria` → `secretaria`, `funcionario` → `staff`. **Cargo d
 ### 8. Funcionários pela Central (fase 2, não feita)
 Hoje a Secretaria cria funcionário em `/painel/equipe` (`/api/v1/employees`; ponto único `app/auth/invite.py`). Com a Central ligada, esse ponto chamaria `POST /product-api/v1/users` (`Idempotency-Key`, `role_key`) e só gravaria local depois do 201/200 da Central; suspender/reativar chamaria `PATCH`. **Bloqueio:** ver o item 1 abaixo.
 
-### 9. Revogação e limites conhecidos
-- Suspender na Central vale **no próximo login** (a sessão local dura o que já dura). A Secretaria também suspende na tela de equipe (revoga as sessões na hora). Receptor de eventos de revogação: fase 3.
+### 9. Revogação: a Central encerra as sessões na hora (migração 0025)
+Regra da Central: quando o acesso de uma pessoa ao produto é retirado ou suspenso, a pessoa é desativada, o cargo muda, ou a organização ou o produto é desligado, a Central manda ao produto um evento assinado e o produto **encerra as sessões abertas dessa pessoa imediatamente**. O receptor é o mesmo `POST /api/v1/forklin/events` da seção 5 (servidor a servidor, sem sessão e sem Origin; o token EdDSA assinado, `aud=apm-digital`, `iss=forklin`, validade de até 2 minutos, **é** a autenticação). Corpo `{"token": "<jwt>"}`; claims: `iss`, `aud`, `iat`, `exp`, `jti`, `event`, `organization_id` (UUID da organização na Central) e, nos eventos abaixo, `user_id` (UUID da pessoa na Central).
+
+**Lista de eventos (lista permitida; o que não está nela é ignorado):**
+
+| Evento | Efeito no APM |
+|---|---|
+| `organization.product_contracted` | Cria a conta vazia (seção 5). Sem mudança. |
+| `access.revoked`, `access.suspended`, `user.disabled`, `access.role_changed`, `organization.suspended`, `organization.inactive`, `product.inactive` | Encerra **todas** as sessões abertas dessa pessoa (`revoked_reason = 'central_revoked'`). Responde 200 `{"status":"processed"}`. |
+| qualquer outro nome | 200 `{"status":"ignored"}`; só o **nome** do evento vai ao log. Nada acontece. |
+
+`organization.suspended` e `organization.inactive` são os dois estados que não são `active` do enum `OrganizationStatus` da Central; um estado novo lá precisa entrar em `REVOKING_EVENTS` (`app/forklin/central.py`). O evento de uma organização vale para a pessoa que ele nomeia (`user_id`), como os demais.
+
+**Comportamento.**
+- A função `SECURITY DEFINER` `revoke_forklin_sessions(central_user_id, central_org_id)` (a terceira do perímetro; sem sessão não há contexto e a RLS é forçada) acha a pessoa por `users.central_user_id`, **confere que ela tem matrícula ativa na organização cujo `central_org_id` é o do evento** (defesa em profundidade) e revoga as sessões abertas dela. **Pessoa desconhecida ou de outra organização é um não-fazer-nada que responde 200 com o mesmo corpo de um acerto**: nada é revelado a quem enviar o evento. Repetir o evento é inofensivo (idempotente; não há tabela de `jti`, a validade de 2 minutos limita a reapresentação).
+- **Não** muda matrícula, situação do usuário nem senha: se a Central devolver o acesso, a pessoa simplesmente entra de novo pela Central.
+- `user_id` ausente ou inválido num evento que o exige (ou `organization_id` inválido) responde **400** `invalid_event` (a assinatura estava certa, faltam dados); assinatura, `aud`, `iss`, validade, `alg=none` e afins respondem **401**, como antes. `FORKLIN_CORE_ENABLED=false` mantém 404.
+- **Privilégios novos:** EXECUTE da função só para `apm_app`; para `apm_definer`, `SELECT (user_id, revoked_at)` e `UPDATE (revoked_at, revoked_reason)` em `sessions` e duas políticas (`sessions_definer_select`, `sessions_definer_update`) que só mostram e só mudam sessões de quem tem `central_user_id`; o UPDATE só leva uma sessão aberta a revogada com o motivo `central_revoked`. O `apm_app` **não** ganhou nada sobre `sessions` (continua só nas próprias).
+- **Limites conhecidos.** (1) A pessoa é desconectada; a entrada de volta é **só pela Central**. O **login por senha continua existindo** até a etapa separada que o desliga para quem tem vínculo com a Central: ela **não** foi feita, e a tela `/painel/equipe` e as de funcionário seguem como estão (etapa posterior). Enquanto isso, quem tem senha local pode entrar por ela mesmo depois de revogada na Central. (2) O evento age sobre as sessões abertas **no instante em que chega**: uma sessão criada logo depois (por exemplo por senha) não é afetada, e um evento antigo reapresentado dentro dos 2 minutos de validade desconecta a pessoa de novo. (3) Uma sessão é cortada na próxima requisição dela, não no meio de uma resposta. (4) A Secretaria também suspende na tela de equipe: aí a sessão cai na próxima requisição da pessoa (`membership_inactive`), sem evento.
+- O `/sso/callback` **não tem limite de tentativas próprio** (o código é de uso único, 256 bits e 60 s, e a Central limita os pedidos de código por pessoa). Se a revisão de segurança pedir, entra o limite por endereço.
 - O `/sso/callback` **não tem limite de tentativas próprio** (o código é de uso único, 256 bits e 60 s, e a Central limita os pedidos de código por pessoa). Se a revisão de segurança pedir, entra o limite por endereço.
 
 ## O que falta para produção (a Forklin precisa responder)
@@ -65,10 +83,10 @@ Hoje a Secretaria cria funcionário em `/painel/equipe` (`/api/v1/employees`; po
 8. **Revisão de segurança independente** do fluxo de login antes de ligar com dinheiro real.
 
 ## Fora do escopo
-2FA (decidido no ADR-016 para antes de produção com dinheiro real), receptor de eventos de revogação (fase 3), desligar a senha local, importar usuários antigos em lote.
+2FA (decidido no ADR-016 para antes de produção com dinheiro real), desligar a senha local para quem tem vínculo com a Central (etapa posterior, com a tela de equipe), importar usuários antigos em lote. O receptor de eventos de revogação **está feito** (seção 9).
 
 ## Como verificar
-`tests/test_forklin_sso.py` (39 testes, com tokens EdDSA reais e a rede simulada: caminho feliz, retorno da mesma pessoa, vínculo por e-mail, conflito, suspensa, cargo, audiência/emissor/validade/assinatura/`none`, `state`, sessão trazida pelo navegador, nada pessoal no log, aviso idempotente, endereços diferentes para nomes iguais, avisos inválidos, `apm_app` sem inserção direta); as listas fechadas de segurança (`test_app_role`, `test_auth_rls`, `test_posture`, `test_migrations`, `test_createrole_admin`, `financial/*`) aprenderam as peças novas; no site, `src/lib/forklin.test.ts`.
+`tests/test_forklin_sso.py` (39 testes, com tokens EdDSA reais e a rede simulada: caminho feliz, retorno da mesma pessoa, vínculo por e-mail, conflito, suspensa, cargo, audiência/emissor/validade/assinatura/`none`, `state`, sessão trazida pelo navegador, nada pessoal no log, aviso idempotente, endereços diferentes para nomes iguais, avisos inválidos, `apm_app` sem inserção direta); `tests/test_forklin_revocation.py` (25 testes: cada evento de revogação encerra as sessões da pessoa e de mais ninguém sem tocar em matrícula, situação e senha; a pessoa entra de novo pela Central; repetição, pessoa desconhecida e organização trocada respondem 200 igual a um acerto; evento ignorado; 400 sem `user_id`; assinatura, `aud`, `iss`, validade, `alg=none` recusados; flag desligada 404; política do `apm_definer` e o `apm_app` sem alcance sobre sessões alheias); as listas fechadas de segurança (`test_app_role`, `test_auth_rls`, `test_posture`, `test_migrations`, `test_createrole_admin`, `financial/*`) aprenderam as peças novas; no site, `src/lib/forklin.test.ts`.
 
 ## Rollback
-`FORKLIN_CORE_ENABLED=false` e reiniciar: o botão some e as rotas voltam a 404; quem entrou pela Central e não tem senha local usa "esqueci a senha". A migração 0023 acrescenta duas colunas nulas, as duas funções, as políticas e os privilégios acima; o `downgrade` os remove (testado). **Irreversível:** escolas e usuários criados a partir da Central (dá para suspender, não "des-criar").
+`FORKLIN_CORE_ENABLED=false` e reiniciar: o botão some e as rotas voltam a 404; quem entrou pela Central e não tem senha local usa "esqueci a senha". A migração 0023 acrescenta duas colunas nulas, as duas funções, as políticas e os privilégios acima; a 0025 acrescenta a função de revogação, as duas políticas e as duas concessões em `sessions` e o motivo `central_revoked`; o `downgrade` de cada uma os remove (testado). **Irreversível:** escolas e usuários criados a partir da Central (dá para suspender, não "des-criar").
