@@ -8,6 +8,20 @@ export function forklinEnabled(env: string | undefined = process.env.FORKLIN_COR
   return env?.trim().toLowerCase() === "true";
 }
 
+/**
+ * Com a Central ligada as pessoas so existem la: o APM nao cadastra equipe. Tira "invitations:create"
+ * das permissoes para o painel nao mostrar nem abrir "Equipe" (a API tambem responde 404; isto so
+ * esconde). Desligada, devolve a sessao como veio.
+ */
+export function withoutStaffRegistration<T extends { activeMembership: { permissions: string[] } | null }>(
+  session: T,
+  on: boolean = forklinEnabled(),
+): T {
+  if (!on || !session.activeMembership) return session;
+  const permissions = session.activeMembership.permissions.filter((p) => p !== "invitations:create");
+  return { ...session, activeMembership: { ...session.activeMembership, permissions } };
+}
+
 /** As palavras que a API manda em /login?erro=. Qualquer outra vira a frase generica. */
 type SsoProblem = { title: string; message: string };
 
