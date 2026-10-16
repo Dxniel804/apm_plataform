@@ -1,5 +1,7 @@
 # Funcionários da APM: hoje (MVP) e no ecossistema Forklin
 
+> **Atualização (16/10, etapa 4):** a seção 3 (a "fase 2", o APM chamando a API de produto da Central) foi **descartada**. Com `FORKLIN_CORE_ENABLED=true` as pessoas são cadastradas **só na Central** e entram só por ela; a tela Equipe e as rotas `/employees`/`/invitations` ficam fechadas (404). Ver `docs/adr-forklin-sso.md`, seções 7 e 8. O texto abaixo vale para a chave desligada.
+
 Escrito em 2026-10-15, a partir do código do Diário Digital (branch `origin/integracao`) e da API Central. **Nada disto está ligado ainda no APM Digital**: é o plano para quando a integração chegar.
 
 ## 1. Hoje (MVP): a gestão traz o funcionário pelo próprio sistema da APM
