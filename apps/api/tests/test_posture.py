@@ -257,15 +257,25 @@ def test_the_check_is_skipped_only_in_env_test(
             pass
 
 
-def test_an_unreachable_database_fails_the_startup_with_a_fixed_message() -> None:
+def test_an_unreachable_database_fails_the_startup_with_a_fixed_message(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     settings = make_settings(env="development", database_url=UNREACHABLE)
 
-    with pytest.raises(PostureError) as error, TestClient(create_app(settings)):
+    with (
+        caplog.at_level("ERROR", logger="app.main"),
+        pytest.raises(PostureError) as error,
+        TestClient(create_app(settings)),
+    ):
         pass
 
     assert str(error.value) == "database posture check could not run: the database is unreachable"
     assert error.value.__cause__ is None
     assert "SECRETPW123" not in str(error.value)
+    # The operator gets the class of the error and its SQLSTATE, never its text.
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert "posture check could not run: OperationalError sqlstate=" in logged
+    assert "SECRETPW123" not in logged and "127.0.0.1" not in logged
 
 
 # --- readiness ---------------------------------------------------------------------------------

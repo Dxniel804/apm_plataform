@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -22,6 +23,8 @@ from app.school_settings.router import router as school_settings_router
 from app.staff_requests.router import router as staff_requests_router
 from app.statement.routes import router as statement_router
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(
     settings: ApiSettings | None = None, *, verify_posture: bool | None = None
@@ -37,9 +40,18 @@ def create_app(
             try:
                 with engine.connect() as connection:
                     assert_posture(connection)
-            except SQLAlchemyError:
+            except SQLAlchemyError as error:
                 # Failing closed: serving without knowing whether row level security applies is
-                # exactly what this check exists to prevent. Fixed text, the cause is dropped.
+                # exactly what this check exists to prevent. The text of the error is dropped (it
+                # can quote the connection string); only its class and the 5-character SQLSTATE are
+                # logged, so the operator can tell a refused password (28P01) from a missing
+                # permission (42501) or a database that is not there (3D000).
+                cause = getattr(error, "orig", None)
+                logger.error(
+                    "posture check could not run: %s sqlstate=%s",
+                    type(error).__name__,
+                    getattr(cause, "sqlstate", None) or "-",
+                )
                 raise PostureError(
                     "database posture check could not run: the database is unreachable"
                 ) from None

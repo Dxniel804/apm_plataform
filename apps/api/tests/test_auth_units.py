@@ -299,6 +299,11 @@ def test_log_messages_of_the_auth_code_are_constants_or_carry_only_an_id_and_a_c
         ("app/core/errors.py", "unhandled error on request %s: %s"): "request id and class name",
         ("app/jobs/expire.py", "school %s: expiry failed (%s)"): "school id and class name",
         ("app/jobs/expire.py", "pass failed (%s)"): "class name",
+        (
+            "app/main.py",
+            "posture check could not run: %s sqlstate=%s",
+        ): "the class of the error and "
+        "the 5-character SQLSTATE: never its text, which can quote the connection string",
         ("app/routers/v1/forklin.py", "sso refused: erro=%s reason=%s"): "one fixed word and a "
         "short fixed reason (CentralError never carries an e-mail, a name, a token or the secret)",
         ("app/routers/v1/forklin.py", "forklin event refused: %s"): "a short fixed reason",
