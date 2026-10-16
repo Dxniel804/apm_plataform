@@ -491,6 +491,20 @@ def test_the_state_of_the_button_is_accepted_once_and_dropped(
     assert api.client.cookies.get("apm_sso_state") is None
 
 
+def test_an_old_state_cookie_does_not_break_acessar_from_the_panel(
+    apis: ApiFactory, forklin: Central, cleanup: Callable[[uuid.UUID], None]
+) -> None:
+    # Clicked the button here, gave up, then entered through "Acessar" in the Forklin panel (no state).
+    org = uuid.uuid4()
+    cleanup(org)
+    api = sso_api(apis)
+    api.client.get(START, follow_redirects=False)
+    assert api.client.cookies.get("apm_sso_state") is not None
+    response = land(api, forklin.code_for(forklin.token(org=str(org))))
+    assert response.headers["location"] == "/painel"
+    assert api.client.cookies.get("apm_sso_state") is None
+
+
 def test_a_session_the_browser_came_with_is_ended_not_adopted(
     apis: ApiFactory,
     users: UserFactory,
