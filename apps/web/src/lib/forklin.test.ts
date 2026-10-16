@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { describeSsoError, forklinEnabled, proxySso, withoutStaffRegistration } from "./forklin";
+import { describeSsoError, forklinEnabled, forklinPanelUrl, proxySso, withoutStaffRegistration } from "./forklin";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -89,5 +89,13 @@ describe("withoutStaffRegistration", () => {
   it("sem argumento le a variavel de ambiente do servidor", () => {
     vi.stubEnv("FORKLIN_CORE_ENABLED", "true");
     expect(withoutStaffRegistration(session).activeMembership.permissions).toEqual(["statement:read"]);
+  });
+});
+
+describe("forklinPanelUrl", () => {
+  it("so devolve o endereco com a Central ligada e uma URL http(s); senao some o botao", () => {
+    expect(forklinPanelUrl(true, " http://localhost:3100 ")).toBe("http://localhost:3100");
+    expect(forklinPanelUrl(false, "http://localhost:3100")).toBeNull();
+    for (const bad of [undefined, "", "javascript:alert(1)", "localhost:3100"]) expect(forklinPanelUrl(true, bad)).toBeNull();
   });
 });

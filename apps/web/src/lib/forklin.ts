@@ -94,3 +94,15 @@ export async function proxySso(
   for (const cookieLine of upstream.headers.getSetCookie()) out.append("Set-Cookie", cookieLine);
   return new Response(null, { status: upstream.status, headers: out });
 }
+
+/**
+ * Destino do botao "Voltar para o painel" (App Forklin). `null` = nao mostrar: FORKLIN_CORE_ENABLED
+ * desligada, FORKLIN_APP_URL ausente ou que nao seja http(s). So o servidor chama.
+ */
+export function forklinPanelUrl(
+  enabled: boolean = forklinEnabled(),
+  url: string | undefined = process.env.FORKLIN_APP_URL,
+): string | null {
+  const value = (url ?? "").trim();
+  return enabled && /^https?:\/\//i.test(value) ? value : null;
+}
