@@ -209,6 +209,7 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.sso_sign_in(p_central_user_id uuid, p_central_org_id uuid, p_email text, "
         "p_full_name text, p_role text)",
         "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
+        "public.is_central_linked(p_user_id uuid, p_email text)",
     }
 )
 

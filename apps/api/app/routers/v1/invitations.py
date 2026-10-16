@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 
 from app.auth import passwords
+from app.auth.central_only import staff_registration_closed
 from app.auth.deps import Db, OptionalPrincipal, Principal, Settings, public, require
 from app.auth.identity import accept_invitation, list_memberships
 from app.auth.invite import issue_invitation
@@ -48,8 +49,9 @@ def _field_error(field: str, code: str) -> ProblemError:
     summary="Invite someone to the active organization or school",
     status_code=201,
     response_model=InvitationOut,
-    responses=problem_responses(401, 403, 409, 422),
+    responses=problem_responses(401, 403, 404, 409, 422),
     openapi_extra={"x-permission": Permission.INVITATIONS_CREATE.value},
+    dependencies=[Depends(staff_registration_closed)],
 )
 def create_invitation(
     body: InvitationRequest,
@@ -90,6 +92,10 @@ def accept(
     """The token is the credential. A NEW person sends full_name and password and gets an account;
     someone who already has one must be LOGGED IN (the token alone never lets anybody act as an
     existing account) and sends only the token. Every failure looks the same."""
+    if settings.forklin_core_enabled:
+        # People are registered only in the Forklin Central: an invitation sent before the switch is
+        # as good as an expired one (docs/adr-forklin-sso.md, section 8).
+        raise _invalid()
     bind_request_context(db, actor_type="PUBLIC" if principal is None else None)
     ip = _ip(request)
     # Keyed by IP alone: guessing tokens must not be able to lock other people out.

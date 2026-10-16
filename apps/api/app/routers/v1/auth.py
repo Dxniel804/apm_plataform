@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.auth import passwords
 from app.auth import sessions as session_store
+from app.auth.central_only import password_is_off_for
 from app.auth.deps import Db, OptionalPrincipal, Principal, Settings, authenticated, public
 from app.auth.emailer import build_sender, password_changed_message, password_reset_message
 from app.auth.identity import (
@@ -82,6 +83,10 @@ def login(
 
     identity = find_login_identity(db, body.email)
     stored = identity.password_hash if identity is not None and identity.is_active else None
+    if password_is_off_for(db, settings, email=body.email):
+        # Somebody who comes from the Forklin Central enters only through it: this is answered like
+        # any wrong password (the dummy hash is verified, the attempt counts as a failure).
+        stored = None
     matched = passwords.check_password(stored, body.password)
     record_attempt(db, "login", keys, succeeded=matched)
     if not matched or identity is None:
@@ -240,6 +245,8 @@ def change_password(
 
     identity = find_login_identity(db, principal.email)
     stored = identity.password_hash if identity is not None else None
+    if password_is_off_for(db, settings, user_id=principal.user_id):
+        stored = None  # a person of the Central has no local password to change
     matched = passwords.check_password(stored, body.current_password)
     record_attempt(db, "password", keys, succeeded=matched)
     if not matched:
@@ -326,7 +333,10 @@ def password_reset_request(
     # Every request counts as an attempt (a "failure" for the limiter); a few are free.
     record_attempt(db, "password_reset", keys, succeeded=False)
     token = new_token()
-    made = request_password_reset(db, body.email, hash_token(token), RESET_LINK_MINUTES)
+    # A person of the Central never gets a reset: same answer, nothing made, nothing sent.
+    made = not password_is_off_for(db, settings, email=body.email) and request_password_reset(
+        db, body.email, hash_token(token), RESET_LINK_MINUTES
+    )
     db.commit()
     if made:
         background.add_task(_send_reset_mail, settings, body.email, token)
@@ -376,6 +386,10 @@ def password_reset_confirm(
         if looks_like_a_token(body.token)
         else None
     )
+    if user_id is not None and password_is_off_for(db, settings, user_id=user_id):
+        # A link that was made before the person came from the Central: it changes nothing and
+        # looks like any other link that does not work.
+        user_id = None
     record_attempt(db, "password_reset", keys, succeeded=user_id is not None)
     if user_id is None:
         db.commit()
