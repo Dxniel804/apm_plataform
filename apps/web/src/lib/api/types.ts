@@ -575,8 +575,23 @@ export interface SchoolSettingsInput {
 export interface PublicLink {
   schoolName: string;
   slug: string;
-  /** O endereco que as familias abrem. Ja impresso num QR Code, ele nao pode mudar. */
+  /** O endereco que as familias abrem (e que o QR Code leva). Os enderecos antigos continuam abrindo a escola. */
   url: string;
+}
+
+/** O nome e o endereco da escola (migracao 0024): duas trocas livres do endereco e, da terceira em diante, 15 dias. */
+export interface SchoolIdentity {
+  name: string;
+  slug: string;
+  url: string;
+  slugChanges: number;
+  freeChangesLeft: number;
+  /** ISO. Nulo: o endereco pode mudar agora. */
+  slugLockedUntil: string | null;
+  /** Falso enquanto a escola nao tem conta de recebimento ativa: a pagina publica so abre com uma. */
+  linkActive: boolean;
+  /** Os enderecos que a escola ja teve: continuam abrindo a escola e nunca vao para outra. */
+  previousSlugs: string[];
 }
 
 /** Um produto de uma campanha, como a gestao o ve. O preco e da API: o site nunca decide um total. */

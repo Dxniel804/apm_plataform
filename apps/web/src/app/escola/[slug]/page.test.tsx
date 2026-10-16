@@ -10,6 +10,9 @@ vi.mock("next/navigation", () => ({
   notFound: () => {
     throw Object.assign(new Error("NEXT_NOT_FOUND"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" });
   },
+  redirect: (to: string) => {
+    throw Object.assign(new Error("NEXT_REDIRECT"), { digest: `NEXT_REDIRECT;replace;${to};307;` });
+  },
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }),
 }));
 
@@ -40,6 +43,17 @@ describe("/escola/{slug} no servidor", () => {
     expect(out).not.toContain("Campanhas da escola"); // nenhuma a venda: a pagina e a de sempre
     expect(out).not.toContain("Protótipo");
     expect((await generateMetadata({ params: Promise.resolve({ slug: "demo-aurora" }) })).title).toBe("Contribuir · Escola Aurora (demo)");
+  });
+
+  it("um endereco ANTIGO da escola vai para o atual: a API devolve o slug de hoje e o site redireciona", async () => {
+    upstream.handler = () => json({ ...SCHOOL_BODY, slug: "escola-nova" }, 200, { "Content-Type": "application/json" });
+    await expect(html("demo-aurora")).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT;replace;/escola/escola-nova;") });
+    // o endereco atual nao redireciona (nao ha laco)
+    upstream.handler = (url) =>
+      url.endsWith("/campaigns")
+        ? json({ campaigns: [] }, 200, { "Content-Type": "application/json" })
+        : json({ ...SCHOOL_BODY, slug: "escola-nova" }, 200, { "Content-Type": "application/json" });
+    expect(await html("escola-nova")).toContain("Quanto você quer contribuir?");
   });
 
   it("as campanhas a venda aparecem no alto, com o link da pagina de cada uma", async () => {

@@ -21,7 +21,14 @@ import {
 import { getGoal, getPending, getSeries, getStatement, getSummary, recordCashContribution } from "./statement";
 import { actOnBankLine, createBankAccount, getClosingBalance, getReconciliation, importStatement, listBankAccounts, previewStatement, listStatementImports, setBankAccountActive } from "./reconciliation";
 import { activateMember, cancelInvitation, createEmployee, getTeam, resendInvitation, suspendMember } from "./team";
-import { downloadPoster, getPublicLink, getSchoolSettings, updateSchoolSettings } from "./school-settings";
+import {
+  downloadPoster,
+  getPublicLink,
+  getSchoolIdentity,
+  getSchoolSettings,
+  updateSchoolIdentity,
+  updateSchoolSettings,
+} from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
   endCampaign, getCampaign, getCampaignDashboard, listCampaignOrders, listCampaigns, setCampaignImage, updateCampaign, updateCampaignItem,
@@ -67,6 +74,8 @@ export const api: {
     update: typeof updateSchoolSettings;
     publicLink: typeof getPublicLink;
     poster: typeof downloadPoster;
+    identity: typeof getSchoolIdentity;
+    updateIdentity: typeof updateSchoolIdentity;
   };
   campaigns: {
     list: typeof listCampaigns;
@@ -163,7 +172,14 @@ export const api: {
     closingBalance: getClosingBalance,
   },
   team: { list: getTeam, create: createEmployee, resend: resendInvitation, cancel: cancelInvitation, suspend: suspendMember, activate: activateMember },
-  schoolSettings: { get: getSchoolSettings, update: updateSchoolSettings, publicLink: getPublicLink, poster: downloadPoster },
+  schoolSettings: {
+    get: getSchoolSettings,
+    update: updateSchoolSettings,
+    publicLink: getPublicLink,
+    poster: downloadPoster,
+    identity: getSchoolIdentity,
+    updateIdentity: updateSchoolIdentity,
+  },
   campaigns: {
     list: listCampaigns,
     get: getCampaign,

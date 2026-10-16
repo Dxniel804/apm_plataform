@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { ArrowRightIcon, EyeIcon, EyeOffIcon, InfoIcon, LockIcon, MailIcon } from "@/components/ui/icons";
+import {
+  ArrowRightIcon,
+  EyeIcon,
+  EyeOffIcon,
+  InfoIcon,
+  LockIcon,
+  MailIcon,
+} from "@/components/ui/icons";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
 import { describeAuthError } from "@/lib/auth-messages";
@@ -22,7 +29,10 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
   const [blockedForMs, setBlockedForMs] = useState<number | null>(null);
 
   // Bloqueio por tentativas (429): o botao volta sozinho quando o tempo da API passa.
@@ -63,7 +73,13 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
   }
 
   return (
-    <form method="post" noValidate onSubmit={onSubmit} aria-busy={pending} className="mt-8 space-y-5">
+    <form
+      method="post"
+      noValidate
+      onSubmit={onSubmit}
+      aria-busy={pending}
+      className="mt-5 space-y-3 sm:mt-6 sm:space-y-4 [@media(max-height:700px)]:mt-3 [@media(max-height:700px)]:space-y-2"
+    >
       <TextField
         variant="filled"
         label="Seu e-mail"
@@ -95,24 +111,36 @@ export function LoginForm({ next = "/painel" }: { next?: string }) {
             className="-mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-info-soft hover:text-brand-800"
           >
             {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
-            <span className="sr-only">{showPassword ? "Ocultar a senha" : "Mostrar a senha"}</span>
+            <span className="sr-only">
+              {showPassword ? "Ocultar a senha" : "Mostrar a senha"}
+            </span>
           </button>
         }
         inputRef={passwordRef}
         error={fieldErrors.password}
       />
       <p className="-mt-2 text-right text-foot">
-        <Link href="/esqueci-senha" className="font-semibold text-brand-800 underline underline-offset-2">
+        <Link
+          href="/esqueci-senha"
+          className="font-semibold text-brand-800 underline underline-offset-2"
+        >
           Esqueci minha senha
         </Link>
       </p>
       {error && (
-        <p role="alert" className="flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad"
+        >
           <InfoIcon size={18} className="mt-0.5 shrink-0" />
           {error}
         </p>
       )}
-      <Button type="submit" disabled={pending || blockedForMs !== null} className="w-full">
+      <Button
+        type="submit"
+        disabled={pending || blockedForMs !== null}
+        className="w-full"
+      >
         {pending ? "Entrando…" : "Entrar"}
         {!pending && <ArrowRightIcon size={18} />}
       </Button>

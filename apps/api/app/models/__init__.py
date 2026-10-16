@@ -31,7 +31,7 @@ from app.models.reconciliation import (
     BankStatementImport,
     BankStatementLine,
 )
-from app.models.school import School
+from app.models.school import School, SchoolSlugHistory
 from app.models.staff_requests import StaffRequest, StaffRequestAttachment
 from app.models.user import User
 
@@ -62,6 +62,7 @@ __all__ = [
     "Reimbursement",
     "School",
     "SchoolSettings",
+    "SchoolSlugHistory",
     "StaffRequest",
     "StaffRequestAttachment",
     "User",

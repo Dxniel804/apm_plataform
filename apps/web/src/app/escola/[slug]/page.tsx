@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ContributionFlow } from "@/components/portal/ContributionFlow";
 import { PortalNotice } from "@/components/portal/PortalNotice";
 import { PortalShell } from "@/components/portal/PortalShell";
@@ -48,6 +48,8 @@ export default async function SchoolPortalPage({ params }: Props) {
       />
     );
   }
+  // Um endereco ANTIGO da escola abre a mesma escola: o site vai para o endereco atual (o QR e os links novos usam so ele).
+  if (result.data.slug !== slug) redirect(`/escola/${result.data.slug}`);
   // As campanhas a venda sao um extra: se a consulta falhar, a pagina da contribuicao segue como sempre.
   const campaigns = await getPublicCampaigns(slug, { fetchImpl: serverFetch });
   return (

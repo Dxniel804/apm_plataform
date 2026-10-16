@@ -55,6 +55,7 @@ RLS_TABLES = (
     "login_attempts",
     "invitations",
     "password_reset_tokens",
+    "school_slug_history",  # every address a school had (0024)
     *FINANCIAL_TABLES,
     *REQUEST_TABLES,
     *CAMPAIGN_TABLES,
@@ -129,6 +130,10 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("school_settings", "school_settings_definer_insert", "INSERT", "apm_definer"),
         ("categories", "categories_definer_insert", "INSERT", "apm_definer"),
         ("audit_logs", "audit_logs_definer_insert", "INSERT", "apm_definer"),
+        # 0024 (docs/adr-school-identity.md): an old address still opens its school; a school the
+        # Central makes records its first address.
+        ("school_slug_history", "school_slug_history_definer_select", "SELECT", "apm_definer"),
+        ("school_slug_history", "school_slug_history_definer_insert", "INSERT", "apm_definer"),
         # 0007: a SELECT and an INSERT policy on each financial table, and an UPDATE one on every
         # table but the two that only grow (expense_attachments, audit_logs): 37. None of them is
         # open to apm_definer (the two SELECT policies of 0009 above are the only ones).
@@ -143,6 +148,8 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ),
         # 0012: a SELECT and an INSERT policy on both request tables, and an UPDATE one on the
         # requests (their photos only grow).
+        ("school_slug_history", "school_slug_history_select", "SELECT", "public"),
+        ("school_slug_history", "school_slug_history_insert", "INSERT", "public"),
         ("staff_requests", "staff_requests_select", "SELECT", "public"),
         ("staff_requests", "staff_requests_insert", "INSERT", "public"),
         ("staff_requests", "staff_requests_update", "UPDATE", "public"),

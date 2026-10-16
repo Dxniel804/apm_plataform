@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PortalNotice } from "@/components/portal/PortalNotice";
 import { PortalShell } from "@/components/portal/PortalShell";
 import { ReceiptView } from "@/components/portal/ReceiptView";
@@ -34,6 +34,9 @@ export default async function ReceiptPage({ params }: Props) {
       />
     );
   }
+
+  // Endereco antigo da escola: o comprovante abre no endereco atual (o token continua o mesmo).
+  if (school.data.slug !== slug) redirect(`/escola/${school.data.slug}/pedido/${token}`);
 
   // O servidor SO afirma o que a API confirmou AQUI (200). 409 = ainda nao confirmado. Qualquer outra
   // falha deixa o HTML NEUTRO ("Conferindo seu comprovante"): sem "Pago", sem valor, sem dado de pessoa.

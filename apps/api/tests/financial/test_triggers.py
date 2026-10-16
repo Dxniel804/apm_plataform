@@ -165,6 +165,14 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
     ("monthly_closings", "monthly_closings_20_snapshot"): _t(B, {INS}, "monthly_closings_snapshot"),
     ("monthly_closings", "monthly_closings_25_member"): _t(B, {INS, UPD}, "assert_active_member"),
     ("schools", "schools_10_settings"): _t(A, {INS}, "schools_create_settings"),
+    # 0024 (docs/adr-school-identity.md): the first address enters the history; the rules of a change
+    ("schools", "schools_15_record_slug"): _t(A, {INS}, "schools_record_slug"),
+    ("schools", "schools_20_identity"): _t(B, {UPD}, "schools_guard_identity"),
+    ("school_slug_history", "school_slug_history_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("school_slug_history", "school_slug_history_no_delete"): _t(B, {DEL}, "forbid_delete"),
+    ("school_slug_history", "school_slug_history_no_truncate"): _t(
+        B, {TRU}, "forbid_truncate", "STATEMENT"
+    ),
 }
 AUDITED = [
     "financial_transactions",
@@ -277,7 +285,8 @@ EXPECTED_FUNCTIONS = {
     "expenses_set_decision_time", "forbid_delete", "forbid_truncate", "forbid_update",
     "freeze_when_final", "ft_assign_reference_code", "ft_check_consistency",
     "ft_check_relations", "ft_settle", "monthly_closings_reopen", "monthly_closings_snapshot",
-    "pix_charges_check_contribution", "school_settings_lock_timezone", "schools_create_settings",
+    "pix_charges_check_contribution", "school_settings_lock_timezone", "schools_create_settings", "schools_record_slug",
+    "schools_guard_identity",
     "pix_charges_check_consistency", "contributions_check_insert", "expenses_apply_approval_waiver", "pix_charges_check_end_to_end_id",
     "statement_entries", "statement_pending", "statement_summary", "verify_closing",
     # tenancy and authentication (0003 to 0006): the context functions and the closed list of ADR-016

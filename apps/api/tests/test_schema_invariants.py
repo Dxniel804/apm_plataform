@@ -107,6 +107,7 @@ def test_every_organization_id_column_is_not_null(admin_engine: Engine) -> None:
     expected = [
         ("invitations", True),
         ("memberships", True),
+        ("school_slug_history", True),
         ("schools", True),
         *((t, True) for t in FINANCIAL_TABLES),
         ("staff_request_attachments", True),
@@ -250,6 +251,13 @@ EXPECTED_FOREIGN_KEYS = {
         "organization_id",
         "id",
     ),
+    # Every address a school ever had stays reserved to it (0024): the history points at the school.
+    "fk_school_slug_history_school_id_organization_id_schools": (
+        "school_slug_history",
+        "schools",
+        "school_id,organization_id",
+        "id,organization_id",
+    ),
 }
 
 
@@ -325,7 +333,10 @@ REFERENCED_DELETES = [
     ("DELETE FROM users WHERE id = :user_a1", {"fk_memberships_user_id_users"}),
     (
         "DELETE FROM schools WHERE id = :school_a1",
-        {"fk_memberships_school_id_organization_id_schools"},
+        {
+            "fk_memberships_school_id_organization_id_schools",
+            "fk_school_slug_history_school_id_organization_id_schools",
+        },
     ),
     (
         "DELETE FROM organizations WHERE id = :org_a",

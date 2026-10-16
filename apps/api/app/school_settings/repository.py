@@ -73,3 +73,51 @@ def school_identity(db: Session, school_id: uuid.UUID) -> Row | None:
         .mappings()
         .first()
     )
+
+
+def identity_row(db: Session, school_id: uuid.UUID) -> Row | None:
+    """The name and the address of the school, its counters, and whether it can receive payments."""
+    return (
+        db.execute(
+            text(
+                "SELECT s.id, s.name, s.slug, s.slug_changes, s.slug_changed_at, "
+                "EXISTS (SELECT 1 FROM payment_accounts a WHERE a.school_id = s.id "
+                "AND a.status = 'ACTIVE') AS link_active "
+                "FROM schools s WHERE s.id = :school_id"
+            ),
+            {"school_id": school_id},
+        )
+        .mappings()
+        .first()
+    )
+
+
+def previous_slugs(db: Session, school_id: uuid.UUID, current: str) -> list[str]:
+    found = db.execute(
+        text(
+            "SELECT slug FROM school_slug_history "
+            "WHERE school_id = :school_id AND slug <> :current ORDER BY created_at DESC"
+        ),
+        {"school_id": school_id, "current": current},
+    )
+    return [str(row[0]) for row in found.all()]
+
+
+def update_identity(
+    db: Session, school_id: uuid.UUID, *, name: str | None, slug: str | None
+) -> None:
+    db.execute(
+        text(
+            "UPDATE schools SET name = coalesce(:name, name), slug = coalesce(:slug, slug), "
+            "updated_at = now() WHERE id = :school_id"
+        ),
+        {"school_id": school_id, "name": name, "slug": slug},
+    )
+
+
+def resolves_to(db: Session, slug: str) -> uuid.UUID | None:
+    """The school the PUBLIC lookup (the one the families use) finds for an address."""
+    found = db.execute(
+        text("SELECT school_id FROM public.resolve_school_public(:slug)"), {"slug": slug}
+    ).scalar_one_or_none()
+    return None if found is None else uuid.UUID(str(found))

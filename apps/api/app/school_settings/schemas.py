@@ -1,9 +1,11 @@
 """The settings of a school the management edits, and its public link (snake_case, cents)."""
 
+import re
 import uuid
+from datetime import datetime
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints, field_validator
 
 from app.schemas.auth import Strict, _storable
 
@@ -44,3 +46,46 @@ class PublicLinkOut(BaseModel):
     slug: str
     # The address the families open (and the QR code carries): PUBLIC_BASE_URL + /escola/{slug}.
     url: str
+
+
+SchoolName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=2, max_length=120),
+    AfterValidator(_storable),
+]
+
+
+class IdentityOut(BaseModel):
+    """The name and the address of the school, and what is left of the changes of the address."""
+
+    school_id: uuid.UUID
+    name: str
+    slug: str
+    # The address the families open: PUBLIC_BASE_URL + /escola/{slug}.
+    url: str
+    slug_changes: int
+    # Two changes are free; from the third, 15 days after the previous one.
+    free_changes_left: int
+    # Null: the address may be changed now. Otherwise, the moment it may be changed again.
+    slug_locked_until: datetime | None
+    # False while the school has no active receiving account: the public page opens only with one.
+    link_active: bool
+    # Every address the school had: they keep opening this school (and never go to another one).
+    previous_slugs: list[str]
+
+
+class IdentityPatch(Strict):
+    """Only what is sent changes."""
+
+    name: SchoolName | None = None
+    slug: str | None = Field(default=None, min_length=3, max_length=40)
+
+    @field_validator("slug")
+    @classmethod
+    def _normalise(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().lower()
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", value):
+            raise ValueError("use only lower-case letters, numbers and single hyphens")
+        return value

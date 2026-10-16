@@ -153,7 +153,7 @@ FINANCIAL_TABLES = (
 def purge_financial(connection: Connection, org_ids: list[uuid.UUID]) -> None:
     """Remove every financial row of these organizations. Test cleanup only."""
     connection.execute(text("SET LOCAL session_replication_role = replica"))
-    for table in FINANCIAL_TABLES:
+    for table in (*FINANCIAL_TABLES, "school_slug_history"):  # the addresses a school had (0024)
         connection.execute(
             text(f"DELETE FROM {table} WHERE organization_id = ANY(:o)"),  # noqa: S608
             {"o": org_ids},

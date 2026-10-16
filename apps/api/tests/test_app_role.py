@@ -276,6 +276,8 @@ FINANCIAL_TRIGGER_FUNCTIONS = (
     "ft_check_initial", "ft_check_relations", "ft_settle", "monthly_closings_reopen",
     "monthly_closings_snapshot", "pix_charges_check_consistency", "pix_charges_check_contribution",
     "pix_charges_check_end_to_end_id", "school_settings_lock_timezone", "schools_create_settings",
+    "schools_record_slug",
+    "schools_guard_identity",
     # the staff requests (0012): two more trigger functions of the same kind
     "staff_requests_check_change", "staff_request_attachments_check_state",
     # the campaigns (0013): four more
@@ -325,6 +327,9 @@ DEFINER_POLICIES = {
     "school_settings.school_settings_definer_insert",
     "categories.categories_definer_insert",
     "audit_logs.audit_logs_definer_insert",
+    # 0024 (docs/adr-school-identity.md)
+    "school_slug_history.school_slug_history_definer_select",
+    "school_slug_history.school_slug_history_definer_insert",
     "memberships.memberships_definer_insert",
     "memberships.memberships_definer_select",
     "organizations.organizations_definer_select",
@@ -477,7 +482,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + 2 of the expiry job (0009) + 5 of the staff requests (0012) + 8 of the campaigns (0013)
     # + 3 of the deliveries (0014)
     # + the 7 of the Forklin sign-in (0023)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7
+    # + the 4 of the school identity (0024: 2 of the application, 2 of the definer)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
@@ -492,7 +498,16 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
 
 ALL_COLUMNS = {
     "organizations": {"id", "name", "slug", "created_at", "updated_at"},
-    "schools": {"id", "organization_id", "name", "slug", "created_at", "updated_at"},
+    "schools": {
+        "id",
+        "organization_id",
+        "name",
+        "slug",
+        "created_at",
+        "updated_at",
+        "slug_changes",
+        "slug_changed_at",
+    },
     "memberships": {
         "id",
         "user_id",
@@ -557,7 +572,8 @@ INSERTABLE = {
 # Never id, organization_id, school_id, user_id or created_at (M1): only what changes business data.
 UPDATABLE = {
     "organizations": {"name", "updated_at"},
-    "schools": {"name", "updated_at"},
+    # The address changes through a trigger (two free changes, then 15 days: 0024).
+    "schools": {"name", "slug", "updated_at"},
     "memberships": {"role", "status", "updated_at"},
     "users": {"password_hash", "updated_at"},  # the user's own row, by policy
     "sessions": {"last_seen_at", "revoked_at", "revoked_reason"},
@@ -624,6 +640,8 @@ def test_application_role_table_privileges_are_exactly_these(admin_engine: Engin
         ("organizations", "SELECT"),
         ("schools", "SELECT"),
         ("schools", "INSERT"),
+        ("school_slug_history", "SELECT"),
+        ("school_slug_history", "INSERT"),
         ("memberships", "SELECT"),
         ("memberships", "DELETE"),
         ("sessions", "SELECT"),

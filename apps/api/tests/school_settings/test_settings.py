@@ -233,9 +233,12 @@ def test_the_poster_is_an_a4_pdf_with_the_name_and_the_address(scene: Scene) -> 
     )  # the same link, the same bytes
 
 
-def test_the_application_cannot_change_the_slug_of_a_school(admin_engine: Engine) -> None:
-    """The slug is in every printed QR code: renaming it is an operation of the platform, never of
-    the application (migration 0005 grants no UPDATE on it)."""
+def test_the_application_changes_the_slug_only_through_the_rules_of_the_database(
+    admin_engine: Engine,
+) -> None:
+    """The slug is in every printed QR code: the application may change it (migration 0024), but the
+    rules (two free changes, then 15 days, every old address kept) are a trigger, and the counters
+    are not writable by the application (tests/school_settings/test_identity.py)."""
     with admin_engine.connect() as conn:
         can_slug: bool = conn.execute(
             text("SELECT has_column_privilege('apm_app', 'schools', 'slug', 'UPDATE')")
@@ -246,4 +249,4 @@ def test_the_application_cannot_change_the_slug_of_a_school(admin_engine: Engine
         can_row: bool = conn.execute(
             text("SELECT has_table_privilege('apm_app', 'schools', 'UPDATE')")
         ).scalar_one()
-    assert can_slug is False and can_org is False and can_row is False
+    assert can_slug is True and can_org is False and can_row is False

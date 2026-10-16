@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
-import type { PublicLink, SchoolSettings } from "@/lib/api/types";
+import type { PublicLink, SchoolIdentity, SchoolSettings } from "@/lib/api/types";
 import { SCHOOL_ID } from "@/test-utils/statement-fixtures";
 
 const saveBlob = vi.hoisted(() => vi.fn());
@@ -22,8 +22,20 @@ const SETTINGS: SchoolSettings = {
 };
 const LINK: PublicLink = { schoolName: "Escola Aurora", slug: "demo-aurora", url: "https://doar.exemplo.com.br/escola/demo-aurora" };
 
+const IDENTITY: SchoolIdentity = {
+  name: "Escola Aurora",
+  slug: "demo-aurora",
+  url: "https://doar.exemplo.com.br/escola/demo-aurora",
+  slugChanges: 0,
+  freeChangesLeft: 2,
+  slugLockedUntil: null,
+  linkActive: true,
+  previousSlugs: [],
+};
+
 beforeEach(() => {
   saveBlob.mockReset();
+  vi.spyOn(api.schoolSettings, "identity").mockResolvedValue({ ok: true, data: IDENTITY });
   vi.spyOn(api.schoolSettings, "get").mockResolvedValue({ ok: true, data: SETTINGS });
   vi.spyOn(api.schoolSettings, "publicLink").mockResolvedValue({ ok: true, data: LINK });
 });
@@ -125,5 +137,81 @@ describe("Configuracoes", () => {
     expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Nome e endereco da escola", () => {
+  it("mostra o nome, o endereco, a previa do link e quantas trocas sem espera restam", async () => {
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    expect(await screen.findByLabelText("Nome da escola")).toHaveValue("Escola Aurora");
+    expect(screen.getByLabelText("Endereço do link")).toHaveValue("demo-aurora");
+    expect(screen.getByText(/Fica assim: https:\/\/doar\.exemplo\.com\.br\/escola\/demo-aurora/)).toBeInTheDocument();
+    expect(screen.getByText(/mais 2 vezes sem espera/)).toBeInTheDocument();
+    // a promessa antiga ("o endereco nao pode mudar") nao existe mais
+    expect(screen.queryByText(/não pode mudar/)).not.toBeInTheDocument();
+  });
+
+  it("o nome muda direto, sem confirmacao, e manda so o nome", async () => {
+    const update = vi.spyOn(api.schoolSettings, "updateIdentity").mockResolvedValue({ ok: true, data: { ...IDENTITY, name: "Escola Ipê" } });
+    const user = userEvent.setup();
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    const name = await screen.findByLabelText("Nome da escola");
+    await user.clear(name);
+    await user.type(name, "Escola Ipê");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(SCHOOL_ID, { name: "Escola Ipê" }));
+    expect(await screen.findByText("Salvo.")).toBeInTheDocument();
+  });
+
+  it("trocar o endereco pede confirmacao (conta como uma troca) e so entao envia", async () => {
+    const update = vi.spyOn(api.schoolSettings, "updateIdentity").mockResolvedValue({ ok: true, data: { ...IDENTITY, slug: "escola-ipe", slugChanges: 1, freeChangesLeft: 1, previousSlugs: ["demo-aurora"] } });
+    const user = userEvent.setup();
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    const slug = await screen.findByLabelText("Endereço do link");
+    await user.clear(slug);
+    await user.type(slug, "Escola-Ipe");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(update).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Trocar o endereço para https://doar.exemplo.com.br/escola/escola-ipe");
+    await user.click(screen.getByRole("button", { name: "Confirmar a troca" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(SCHOOL_ID, { slug: "escola-ipe" })); // minusculas
+  });
+
+  it("endereco mal formado: avisa na hora e nao deixa salvar", async () => {
+    const update = vi.spyOn(api.schoolSettings, "updateIdentity");
+    const user = userEvent.setup();
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    const slug = await screen.findByLabelText("Endereço do link");
+    await user.clear(slug);
+    await user.type(slug, "a b");
+    expect(screen.getByText(/Use de 3 a 40 caracteres/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("depois das duas trocas o campo fica travado, diz a data, e o nome continua editavel", async () => {
+    vi.spyOn(api.schoolSettings, "identity").mockResolvedValue({
+      ok: true,
+      data: { ...IDENTITY, slugChanges: 2, freeChangesLeft: 0, slugLockedUntil: "2026-11-01T12:00:00Z", previousSlugs: ["a-antiga", "b-antiga"] },
+    });
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    expect(await screen.findByLabelText("Endereço do link")).toBeDisabled();
+    expect(screen.getByLabelText("Nome da escola")).toBeEnabled();
+    expect(screen.getByText(/Você poderá trocá-lo de novo em/)).toHaveTextContent("01/11/2026");
+    expect(screen.getByText(/a-antiga, b-antiga/)).toBeInTheDocument();
+  });
+
+  it("endereco de outra escola: a frase certa; e sem conta de recebimento avisa que o link ainda nao abre", async () => {
+    vi.spyOn(api.schoolSettings, "identity").mockResolvedValue({ ok: true, data: { ...IDENTITY, linkActive: false } });
+    vi.spyOn(api.schoolSettings, "updateIdentity").mockResolvedValue({ ok: false, error: { kind: "problem", status: 409, code: "slug_taken" } });
+    const user = userEvent.setup();
+    render(<SettingsArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    expect(await screen.findByText(/só abre para as famílias depois que a conta de recebimento/)).toBeInTheDocument();
+    const slug = screen.getByLabelText("Endereço do link");
+    await user.clear(slug);
+    await user.type(slug, "escola-sol");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar a troca" }));
+    expect(await screen.findByText(/já é de outra escola/)).toBeInTheDocument();
   });
 });

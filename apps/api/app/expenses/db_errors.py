@@ -30,6 +30,16 @@ _BY_CONSTRAINT: dict[str, tuple[int, str, str]] = {
         "attachment_duplicate",
         "This file is already attached",
     ),
+    "pk_school_slug_history": (
+        409,
+        "slug_taken",
+        "This address is already in use (or was, by another school)",
+    ),
+    "ck_schools_slug_format": (
+        422,
+        "slug_invalid",
+        "Use only lower-case letters, numbers and hyphens",
+    ),
     "ck_expenses_decider_is_not_submitter": (
         403,
         "self_approval_forbidden",
@@ -39,6 +49,9 @@ _BY_CONSTRAINT: dict[str, tuple[int, str, str]] = {
 
 # By SQLSTATE: the class of the refusal.
 _BY_SQLSTATE: dict[str, tuple[int, str, str]] = {
+    "AP001": (422, "slug_reserved", "This address is reserved"),
+    "AP002": (409, "slug_change_locked", "The address was changed too recently"),
+    "AP003": (422, "slug_too_short", "The address is too short"),
     "23505": (409, "conflict", "The request conflicts with data that already exists"),
     "23514": (422, "rule_violation", "The change breaks a rule of the data"),
     "23001": (409, "state_conflict", "The record is not in a state that allows this"),

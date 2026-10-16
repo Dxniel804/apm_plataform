@@ -26,6 +26,7 @@ CI_ADMIN = "apm_ci_admin"
 DATABASE = "apm_h1"
 EXPECTED_TABLES = {
     "alembic_version",
+    "school_slug_history",
     "invitations",
     "login_attempts",
     "memberships",
@@ -52,15 +53,15 @@ EXPECTED_TABLES = {
 # expense_attachments having no UPDATE, plus the 4 SELECT policies of apm_definer of 0008 and the
 # 2 of 0009.
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017) + 0018
 # + the 7 of the Forklin sign-in (0023)
 # 7 functions of the tenancy core and of 0006 (app_org, app_school, app_session_id, app_user_id and
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.
 EXPECTED_FUNCTIONS = (
-    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2
-)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + the 2 of 0023
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2
+)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2)
 CREATED_ROLES = ("apm_app", "apm_owner", "apm_definer")
 
 

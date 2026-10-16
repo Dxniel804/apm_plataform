@@ -547,6 +547,9 @@ DEFINER_COLUMNS = {
         "organization_id", "school_id", "key", "name", "applies_to", "report_group",
         "requires_approval",
     },
+    # 0024 (docs/adr-school-identity.md): find a school by an address it had; record the first one
+    ("school_slug_history", "SELECT"): {"slug", "school_id"},
+    ("school_slug_history", "INSERT"): {"slug", "school_id", "organization_id"},
     ("audit_logs", "INSERT"): {
         "organization_id", "school_id", "action", "entity_type", "entity_id", "entity_reference",
         "before_data", "after_data",

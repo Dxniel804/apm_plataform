@@ -1,5 +1,5 @@
 import { apiBlob, apiGet, apiSend, type BlobPayload, type RequestOptions, type SendOptions } from "./client";
-import type { ApiResult, PublicLink, SchoolSettings, SchoolSettingsInput } from "./types";
+import type { ApiResult, PublicLink, SchoolIdentity, SchoolSettings, SchoolSettingsInput } from "./types";
 
 /**
  * As configuracoes da escola e o link publico (docs/campaigns.md, migracao 0015). A escola do caminho e o
@@ -69,4 +69,30 @@ export function getPublicLink(schoolId: string, options?: RequestOptions): Promi
 /** GET .../public-link/poster.pdf: o cartaz A4 com o QR Code, pela API, com a sessao. */
 export function downloadPoster(schoolId: string, options?: RequestOptions): Promise<ApiResult<BlobPayload>> {
   return apiBlob(`${base(schoolId)}/public-link/poster.pdf`, options);
+}
+
+function parseIdentity(body: unknown): SchoolIdentity | null {
+  if (!isRecord(body)) return null;
+  const { name, slug, url, slug_changes: changes, free_changes_left: left, slug_locked_until: locked, link_active: active, previous_slugs: previous } = body;
+  if (typeof name !== "string" || typeof slug !== "string" || typeof url !== "string" || !/^https?:\/\//.test(url)) return null;
+  const slugChanges = int(changes);
+  const freeChangesLeft = int(left);
+  if (slugChanges === null || freeChangesLeft === null || typeof active !== "boolean") return null;
+  if (locked !== null && typeof locked !== "string") return null;
+  if (!Array.isArray(previous) || previous.some((value) => typeof value !== "string")) return null;
+  return { name, slug, url, slugChanges, freeChangesLeft, slugLockedUntil: locked, linkActive: active, previousSlugs: previous as string[] };
+}
+const identityOk = (body: unknown, status: number) => (status === 200 ? parseIdentity(body) : null);
+
+/** GET .../identity: o nome, o endereco e o que resta das trocas do endereco. */
+export function getSchoolIdentity(schoolId: string, options?: RequestOptions): Promise<ApiResult<SchoolIdentity>> {
+  return apiGet(`${base(schoolId)}/identity`, identityOk, options);
+}
+
+/** PATCH .../identity: so o que foi enviado muda. O banco decide as regras (palavras reservadas, os 15 dias, endereco alheio). */
+export function updateSchoolIdentity(schoolId: string, changes: { name?: string; slug?: string }, options?: SendOptions): Promise<ApiResult<SchoolIdentity>> {
+  const body: Record<string, unknown> = {};
+  if (changes.name !== undefined) body.name = changes.name;
+  if (changes.slug !== undefined) body.slug = changes.slug;
+  return apiSend("PATCH", `${base(schoolId)}/identity`, body, identityOk, options);
 }

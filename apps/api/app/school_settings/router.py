@@ -15,7 +15,13 @@ from app.expenses.access import SchoolScope, school_scope
 from app.routers.deps import get_tenant_db
 from app.school_settings import service
 from app.school_settings.poster import render_poster
-from app.school_settings.schemas import PublicLinkOut, SettingsOut, SettingsPatch
+from app.school_settings.schemas import (
+    IdentityOut,
+    IdentityPatch,
+    PublicLinkOut,
+    SettingsOut,
+    SettingsPatch,
+)
 
 router = APIRouter(prefix="/schools/{school_id}", tags=["school-settings"])
 
@@ -85,3 +91,29 @@ def get_poster(scope: Manage, db: TenantDb, settings: Settings) -> Response:
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+@router.get(
+    "/identity",
+    operation_id="school_identity_get",
+    summary="The name and the address of the school",
+    response_model=IdentityOut,
+    responses=problem_responses(401, 403, 404, 409, 422),
+    openapi_extra=_PERMISSION,
+)
+def get_identity(scope: Manage, db: TenantDb, settings: Settings) -> IdentityOut:
+    return service.get_identity(db, scope, settings)
+
+
+@router.patch(
+    "/identity",
+    operation_id="school_identity_update",
+    summary="Change the name and/or the address of the school (two free changes, then 15 days)",
+    response_model=IdentityOut,
+    responses=problem_responses(401, 403, 404, 409, 422),
+    openapi_extra=_PERMISSION,
+)
+def update_identity(
+    body: IdentityPatch, scope: Manage, db: TenantDb, settings: Settings
+) -> IdentityOut:
+    return service.update_identity(db, scope, body, settings)

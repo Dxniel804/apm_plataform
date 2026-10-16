@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CampaignOrderFlow } from "@/components/portal/CampaignOrderFlow";
 import { PortalNotice } from "@/components/portal/PortalNotice";
 import { PortalShell } from "@/components/portal/PortalShell";
@@ -45,6 +45,8 @@ export default async function CampaignPage({ params }: Props) {
     );
   }
   if (!school.ok || !campaign.ok) return null; // (ja tratado acima: so para o TypeScript)
+  // Endereco antigo da escola: a campanha abre no endereco atual.
+  if (school.data.slug !== slug) redirect(`/escola/${school.data.slug}/campanha/${id}`);
   return (
     <PortalShell school={school.data}>
       <CampaignOrderFlow school={school.data} campaign={campaign.data} />
