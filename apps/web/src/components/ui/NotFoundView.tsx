@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { ButtonLink } from "@/components/ui/Button";
 import { PageFrame } from "@/components/ui/PageFrame";
 
@@ -9,7 +10,17 @@ import { PageFrame } from "@/components/ui/PageFrame";
 export function NotFoundView({ title, text, friendly = false }: { title: string; text: string; friendly?: boolean }) {
   return (
     <PageFrame size="wide" logoHref={null}>
-      {!friendly && (
+      {friendly ? (
+        // Arte com fundo transparente (webp com alfa), recortada na borda do desenho.
+        <Image
+          src="/brand/pagamento-indisponivel.webp"
+          alt=""
+          width={1000}
+          height={664}
+          priority
+          className="h-auto w-full max-w-[26rem] select-none"
+        />
+      ) : (
         <p
           aria-hidden="true"
           className="bg-grad-brand bg-clip-text text-[6.5rem] font-bold leading-none tracking-[-0.05em] text-transparent sm:text-[9rem]"
