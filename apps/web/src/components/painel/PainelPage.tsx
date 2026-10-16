@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { SessionUnavailable } from "@/components/painel/SessionUnavailable";
 import { getServerSession } from "@/lib/api/server";
+import { forklinPanelUrl, withoutStaffRegistration } from "@/lib/forklin";
 import { parseCampaignTab, parsePeriod, parseSection } from "@/lib/painel-section";
 import { areaHref, areasFor, homeArea, type PainelArea } from "@/lib/permissions";
 
@@ -24,7 +25,8 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
   if (auth.state === "anonymous") redirect("/login");
   if (auth.state === "unavailable") return <SessionUnavailable />;
 
-  const active = auth.session.activeMembership;
+  const session = withoutStaffRegistration(auth.session);
+  const active = session.activeMembership;
   if (active) {
     const areas = areasFor(active.permissions);
     const allowed =
@@ -50,6 +52,6 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
   const tab = (Array.isArray(aba) ? aba[0] : aba) === "minhas" ? "minhas" : "fila";
   const campaignTab = parseCampaignTab(Array.isArray(aba) ? aba[0] : aba);
   return (
-    <PainelShell session={auth.session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} campaignId={campaignId} campaignTab={campaignTab} />
+    <PainelShell session={session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} campaignId={campaignId} campaignTab={campaignTab} forklinUrl={forklinPanelUrl()} />
   );
 }

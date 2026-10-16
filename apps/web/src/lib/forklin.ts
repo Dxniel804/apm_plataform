@@ -8,6 +8,20 @@ export function forklinEnabled(env: string | undefined = process.env.FORKLIN_COR
   return env?.trim().toLowerCase() === "true";
 }
 
+/**
+ * Com a Central ligada as pessoas so existem la: o APM nao cadastra equipe. Tira "invitations:create"
+ * das permissoes para o painel nao mostrar nem abrir "Equipe" (a API tambem responde 404; isto so
+ * esconde). Desligada, devolve a sessao como veio.
+ */
+export function withoutStaffRegistration<T extends { activeMembership: { permissions: string[] } | null }>(
+  session: T,
+  on: boolean = forklinEnabled(),
+): T {
+  if (!on || !session.activeMembership) return session;
+  const permissions = session.activeMembership.permissions.filter((p) => p !== "invitations:create");
+  return { ...session, activeMembership: { ...session.activeMembership, permissions } };
+}
+
 /** As palavras que a API manda em /login?erro=. Qualquer outra vira a frase generica. */
 type SsoProblem = { title: string; message: string };
 
@@ -79,4 +93,16 @@ export async function proxySso(
   if (location) out.set("Location", location);
   for (const cookieLine of upstream.headers.getSetCookie()) out.append("Set-Cookie", cookieLine);
   return new Response(null, { status: upstream.status, headers: out });
+}
+
+/**
+ * Destino do botao "Voltar para o painel" (App Forklin). `null` = nao mostrar: FORKLIN_CORE_ENABLED
+ * desligada, FORKLIN_APP_URL ausente ou que nao seja http(s). So o servidor chama.
+ */
+export function forklinPanelUrl(
+  enabled: boolean = forklinEnabled(),
+  url: string | undefined = process.env.FORKLIN_APP_URL,
+): string | null {
+  const value = (url ?? "").trim();
+  return enabled && /^https?:\/\//i.test(value) ? value : null;
 }

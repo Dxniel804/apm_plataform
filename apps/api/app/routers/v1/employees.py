@@ -13,6 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import text
 
+from app.auth.central_only import staff_registration_closed
 from app.auth.deps import Db, Principal, Settings, require
 from app.auth.invite import issue_invitation
 from app.auth.permissions import INVITABLE_ROLES, Permission
@@ -27,7 +28,11 @@ from app.schemas.auth import (
     TeamOut,
 )
 
-router = APIRouter(prefix="/employees", tags=["employees"])
+# With the Forklin Central ON people are registered there only: the whole team surface answers 404
+# (docs/adr-forklin-sso.md, section 8). With it OFF (the default) nothing changes.
+router = APIRouter(
+    prefix="/employees", tags=["employees"], dependencies=[Depends(staff_registration_closed)]
+)
 
 Team = Annotated[Principal, Depends(require(Permission.INVITATIONS_CREATE))]
 _PERMISSION = {"x-permission": Permission.INVITATIONS_CREATE.value}

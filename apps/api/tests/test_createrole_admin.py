@@ -53,15 +53,15 @@ EXPECTED_TABLES = {
 # expense_attachments having no UPDATE, plus the 4 SELECT policies of apm_definer of 0008 and the
 # 2 of 0009.
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017) + 0018
-# + the 7 of the Forklin sign-in (0023)
+# + the 7 of the Forklin sign-in (0023) + the 2 of the revocation by the Central (0025)
 # 7 functions of the tenancy core and of 0006 (app_org, app_school, app_session_id, app_user_id and
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.
 EXPECTED_FUNCTIONS = (
-    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2
-)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2)
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2 + 1 + 1
+)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2) + 0025 (1) + 0026 (1)
 CREATED_ROLES = ("apm_app", "apm_owner", "apm_definer")
 
 
@@ -215,6 +215,8 @@ def test_upgrade_creates_everything_as_a_createrole_admin(clean_cluster: CleanCl
         "consume_password_reset": "apm_definer",
         "provision_forklin_school": "apm_definer",
         "sso_sign_in": "apm_definer",
+        "revoke_forklin_sessions": "apm_definer",
+        "is_central_linked": "apm_definer",
         "resolve_school_public": "apm_definer",
         "resolve_webhook_target": "apm_definer",
         "resolve_receipt": "apm_definer",

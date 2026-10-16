@@ -23,6 +23,7 @@ import { navFor } from "./nav";
 import { PainelData } from "./PainelData";
 import { Sidebar } from "./Sidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
+import { VoltarPainelForklin } from "./VoltarPainelForklin";
 
 interface PainelShellProps {
   /** REAL: quem esta logado e onde atua (GET /auth/me, lido no servidor). */
@@ -38,6 +39,8 @@ interface PainelShellProps {
   /** Na area das campanhas: a campanha aberta (/painel/campanhas/{id}) e a aba escolhida (?aba=). */
   campaignId?: string;
   campaignTab?: CampaignTab;
+  /** Destino do botao "Voltar para o painel" (Forklin), lido no servidor; ausente = sem botao. */
+  forklinUrl?: string | null;
 }
 
 /* Preferencia "barra lateral recolhida": conveniencia so deste navegador (localStorage), nunca estado de negocio. */
@@ -63,7 +66,7 @@ const writeCollapsed = (value: boolean) => {
   collapsedListeners.forEach((listener) => listener());
 };
 
-export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, campaignId, campaignTab = "resumo" }: PainelShellProps) {
+export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, campaignId, campaignTab = "resumo", forklinUrl = null }: PainelShellProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -162,6 +165,11 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             </span>
             <span className="truncate">{title}</span>
           </h1>
+          {forklinUrl ? (
+            <span className="ml-auto shrink-0">
+              <VoltarPainelForklin href={forklinUrl} />
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}

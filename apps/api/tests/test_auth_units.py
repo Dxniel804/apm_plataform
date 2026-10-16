@@ -307,6 +307,11 @@ def test_log_messages_of_the_auth_code_are_constants_or_carry_only_an_id_and_a_c
         ("app/routers/v1/forklin.py", "sso refused: erro=%s reason=%s"): "one fixed word and a "
         "short fixed reason (CentralError never carries an e-mail, a name, a token or the secret)",
         ("app/routers/v1/forklin.py", "forklin event refused: %s"): "a short fixed reason",
+        ("app/routers/v1/forklin.py", "forklin event malformed: %s"): "a short fixed reason",
+        ("app/routers/v1/forklin.py", "forklin event ignored: %s"): "the event name, sanitized "
+        "by _loggable (a plain word with dots, or '(unreadable)')",
+        ("app/routers/v1/forklin.py", "forklin event %s: %d session(s) ended"): "the event name "
+        "(a fixed word of the allowlist) and a count: never who the event was about",
         (
             "app/jobs/expire.py",
             "schools=%d charges_expired=%d contributions_expired=%d failed=%d",

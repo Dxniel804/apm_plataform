@@ -20,12 +20,25 @@ describe("/login e a entrada pela Forklin", () => {
     expect(out).toContain("Acessar sua conta");
   });
 
-  it("ligada: botao para /sso/start e a frase fixa sobre a senha da Forklin", async () => {
+  it("desligada (padrao): e-mail e senha, esqueci a senha e o aviso do convite, como sempre", async () => {
+    const out = await html();
+    expect(out).toContain('name="email"');
+    expect(out).toContain('name="password"');
+    expect(out).toContain("Esqueci minha senha");
+    expect(out).toContain("Recebeu um convite?");
+  });
+
+  it("ligada: botao para /sso/start e a frase fixa; a entrada e so pela Forklin (sem formulario, sem esqueci a senha, sem convite)", async () => {
     vi.stubEnv("FORKLIN_CORE_ENABLED", "true");
     const out = await html();
     expect(out).toContain('href="/sso/start"');
     expect(out).toContain("Entrar com Forklin");
-    expect(out).toContain("a senha da Forklin não vale neste formulário");
+    expect(out).toContain("O acesso ao APM Digital vem da sua conta Forklin");
+    expect(out).not.toContain('name="email"');
+    expect(out).not.toContain('name="password"');
+    expect(out).not.toContain("Esqueci minha senha");
+    expect(out).not.toContain("Recebeu um convite");
+    expect(out).toContain('href="/escola"'); // as familias continuam sem login
   });
 
   it("ligada: cada palavra do erro mostra a sua frase, e uma desconhecida mostra a generica", async () => {

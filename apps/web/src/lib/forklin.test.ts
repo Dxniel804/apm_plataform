@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { describeSsoError, forklinEnabled, proxySso } from "./forklin";
+import { describeSsoError, forklinEnabled, forklinPanelUrl, proxySso, withoutStaffRegistration } from "./forklin";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -67,5 +67,35 @@ describe("proxySso", () => {
     const response = await proxySso(request("/sso/callback?code=a"), "callback", fetchImpl as unknown as typeof fetch);
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("/login?erro=indisponivel");
+  });
+});
+
+describe("withoutStaffRegistration", () => {
+  const session = { user: "x", activeMembership: { role: "secretaria", permissions: ["statement:read", "invitations:create"] } };
+
+  it("desligada devolve a mesma sessao; ligada tira so invitations:create e nao mexe na original", () => {
+    expect(withoutStaffRegistration(session, false)).toBe(session);
+    const on = withoutStaffRegistration(session, true);
+    expect(on.activeMembership.permissions).toEqual(["statement:read"]);
+    expect(on.user).toBe("x");
+    expect(session.activeMembership.permissions).toEqual(["statement:read", "invitations:create"]);
+  });
+
+  it("sem vinculo ativo nao ha o que tirar", () => {
+    const none = { activeMembership: null };
+    expect(withoutStaffRegistration(none, true)).toBe(none);
+  });
+
+  it("sem argumento le a variavel de ambiente do servidor", () => {
+    vi.stubEnv("FORKLIN_CORE_ENABLED", "true");
+    expect(withoutStaffRegistration(session).activeMembership.permissions).toEqual(["statement:read"]);
+  });
+});
+
+describe("forklinPanelUrl", () => {
+  it("so devolve o endereco com a Central ligada e uma URL http(s); senao some o botao", () => {
+    expect(forklinPanelUrl(true, " http://localhost:3100 ")).toBe("http://localhost:3100");
+    expect(forklinPanelUrl(false, "http://localhost:3100")).toBeNull();
+    for (const bad of [undefined, "", "javascript:alert(1)", "localhost:3100"]) expect(forklinPanelUrl(true, bad)).toBeNull();
   });
 });

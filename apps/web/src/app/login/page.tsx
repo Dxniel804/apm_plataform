@@ -34,18 +34,19 @@ export default async function LoginPage({ searchParams }: Props) {
               </a>
               {/* Texto fixo, igual para todo mundo: nao diz se um e-mail existe. A senha da Forklin vale so na Forklin. */}
               <p className="mt-2 text-center text-foot text-ink-2">
-                Tem conta Forklin? Entre pelo botão acima: a senha da Forklin
-                não vale neste formulário.
+                O acesso ao APM Digital vem da sua conta Forklin: entre pelo
+                botão acima.
               </p>
-              <div className="my-3 h-px bg-line" role="separator" />
             </>
           )}
-          <p className="text-center text-foot text-ink-2">
-            Recebeu um convite?{" "}
-            <span className="font-semibold text-ink">
-              Abra o link que veio no seu e-mail para criar a sua conta.
-            </span>
-          </p>
+          {!sso && (
+            <p className="text-center text-foot text-ink-2">
+              Recebeu um convite?{" "}
+              <span className="font-semibold text-ink">
+                Abra o link que veio no seu e-mail para criar a sua conta.
+              </span>
+            </p>
+          )}
           <div
             className="my-4 flex items-center gap-3"
             role="separator"
@@ -86,7 +87,7 @@ export default async function LoginPage({ searchParams }: Props) {
           </span>
         </p>
       )}
-      <LoginForm next={safeNext(next)} />
+      {!sso && <LoginForm next={safeNext(next)} />}
     </LoginShell>
   );
 }

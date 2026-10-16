@@ -312,7 +312,7 @@ def test_the_role_of_the_central_wins_on_every_entry(
     assert later.get("/api/v1/auth/me").json()["active_membership"]["role"] == "staff"
 
 
-def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_keeps_the_password(
+def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_the_password_stops_working(
     apis: ApiFactory,
     users: UserFactory,
     world: World,
@@ -342,7 +342,14 @@ def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_keeps_the_p
                 text("SELECT central_user_id FROM users WHERE id = :u"), {"u": local.id}
             ).scalar_one()
         assert linked == person
-        assert sso_api(apis).login(local.email, PASSWORD).status_code == 200  # still works
+        # The hash stays in the row (nothing is deleted), but from now on the password no longer
+        # opens a session: the person enters through the Central (ADR forklin-sso, section 7).
+        with admin_engine.connect() as connection:
+            kept: Any = connection.execute(
+                text("SELECT password_hash IS NOT NULL FROM users WHERE id = :u"), {"u": local.id}
+            ).scalar_one()
+        assert kept is True
+        assert sso_api(apis).login(local.email, PASSWORD).status_code == 401
     finally:
         with admin_engine.begin() as connection:
             connection.execute(
@@ -484,6 +491,20 @@ def test_the_state_of_the_button_is_accepted_once_and_dropped(
     assert api.client.cookies.get("apm_sso_state") is None
 
 
+def test_an_old_state_cookie_does_not_break_acessar_from_the_panel(
+    apis: ApiFactory, forklin: Central, cleanup: Callable[[uuid.UUID], None]
+) -> None:
+    # Clicked the button here, gave up, then entered through "Acessar" in the Forklin panel (no state).
+    org = uuid.uuid4()
+    cleanup(org)
+    api = sso_api(apis)
+    api.client.get(START, follow_redirects=False)
+    assert api.client.cookies.get("apm_sso_state") is not None
+    response = land(api, forklin.code_for(forklin.token(org=str(org))))
+    assert response.headers["location"] == "/painel"
+    assert api.client.cookies.get("apm_sso_state") is None
+
+
 def test_a_session_the_browser_came_with_is_ended_not_adopted(
     apis: ApiFactory,
     users: UserFactory,
@@ -564,7 +585,7 @@ def test_two_organizations_with_the_same_name_get_two_different_addresses(
     "build",
     [
         lambda c, org: c.event(org, aud="diario-digital"),
-        lambda c, org: c.event(org, event="user.disabled"),
+        lambda c, org: c.event(org, event=None),  # no name at all
         lambda c, org: c.event(org, exp=int(time.time()) + 3600),  # lives too long
         lambda c, org: c.event(org, exp=int(time.time()) - 10, iat=int(time.time()) - 100),
         lambda c, org: c.event(org, organization_id="not-a-uuid"),
