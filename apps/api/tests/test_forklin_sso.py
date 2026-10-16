@@ -564,7 +564,7 @@ def test_two_organizations_with_the_same_name_get_two_different_addresses(
     "build",
     [
         lambda c, org: c.event(org, aud="diario-digital"),
-        lambda c, org: c.event(org, event="user.disabled"),
+        lambda c, org: c.event(org, event=None),  # no name at all
         lambda c, org: c.event(org, exp=int(time.time()) + 3600),  # lives too long
         lambda c, org: c.event(org, exp=int(time.time()) - 10, iat=int(time.time()) - 100),
         lambda c, org: c.event(org, organization_id="not-a-uuid"),
