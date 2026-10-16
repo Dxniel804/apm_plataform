@@ -379,7 +379,7 @@ EXPECTED_AUTH_CHECKS = {
         "sessions",
         "CHECK (((revoked_reason IS NULL) OR (revoked_reason = ANY (ARRAY['logout'::text, "
         "'rotated'::text, 'password_changed'::text, 'password_reset'::text, "
-        "'membership_inactive'::text, 'user_inactive'::text]))))",
+        "'membership_inactive'::text, 'user_inactive'::text, 'central_revoked'::text]))))",
     ),
     "ck_login_attempts_kind_valid": (
         "login_attempts",
