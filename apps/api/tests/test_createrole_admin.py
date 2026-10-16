@@ -60,8 +60,8 @@ EXPECTED_POLICIES = (
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.
 EXPECTED_FUNCTIONS = (
-    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2 + 1
-)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2) + 0025 (1)
+    7 + 35 + 3 + 1 + 2 + 4 + 2 + 1 + 2 + 2 + 2 + 1 + 1
+)  # + requests (0012) + campaigns (0013) + 0014 + 0016 + 0023 (2) + 0024 (2) + 0025 (1) + 0026 (1)
 CREATED_ROLES = ("apm_app", "apm_owner", "apm_definer")
 
 
@@ -216,6 +216,7 @@ def test_upgrade_creates_everything_as_a_createrole_admin(clean_cluster: CleanCl
         "provision_forklin_school": "apm_definer",
         "sso_sign_in": "apm_definer",
         "revoke_forklin_sessions": "apm_definer",
+        "is_central_linked": "apm_definer",
         "resolve_school_public": "apm_definer",
         "resolve_webhook_target": "apm_definer",
         "resolve_receipt": "apm_definer",

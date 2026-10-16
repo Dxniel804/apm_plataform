@@ -183,7 +183,7 @@ def test_connecting_as_a_different_role_is_reported(admin_engine: Engine) -> Non
         assert cheap_posture_ok(connection) is False
 
 
-def test_the_closed_list_of_security_definer_functions_is_the_twelve_of_the_adrs() -> None:
+def test_the_closed_list_of_security_definer_functions_is_the_thirteen_of_the_adrs() -> None:
     assert (
         frozenset(
             {
@@ -202,6 +202,7 @@ def test_the_closed_list_of_security_definer_functions_is_the_twelve_of_the_adrs
                 "public.sso_sign_in(p_central_user_id uuid, p_central_org_id uuid, "
                 "p_email text, p_full_name text, p_role text)",
                 "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
+                "public.is_central_linked(p_user_id uuid, p_email text)",
             }
         )
         == posture.ALLOWED_SECURITY_DEFINER

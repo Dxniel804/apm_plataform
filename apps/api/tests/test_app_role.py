@@ -228,6 +228,13 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "is_central_linked(uuid,text)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "s",
+    ),
     "list_memberships_for_user(uuid)": (
         "apm_definer",
         True,
