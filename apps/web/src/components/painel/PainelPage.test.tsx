@@ -20,7 +20,7 @@ vi.mock("@/components/status/ApiStatusChip", () => ({ ApiStatusChip: () => null 
 
 import { PainelPage } from "./PainelPage";
 
-async function render(state: ServerSession, area: "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento" = "resumo") {
+async function render(state: ServerSession, area: "resumo" | "despesas" | "solicitacoes" | "campanhas" | "fechamento" | "equipe" = "resumo") {
   auth.current = state;
   const element = await PainelPage({ area });
   return renderToStaticMarkup(element);
@@ -35,6 +35,7 @@ const withPermissions = (permissions: string[], extra: Record<string, unknown> =
 
 beforeEach(() => {
   auth.current = { state: "anonymous" };
+  vi.unstubAllEnvs();
 });
 
 describe("/painel no servidor", () => {
@@ -90,5 +91,22 @@ describe("/painel no servidor", () => {
     await expect(render(viewer, "solicitacoes")).rejects.toThrow("NEXT_REDIRECT:/painel");
     const onlyRequests = withPermissions(["requests:read_own", "requests:submit"]);
     await expect(render(onlyRequests, "resumo")).rejects.toThrow("NEXT_REDIRECT:/painel/solicitacoes");
+  });
+});
+
+describe("Equipe e a Central Forklin (docs/adr-forklin-sso.md, secao 8)", () => {
+  const secretaria = () => withPermissions(["statement:read", "invitations:create", "expenses:approve"]);
+
+  it("desligada (padrao): quem pode convidar ve o item Equipe e abre a area", async () => {
+    expect(await render(secretaria(), "resumo")).toContain('href="/painel/equipe"');
+    expect(await render(secretaria(), "equipe")).toContain("Equipe");
+  });
+
+  it("ligada: o item some do menu e /painel/equipe volta para a area da pessoa; o resto do painel segue igual", async () => {
+    vi.stubEnv("FORKLIN_CORE_ENABLED", "true");
+    const html = await render(secretaria(), "resumo");
+    expect(html).not.toContain("/painel/equipe");
+    expect(html).toContain('href="/painel/despesas"');
+    await expect(render(secretaria(), "equipe")).rejects.toThrow("NEXT_REDIRECT:/painel");
   });
 });
