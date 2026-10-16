@@ -312,7 +312,7 @@ def test_the_role_of_the_central_wins_on_every_entry(
     assert later.get("/api/v1/auth/me").json()["active_membership"]["role"] == "staff"
 
 
-def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_keeps_the_password(
+def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_the_password_stops_working(
     apis: ApiFactory,
     users: UserFactory,
     world: World,
@@ -342,7 +342,14 @@ def test_a_person_who_already_has_an_account_is_linked_by_e_mail_and_keeps_the_p
                 text("SELECT central_user_id FROM users WHERE id = :u"), {"u": local.id}
             ).scalar_one()
         assert linked == person
-        assert sso_api(apis).login(local.email, PASSWORD).status_code == 200  # still works
+        # The hash stays in the row (nothing is deleted), but from now on the password no longer
+        # opens a session: the person enters through the Central (ADR forklin-sso, section 7).
+        with admin_engine.connect() as connection:
+            kept: Any = connection.execute(
+                text("SELECT password_hash IS NOT NULL FROM users WHERE id = :u"), {"u": local.id}
+            ).scalar_one()
+        assert kept is True
+        assert sso_api(apis).login(local.email, PASSWORD).status_code == 401
     finally:
         with admin_engine.begin() as connection:
             connection.execute(
