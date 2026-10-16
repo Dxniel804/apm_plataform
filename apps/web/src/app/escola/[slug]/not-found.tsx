@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { NotFoundView } from "@/components/ui/NotFoundView";
 
-export const metadata: Metadata = { title: "Escola não encontrada" };
+export const metadata: Metadata = { title: "Página ainda não disponível" };
 
+// Nao diz se a escola existe: o mesmo aviso vale para um endereco errado e para uma escola que ainda nao abriu o recebimento.
 export default function SchoolNotFound() {
   return (
     <NotFoundView
-      title="Não encontramos esta página da APM"
-      text="Confira o endereço que a escola enviou. Se o link veio de uma mensagem, peça à gestão da APM para enviar de novo."
+      friendly
+      title="Esta página ainda não está disponível"
+      text="Este link ainda não está aberto para contribuições. Se a gestão da APM enviou este endereço, ele pode abrir em breve: tente de novo em alguns dias ou confirme o endereço com a gestão."
     />
   );
 }

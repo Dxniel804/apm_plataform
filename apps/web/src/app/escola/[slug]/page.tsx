@@ -12,9 +12,9 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  if (!isPlausibleSlug(slug)) return { title: "Escola não encontrada" };
+  if (!isPlausibleSlug(slug)) return { title: "Página ainda não disponível" };
   const result = await getPublicSchool(slug, { fetchImpl: serverFetch });
-  if (!result.ok) return { title: "Escola não encontrada" };
+  if (!result.ok) return { title: "Página ainda não disponível" };
   // A previa quando o link e compartilhado (WhatsApp, Instagram): o nome da escola, uma frase e a imagem desta pasta.
   const title = `Contribuir · ${result.data.name}`;
   const description = `Contribua com a ${result.data.apmName} pelo Pix. O dinheiro vai direto para a conta da APM.`;
