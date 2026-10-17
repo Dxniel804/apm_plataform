@@ -494,7 +494,8 @@ def test_the_state_of_the_button_is_accepted_once_and_dropped(
 def test_an_old_state_cookie_does_not_break_acessar_from_the_panel(
     apis: ApiFactory, forklin: Central, cleanup: Callable[[uuid.UUID], None]
 ) -> None:
-    # Clicked the button here, gave up, then entered through "Acessar" in the Forklin panel (no state).
+    # Clicked the button here, gave up, then entered through "Acessar" in the Forklin panel
+    # (no state).
     org = uuid.uuid4()
     cleanup(org)
     api = sso_api(apis)

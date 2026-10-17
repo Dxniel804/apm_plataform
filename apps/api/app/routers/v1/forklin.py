@@ -110,9 +110,11 @@ def sso_callback(
     if not code:
         return _refuse(settings, "expirado", "no code", drop_state=from_button)
     # A return WITH a state started at this product's button: it must match the cookie. A return
-    # WITHOUT one started at the panel ("Acessar"), which cannot know the state: an old state cookie
-    # left by an earlier click on the button is ignored (and dropped), or "Acessar" would fail.
-    if state is not None and not state_is_valid(request.cookies.get(_state_cookie(settings)), state):
+    # WITHOUT one started at the panel ("Acessar"), which cannot know the state: an old state
+    # cookie left by an earlier click on the button is ignored (and dropped), or "Acessar" fails.
+    if state is not None and not state_is_valid(
+        request.cookies.get(_state_cookie(settings)), state
+    ):
         return _refuse(settings, "expirado", "state missing or different", drop_state=from_button)
 
     try:
