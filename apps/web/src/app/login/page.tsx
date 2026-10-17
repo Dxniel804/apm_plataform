@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: Props) {
   return (
     <LoginShell
       title="Acessar sua conta"
-      eyebrow="Bem-vindo à APM Digital"
+      eyebrow={problem ? undefined : "Bem-vindo à APM Digital"}
       aside={
         <>
           {sso && (
@@ -33,7 +33,7 @@ export default async function LoginPage({ searchParams }: Props) {
                 Entrar com Forklin
               </a>
               {/* Texto fixo, igual para todo mundo: nao diz se um e-mail existe. A senha da Forklin vale so na Forklin. */}
-              <p className="mt-2 text-center text-foot text-ink-2">
+              <p className="mt-2 text-center text-foot text-ink-2 [@media(max-height:700px)]:hidden">
                 O acesso ao APM Digital vem da sua conta Forklin: entre pelo
                 botão acima.
               </p>
@@ -47,38 +47,31 @@ export default async function LoginPage({ searchParams }: Props) {
               </span>
             </p>
           )}
-          <div
-            className="my-4 flex items-center gap-3"
-            role="separator"
-            aria-label="Para famílias"
-          >
-            <span className="h-px flex-1 bg-line" />
-            <span className="text-[0.75rem] text-ink-3">
-              é responsável por um aluno?
-            </span>
-            <span className="h-px flex-1 bg-line" />
-          </div>
+        </>
+      }
+      corner={
+        <>
+          <span className="text-foot text-ink-2 [@media(max-height:700px)]:hidden">
+            É responsável por um aluno?
+          </span>
           <Link
             href="/escola"
             className={buttonClass(
               "secondary",
-              "lg",
-              "w-full border-pill-line bg-pill",
+              "md",
+              "border-pill-line bg-pill",
             )}
           >
             <CashCoinIcon size={18} />
             Contribuir com a APM, sem login
           </Link>
-          <p className="mt-2 text-center text-foot text-ink-2">
-            Famílias não precisam de login para contribuir.
-          </p>
         </>
       }
     >
       {problem && (
         <p
           role="alert"
-          className="mt-6 flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad"
+          className="mt-3 flex items-start gap-2 rounded-[var(--r-md)] bg-bad-soft px-3 py-2 text-foot font-medium text-bad"
         >
           <InfoIcon size={18} className="mt-0.5 shrink-0" />
           <span>

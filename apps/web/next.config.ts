@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
   // O `next dev` gera AGENTS.md/CLAUDE.md sozinho; fora do escopo desta tarefa.
   agentRules: false,
   reactStrictMode: true,
+  // Para abrir o `next dev` pelo celular na mesma rede: ALLOWED_DEV_ORIGINS=192.168.0.10 (hosts, separados por virgula).
+  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",").map((h) => h.trim()).filter(Boolean),
   // /apm/{slug} foi a rota do prototipo: a definitiva e /escola/{slug} (e o comprovante dentro dela).
   async redirects() {
     return [

@@ -14,11 +14,14 @@ export function LoginShell({
   title,
   eyebrow,
   aside,
+  corner,
   children,
 }: {
   title: string;
   eyebrow?: string;
   aside?: ReactNode;
+  /** Atalho que fica no canto (familias, sem login): no computador flutua no canto de baixo, no celular e uma linha pequena abaixo do cartao. */
+  corner?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -83,6 +86,12 @@ export function LoginShell({
           )}
         </main>
       </div>
+
+      {corner && (
+        <div className="relative z-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-5 pb-4 lg:absolute lg:bottom-5 lg:right-8 lg:flex-nowrap lg:rounded-full lg:border lg:border-white/80 lg:bg-white/75 lg:py-2 lg:pl-5 lg:pr-2 lg:shadow-[0_12px_32px_-16px_rgba(44,81,224,0.35)] lg:backdrop-blur-xl">
+          {corner}
+        </div>
+      )}
     </div>
   );
 }

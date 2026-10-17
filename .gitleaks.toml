@@ -18,4 +18,7 @@ regexes = [
   '''segredo-senha-123''',                               # a password typed in a unit test
   '''segredo-tok''',                                     # a token typed in a unit test
   '''CanaryPw7Hx3Zq''',                                  # the canary password of the migration test
+  '''uma-senha-bem-longa-123''',                         # a password typed in the unit tests of the team and Central-only routes
+  '''outra-senha-bem-longa-2''',                        # the new password typed in the password reset test
+  '''Ed25519PrivateKey''',                              # a type annotation in the SSO test helper, not a key
 ]
