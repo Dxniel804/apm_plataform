@@ -139,3 +139,56 @@ def expense_attachments(
         {"school_id": school_id, "start": start, "end": end},
     ).mappings()
     return [dict(row) for row in rows]
+
+
+def latest_balance(
+    db: Session, school_id: UUID, kind: str, period_start: date | None
+) -> dict[str, Any] | None:
+    """What the treasurer typed for one kind and month: the latest row counts (insert-only)."""
+    row = (
+        db.execute(
+            text(
+                "SELECT bank_cents, cash_cents, investment_cents, created_at "
+                "FROM balancete_balances "
+                "WHERE school_id = :school_id AND kind = :kind "
+                "AND period_start IS NOT DISTINCT FROM CAST(:period_start AS date) "
+                "ORDER BY created_at DESC, id DESC LIMIT 1"
+            ),
+            {"school_id": school_id, "kind": kind, "period_start": period_start},
+        )
+        .mappings()
+        .first()
+    )
+    return None if row is None else dict(row)
+
+
+def insert_balance(
+    db: Session,
+    *,
+    organization_id: UUID,
+    school_id: UUID,
+    kind: str,
+    period_start: date | None,
+    bank_cents: int | None,
+    cash_cents: int,
+    investment_cents: int,
+    user_id: UUID,
+) -> None:
+    db.execute(
+        text(
+            "INSERT INTO balancete_balances (organization_id, school_id, kind, period_start, "
+            "bank_cents, cash_cents, investment_cents, created_by_user_id) "
+            "VALUES (:organization_id, :school_id, :kind, :period_start, :bank, :cash, "
+            ":investment, :user_id)"
+        ),
+        {
+            "organization_id": organization_id,
+            "school_id": school_id,
+            "kind": kind,
+            "period_start": period_start,
+            "bank": bank_cents,
+            "cash": cash_cents,
+            "investment": investment_cents,
+            "user_id": user_id,
+        },
+    )

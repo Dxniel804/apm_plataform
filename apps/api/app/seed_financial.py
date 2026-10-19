@@ -39,6 +39,27 @@ DEFAULT_CATEGORIES: tuple[tuple[str, str, str, str], ...] = (
     # The revenue of a campaign (0013): its own line of the closing report, apart from the
     # contributions of the parents.
     ("campaign_sales", "Vendas de campanha", "IN", "OTHER_INCOME"),
+    # The purposes of the accountant's balancete (0027). The keys that start with `capital_` are
+    # the permanent goods of the sheet.
+    ("stationery", "Impressos e material de expediente", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("office", "Despesas de escritório", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("teaching_material", "Material didático e pedagógico", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("cleaning_supplies", "Material de limpeza e higiene", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("animals", "Despesas com animais", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    (
+        "equipment_maintenance",
+        "Manutenção de máquinas, equipamentos e móveis",
+        "OUT",
+        "EXPENSES_REIMBURSEMENTS",
+    ),
+    (
+        "maintenance_material",
+        "Material de manutenção e conservação",
+        "OUT",
+        "EXPENSES_REIMBURSEMENTS",
+    ),
+    ("capital_furniture", "Compra de móveis", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    ("capital_equipment", "Compra de máquinas e equipamentos", "OUT", "EXPENSES_REIMBURSEMENTS"),
 )
 
 # The categories whose expenses need no approver (the bank fees: the bank already took the money).

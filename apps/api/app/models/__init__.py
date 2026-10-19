@@ -1,4 +1,5 @@
 from app.models.auth import Invitation, LoginAttempt, UserSession
+from app.models.balancete import BalanceteBalance
 from app.models.campaigns import (
     Campaign,
     CampaignDelivery,
@@ -37,6 +38,7 @@ from app.models.user import User
 
 __all__ = [
     "AuditLog",
+    "BalanceteBalance",
     "BankAccount",
     "BankLineResolution",
     "BankStatementImport",

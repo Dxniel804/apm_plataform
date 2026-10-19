@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BalanceteCard } from "@/components/fechamento/BalanceteCard";
 import { Button } from "@/components/ui/Button";
 import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -377,6 +378,7 @@ export function ClosingsArea({ schoolId, permissions }: Props) {
         />
       )}
       <BookCard schoolId={schoolId} management={areas.closeMonths} />
+      <BalanceteCard schoolId={schoolId} canType={areas.closeMonths} />
       {!areas.closeMonths && (
         <p role="note" className="mb-6 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800">
           Você pode consultar os fechamentos e baixar o PDF. Fechar o mês é da gestão e da direção.

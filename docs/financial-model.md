@@ -351,6 +351,9 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | `bank_line_resolutions` (0018, what the management decided about a line) | `bank_line_resolutions_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a line is resolved once) |
 | | `bank_line_resolutions_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `bank_line_resolutions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the reason is audited by name only) |
+| `balancete_balances` (0027, what the treasurer types for the balancete: the balance the school had when it started and the cash and invested money of a month) | `balancete_balances_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a correction is a new row and the latest counts) |
+| | `balancete_balances_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `balancete_balances_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
 | `contribution_fees` (0016, the fee of the gateway of a paid contribution) | `contribution_fees_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only |
 | | `contribution_fees_20_check` | BEFORE INSERT | `contribution_fees_check`: only for a PAID contribution, over the amount of its own ledger row |
 | | `contribution_fees_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |

@@ -76,3 +76,14 @@ A reopened closing has no PDF (`409 closing_reopened`).
 - The report does not break the collection down by week, nor by class.
 - There is no consolidated view of several schools: each school is a separate customer (ADR-020), and `org_statement_summary` was dropped.
 - Section B of the monthly PDF does not say who requested, approved and paid an expense: `statement_entries` does not carry them.
+
+## The balancete (the accountant's monthly sheet)
+
+Migration 0027. `GET /schools/{school_id}/balancete?period=YYYY-MM` (the numbers) and `/balancete.pdf` (the sheet, with the lines of the president and of the treasurer): `reports:read` or `reports:read_aggregate`, no personal data. It is **derived, never stored**, like the cash book: the rows are `statement_entries`, grouped by purpose, and the totals are checked against `statement_summary` of the same period (409 `report_mismatch` if the ledger moved twice in a row while it was read).
+
+The sheet follows the accountant's: the balance carried from the month before (cash, bank, invested), the revenue, the **permanent goods** (the purposes whose key starts with `capital_`: furniture, machines), the expenses by purpose (the nine purposes of the accountant are default categories since 0027), the balance of the month and where the money is at the end. The point is the monthly conference: the school sets it beside the accountant's and each line either matches or shows where to look.
+
+What the ledger does not know is typed by who may close the month (`months:close`), in `balancete_balances` (insert-only: a correction is a new row and the latest one counts):
+
+* `POST /balancete/balances` with `kind: OPENING` (once): what the school already had the day it started to use the system, by place (bank, cash, invested). **The ledger starts at zero**, so without it the balances of a school that did not start from nothing never match the bank. It is added to every balance of the balancete; it is NOT in `statement_summary` or in the closing (those are the ledger's alone), so the `bank_difference_cents` of a closing keeps showing that starting amount until the closing learns about it.
+* `kind: MONTH` with `period`: at the end of that month, how much is in cash and how much is invested. **The bank is what is left of the total** (never typed twice). A month nobody typed keeps the values of the month before.

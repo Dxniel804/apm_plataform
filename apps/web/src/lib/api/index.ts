@@ -7,6 +7,7 @@
  *   `closings` (fechamento mensal e PDF) sao REAIS.
  *   Nada do site e simulado: nao ha mais camada de mocks.
  */
+import { getBalancete, setBalance } from "./balancete";
 import { acceptInvitation, changePassword, confirmPasswordReset, getMe, login, logout, requestPasswordReset, switchContext } from "./auth";
 import { getReadiness } from "./health";
 import { listClosings, createClosing, verifyClosing, reopenClosing, downloadClosingPdf } from "./closings";
@@ -122,6 +123,10 @@ export const api: {
     resolve: typeof resolveStaffRequest;
     cancel: typeof cancelStaffRequest;
   };
+  balancete: {
+    get: typeof getBalancete;
+    set: typeof setBalance;
+  };
   closings: {
     list: typeof listClosings;
     create: typeof createClosing;
@@ -225,6 +230,10 @@ export const api: {
     start: startStaffRequest,
     resolve: resolveStaffRequest,
     cancel: cancelStaffRequest,
+  },
+  balancete: {
+    get: getBalancete,
+    set: setBalance,
   },
   closings: {
     list: listClosings,

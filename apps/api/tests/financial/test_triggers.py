@@ -117,6 +117,9 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
         B, {INS}, "assert_active_member"
     ),
     ("bank_statement_lines", "bank_statement_lines_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    # the balances the treasurer types for the balancete (0027)
+    ("balancete_balances", "balancete_balances_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("balancete_balances", "balancete_balances_25_member"): _t(B, {INS}, "assert_active_member"),
     # what the management decided about a statement line (0018)
     ("bank_line_resolutions", "bank_line_resolutions_05_no_update"): _t(B, {UPD}, "forbid_update"),
     ("bank_line_resolutions", "bank_line_resolutions_25_member"): _t(
@@ -198,6 +201,7 @@ AUDITED = [
     "bank_accounts",
     "bank_statement_imports",
     "bank_line_resolutions",
+    "balancete_balances",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -214,6 +218,7 @@ for _table in [
     "bank_statement_imports",
     "bank_statement_lines",
     "bank_line_resolutions",
+    "balancete_balances",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
