@@ -33,6 +33,10 @@ MAX_PAGES = 40
 _LINE = re.compile(r"^\s*(\d{2})/(\d{2})(?:/(\d{4}|\d{2}))?\s+(.*)$")
 _MONEY = re.compile(r"[-+]?\(?(?:R\$)?\s?\d{1,3}(?:\.\d{3})*,\d{2}\)?(?:\s?[CD])?(?![\w,])")
 _YEAR = re.compile(r"\b\d{2}/\d{2}/(\d{4})\b")
+# A balance row ("Saldo Anterior", "S A L D O", "Saldo do dia") is a total, not a movement. The text
+# may start with the branch and the batch (BB prints "0000 00000000 Saldo Anterior"), so skip digits.
+_BALANCE = re.compile(r"^[\d\s]*s\s?a\s?l\s?d\s?o\b", re.IGNORECASE)
+_OPENING = re.compile(r"anterior", re.IGNORECASE)
 _OUT_WORDS = re.compile(
     r"pagamento|pgto|enviad|d[eé]bito|compra|saque|tarifa|\btar\b|taxa|iof|transfer[eê]ncia enviada|pix enviado",
     re.IGNORECASE,
@@ -85,6 +89,8 @@ def parse_pdf(data: bytes) -> OfxStatement:
     found_year = _YEAR.search(text)
     lines: list[OfxLine] = []
     seen: dict[str, int] = {}
+    opening: int | None = None
+    closing: int | None = None
     for raw in text.splitlines():
         match = _LINE.match(raw)
         if match is None:
@@ -107,6 +113,14 @@ def parse_pdf(data: bytes) -> OfxStatement:
         memo = rest[: money[0].start()].strip()
         sign = _sign(token, memo)
         cents = _cents(re.sub(r"[-+()]", "", token), ",")
+        if _BALANCE.match(memo):
+            # Not an entry (it would add the whole balance to the month). Kept only to prove the sum.
+            if sign is not None and cents is not None:
+                if _OPENING.search(memo):
+                    opening = sign * cents
+                else:
+                    closing = sign * cents
+            continue
         if sign is None or cents is None or cents == 0:
             continue
         amount = sign * abs(cents)
@@ -128,6 +142,15 @@ def parse_pdf(data: bytes) -> OfxStatement:
     if not lines:
         raise PdfError("no_lines")
     days = [line.posted_on for line in lines]
+    # The bank's last balance is believed only when it adds up: opening + every line read = closing.
+    # A line left out (no clear sign) or misread makes the sum fail, and then there is no balance.
+    proved = (
+        closing
+        if opening is not None
+        and closing is not None
+        and opening + sum(line.amount_cents for line in lines) == closing
+        else None
+    )
     return OfxStatement(
-        lines=lines, period_start=min(days), period_end=max(days), closing_balance_cents=None
+        lines=lines, period_start=min(days), period_end=max(days), closing_balance_cents=proved
     )

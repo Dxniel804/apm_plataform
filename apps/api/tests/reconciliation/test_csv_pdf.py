@@ -116,6 +116,37 @@ def test_a_pdf_with_text_is_read_and_a_line_without_a_clear_sign_is_left_out() -
     ]
 
 
+# The shape of the statement the Banco do Brasil prints (made-up people and amounts): a balance row
+# at the top and the bottom that are NOT movements, a balance after the last entry of a day.
+_BB_PDF = [
+    "Período do extrato 07 / 2026",
+    "30/06/2026 0000 00000000 Saldo Anterior 1.000,00 C",
+    "01/07/2026 0000 14397821 Pix - Recebido 10.823.332.286.971 30,00 C",
+    "01/07 08:23 11111111111 PESSOA UM",
+    "01/07/2026 0000 13105144 Pix - Enviado 70.101 205,62 D",
+    "01/07 10:28 FORNECEDOR UM",
+    "01/07/2026 0000 13113258 Tarifa Pix Enviado 861.821.200.180.981 2,17 D 822,21 C",
+    "31/07/2026 0000 00000999 S A L D O 822,21 C",
+]
+
+
+def test_the_balance_rows_of_a_pdf_are_not_entries_and_the_closing_balance_is_proved() -> None:
+    statement = parse_pdf(_pdf(_BB_PDF))
+
+    assert [ln.amount_cents for ln in statement.lines] == [3000, -20562, -217]
+    # 1.000,00 + 30,00 - 205,62 - 2,17 = 822,21: the bank's last balance is kept only because it adds up
+    assert statement.closing_balance_cents == 82221
+
+
+def test_a_closing_balance_that_does_not_add_up_is_left_out() -> None:
+    wrong = [ln.replace("S A L D O 822,21 C", "S A L D O 999,99 C") for ln in _BB_PDF]
+
+    statement = parse_pdf(_pdf(wrong))
+
+    assert [ln.amount_cents for ln in statement.lines] == [3000, -20562, -217]
+    assert statement.closing_balance_cents is None
+
+
 def test_a_pdf_without_text_or_without_a_year_is_refused() -> None:
     with pytest.raises(PdfError) as empty:
         parse_pdf(_pdf([]))
