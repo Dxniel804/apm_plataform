@@ -1,9 +1,0 @@
-npm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
-
-added 476 packages in 4s
-npm warn allow-scripts 2 packages have install scripts not yet covered by allowScripts:
-npm warn allow-scripts   fsevents@2.3.3 (install: (install scripts present))
-npm warn allow-scripts   unrs-resolver@1.12.2 (postinstall: node postinstall.js)
-npm warn allow-scripts
-npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
-NPM_EXIT=0
