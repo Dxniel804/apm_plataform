@@ -89,8 +89,8 @@ export function BalanceteCard({ schoolId, canType }: Props) {
   const options = recentPeriods(latest, 36);
   const [period, setPeriod] = useState(options[0]!);
   const [version, setVersion] = useState(0);
-  const key = `${schoolId}|${period}|${version}`;
-  const [loaded, setLoaded] = useState<{ key: string; res: ApiResult<Balancete> } | null>(null);
+  // The sheet stays on the screen while it is read again after a save; it is hidden only when the month changes.
+  const [loaded, setLoaded] = useState<{ period: string; res: ApiResult<Balancete> } | null>(null);
   const [cash, setCash] = useState(0);
   const [invested, setInvested] = useState(0);
   const [startBank, setStartBank] = useState(0);
@@ -104,7 +104,7 @@ export function BalanceteCard({ schoolId, canType }: Props) {
     let cancelled = false;
     void api.balancete.get(schoolId, period).then((res) => {
       if (cancelled) return;
-      setLoaded({ key, res });
+      setLoaded({ period, res });
       if (res.ok) {
         setCash(res.data.closing.cashCents);
         setInvested(res.data.closing.investmentCents);
@@ -113,9 +113,9 @@ export function BalanceteCard({ schoolId, canType }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [schoolId, period, key]);
+  }, [schoolId, period, version]);
 
-  const res = loaded?.key === key ? loaded.res : null;
+  const res = loaded?.period === period ? loaded.res : null;
 
   async function saveMonth() {
     setBusy(true);
