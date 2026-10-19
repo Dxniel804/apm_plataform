@@ -12,7 +12,6 @@ again.
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import Flowable, KeepTogether, Paragraph, Spacer, Table, TableStyle
 
@@ -20,7 +19,7 @@ from app.pdde import tax_id
 from app.pdde.report import program_name
 from app.pdde.schemas import LineOut
 from app.reports.format import brl, local_date, printable
-from app.reports.layout import BAND, INK, MARGIN, MUTED, RULE, build_pdf, para
+from app.reports.layout import BAND, INK, MARGIN, RULE, build_pdf, para
 
 CONTENT = A4[1] - 2 * MARGIN  # landscape
 
@@ -197,13 +196,13 @@ def build_demonstrativo(
 # --- the page ------------------------------------------------------------------------------------
 
 _BOX = [
-    ("BOX", (0, 0), (-1, -1), 0.5, INK),
-    ("INNERGRID", (0, 0), (-1, -1), 0.25, RULE),
+    ("BOX", (0, 0), (-1, -1), 0.5, RULE),
+    ("INNERGRID", (0, 0), (-1, -1), 0.4, RULE),
     ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ("TOPPADDING", (0, 0), (-1, -1), 2),
-    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-    ("LEFTPADDING", (0, 0), (-1, -1), 3),
-    ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+    ("TOPPADDING", (0, 0), (-1, -1), 5),
+    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
 ]
 
 
@@ -211,14 +210,17 @@ def _field(number: str, label: str, value: str = "") -> list[Flowable]:
     return [para(f"{number} – {label}", "small"), para(value or " ", "cell_bold")]
 
 
-def _block(title: str) -> Table:
-    table = Table([[para(title, "head")]], colWidths=[CONTENT])
+def _block(title: str, width: float = CONTENT) -> Table:
+    """The heading of a block: plain bold text over a thin line (no coloured bar), with room above."""
+    table = Table([[para(title, "cell_bold")]], colWidths=[width])
+    table.keepWithNext = True  # a heading never stays alone at the end of a page
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#0b5394")),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.8, INK),
+                ("TOPPADDING", (0, 0), (-1, -1), 14),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ]
         )
     )
@@ -226,12 +228,22 @@ def _block(title: str) -> Table:
 
 
 def _identification(d: Demonstrativo) -> Table:
-    e = d.entity
-    name = e["legal_name"] if e else d.fallback_name
+    return identification_table(d.program_label, d.year, d.entity, d.fallback_name)
+
+
+def identification_table(
+    program_label: str,
+    year: int,
+    e: dict[str, str] | None,
+    fallback_name: str,
+    width: float = CONTENT,
+) -> Table:
+    """Block 1 of the three forms: fields 01 to 07."""
+    name = e["legal_name"] if e else fallback_name
     cells = [
         [
-            _field("01", "Programa/Ação", d.program_label),
-            _field("02", "Exercício", str(d.year)),
+            _field("01", "Programa/Ação", program_label),
+            _field("02", "Exercício", str(year)),
             "",
             "",
         ],
@@ -248,7 +260,7 @@ def _identification(d: Demonstrativo) -> Table:
             "",
         ],
     ]
-    w = CONTENT
+    w = width
     table = Table(cells, colWidths=[w * 0.40, w * 0.25, w * 0.20, w * 0.15])
     table.setStyle(
         TableStyle(
@@ -382,6 +394,31 @@ def _payments(d: Demonstrativo) -> Table:
     return table
 
 
+def signature_block(
+    title: str, place: str, today: date, who: str, width: float = CONTENT
+) -> list[Flowable]:
+    """The authentication block: place and date, the legible name and the signature."""
+    sign = Table(
+        [
+            [
+                para(f"{place or '_______________'}, {local_date(today)}", "cell"),
+                para("_______________________________", "cell"),
+                para("_______________________________", "cell"),
+            ],
+            [
+                para("Local e data", "small"),
+                para(f"Nome legível do(a) dirigente ou {who}", "small"),
+                para(f"Assinatura do(a) dirigente ou {who}", "small"),
+            ],
+        ],
+        colWidths=[width * 0.28, width * 0.36, width * 0.36],
+    )
+    sign.setStyle(
+        TableStyle([("TOPPADDING", (0, 0), (-1, 0), 26), ("LEFTPADDING", (0, 0), (-1, -1), 0)])
+    )
+    return [_block(title, width), sign]
+
+
 def render_pdf(d: Demonstrativo, *, generated_at: datetime, place: str) -> bytes:
     story: list[Flowable] = [
         para("PRESTAÇÃO DE CONTAS", "title"),
@@ -393,51 +430,29 @@ def render_pdf(d: Demonstrativo, *, generated_at: datetime, place: str) -> bytes
             "Modelo de formulário do FNDE (Resolução CD/FNDE nº 15/2021, art. 33), preenchido pelo APM Digital a partir dos lançamentos classificados. Um formulário por programa.",
             "small",
         ),
-        Spacer(1, 4),
+        Spacer(1, 8),
     ]
     if d.notices:
         story.append(para("CONFERIR ANTES DE ASSINAR:", "notice"))
         story.extend(para(f"• {n}", "notice") for n in d.notices)
-        story.append(Spacer(1, 4))
+        story.append(Spacer(1, 6))
     story += [
         _block("BLOCO 1 – IDENTIFICAÇÃO"),
         _identification(d),
-        Spacer(1, 3),
+        Spacer(1, 6),
         _block("BLOCO 2 – SÍNTESE DA EXECUÇÃO DA RECEITA E DA DESPESA (R$)"),
         *_summary(d),
-        para(f"Saldo do ano anterior (campo 08): {SOURCE_NOTE[d.carry_source]}.", "small"),
         Spacer(1, 3),
+        para(f"Saldo do ano anterior (campo 08): {SOURCE_NOTE[d.carry_source]}.", "small"),
+        Spacer(1, 6),
         _block("BLOCO 3 – PAGAMENTOS EFETUADOS"),
         _payments(d),
-        Spacer(1, 6),
+        Spacer(1, 10),
     ]
-    sign = Table(
-        [
-            [para("BLOCO 4 – AUTENTICAÇÃO", "head"), "", ""],
-            [
-                para(f"{place or '_______________'}, {local_date(generated_at.date())}", "cell"),
-                para("_______________________________", "cell"),
-                para("_______________________________", "cell"),
-            ],
-            [
-                para("Local e data", "small"),
-                para("Nome do(a) dirigente ou do representante legal", "small"),
-                para("Assinatura do(a) dirigente ou do representante legal", "small"),
-            ],
-        ],
-        colWidths=[CONTENT * 0.28, CONTENT * 0.36, CONTENT * 0.36],
+    sign = signature_block(
+        "BLOCO 4 – AUTENTICAÇÃO", place, generated_at.date(), "do representante legal"
     )
-    sign.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0b5394")),
-                ("SPAN", (0, 0), (-1, 0)),
-                ("TOPPADDING", (0, 1), (-1, 1), 16),
-                ("TEXTCOLOR", (0, 0), (-1, -1), MUTED),
-            ]
-        )
-    )
-    story.append(KeepTogether([sign]))
+    story.append(KeepTogether(sign))
     return build_pdf(
         story,
         title=f"Demonstrativo {d.program_label} {d.year}",

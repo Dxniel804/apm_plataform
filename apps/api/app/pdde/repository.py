@@ -275,3 +275,24 @@ def school_name(db: Session, school_id: uuid.UUID) -> tuple[str, str]:
         {"school_id": school_id},
     ).one()
     return str(row[0]), str(row[1])
+
+
+def account_with_statement(
+    db: Session, school_id: uuid.UUID, account_id: uuid.UUID, year: int
+) -> Row | None:
+    """A PDDE account and the balance of its latest statement that ends by 31/12 of the year."""
+    return (
+        db.execute(
+            text(
+                "SELECT a.id, a.nickname, a.bank_name, a.account_last4, i.closing_balance_cents, i.period_end "
+                "FROM bank_accounts a LEFT JOIN LATERAL (SELECT x.closing_balance_cents, x.period_end "
+                "  FROM bank_statement_imports x WHERE x.bank_account_id = a.id AND x.school_id = a.school_id "
+                "  AND x.closing_balance_cents IS NOT NULL AND x.period_end <= make_date(:year, 12, 31) "
+                "  ORDER BY x.period_end DESC, x.created_at DESC LIMIT 1) i ON true "
+                "WHERE a.id = :id AND a.school_id = :school_id AND a.purpose = 'PDDE'"
+            ),
+            {"id": account_id, "school_id": school_id, "year": year},
+        )
+        .mappings()
+        .first()
+    )

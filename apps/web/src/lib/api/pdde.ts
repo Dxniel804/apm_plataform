@@ -373,6 +373,16 @@ export function savePddeCarryover(schoolId: string, year: number, input: PddeCar
   return apiSend("POST", `${school(schoolId)}/carryovers`, body, saved, options);
 }
 
+/** Link da Relacao de bens adquiridos ou produzidos (formulario do FNDE), um por programa e ano. */
+export function pddeBensHref(schoolId: string, year: number, program: PddeProgram, programLabel: string | null): string {
+  return `${school(schoolId)}/forms/bens.pdf?year=${year}&program=${program}${programLabel ? `&program_label=${enc(programLabel)}` : ""}`;
+}
+
+/** Link da Conciliacao bancaria (formulario do FNDE), uma por conta do PDDE e ano. */
+export function pddeConciliacaoHref(schoolId: string, year: number, accountId: string): string {
+  return `${school(schoolId)}/forms/conciliacao.pdf?year=${year}&account_id=${enc(accountId)}`;
+}
+
 /** Link do formulario oficial do FNDE (Demonstrativo), um por programa e ano (navegacao, nao fetch). */
 export function pddeDemonstrativoHref(schoolId: string, year: number, program: PddeProgram, programLabel: string | null): string {
   return `${school(schoolId)}/forms/demonstrativo.pdf?year=${year}&program=${program}${programLabel ? `&program_label=${enc(programLabel)}` : ""}`;

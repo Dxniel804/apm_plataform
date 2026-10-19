@@ -9,6 +9,8 @@ import { FormsSetup } from "@/components/pdde/FormsSetup";
 import { api } from "@/lib/api";
 import type { ApiError, ApiResult } from "@/lib/api/types";
 import {
+  pddeBensHref,
+  pddeConciliacaoHref,
   pddeDemonstrativoHref,
   pddeReportHref,
   type PddeAlert,
@@ -421,6 +423,15 @@ export function PddeArea({ schoolId }: Props) {
           <>
             <Alerts alerts={y.data.alerts} />
             <FormsSetup schoolId={schoolId} year={year} />
+            {y.data.accounts.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {y.data.accounts.map((a) => (
+                  <a key={a.id} className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeConciliacaoHref(schoolId, year, a.id)} download>
+                    Conciliação bancária: {a.nickname} (PDF)
+                  </a>
+                ))}
+              </div>
+            )}
             {y.data.programs.length > 0 && (
               <ul aria-label="Saldo por programa" className="mt-4 grid gap-3 sm:grid-cols-2">
                 {y.data.programs.map((p) => (
@@ -430,9 +441,14 @@ export function PddeArea({ schoolId }: Props) {
                       Recebido {formatBRL(p.receivedCents)}{p.yieldCents > 0 ? ` · rendimento ${formatBRL(p.yieldCents)}` : ""}{p.returnedCents > 0 ? ` · devolvido ${formatBRL(p.returnedCents)}` : ""} · custeio {formatBRL(p.spentCusteioCents)} · capital {formatBRL(p.spentCapitalCents)}
                     </p>
                     <p className="text-[1.125rem] font-bold tabular-nums text-brand-800">Saldo {formatBRL(p.balanceCents)}</p>
-                    <a className="mt-2 inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeDemonstrativoHref(schoolId, year, p.program, p.programLabel)} download>
-                      Formulário do FNDE (PDF)
-                    </a>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <a className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeDemonstrativoHref(schoolId, year, p.program, p.programLabel)} download>
+                        Formulário do FNDE (PDF)
+                      </a>
+                      <a className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeBensHref(schoolId, year, p.program, p.programLabel)} download>
+                        Relação de bens (PDF)
+                      </a>
+                    </div>
                   </li>
                 ))}
               </ul>

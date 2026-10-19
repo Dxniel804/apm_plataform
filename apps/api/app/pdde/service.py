@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, not_found
 from app.expenses.db_errors import database_rules
-from app.pdde import forms, repository
+from app.pdde import forms, forms_more, repository
 from app.pdde.schemas import (
     AccountOut,
     AlertOut,
@@ -415,3 +415,58 @@ def demonstrativo_pdf(
         entity=None if entity is None else {k: str(v) for k, v in entity.items()}, fallback_name=apm,
     )  # fmt: skip
     return forms.render_pdf(form, generated_at=generated_at, place=entity["city"] if entity else "")
+
+
+def _entity_dict(db: Session, scope: SchoolScope) -> dict[str, str] | None:
+    entity = repository.latest_entity(db, scope.school_id)
+    return None if entity is None else {k: str(v) for k, v in entity.items()}
+
+
+def goods_pdf(
+    db: Session,
+    scope: SchoolScope,
+    year: int,
+    program: str,
+    label: str | None,
+    generated_at: dt.datetime,
+) -> bytes:
+    """The list of goods of a program and year. A program with nothing in the year is a 404."""
+    lines = year_lines(db, scope.school_id, year)
+    carry, _ = prior_balances(db, scope, year)
+    if not any(forms._same(ln, program, label) for ln in lines) and (program, label) not in carry:
+        raise not_found()
+    entity = _entity_dict(db, scope)
+    apm, _school = repository.school_name(db, scope.school_id)
+    goods = forms_more.build_goods(
+        lines=lines, program=program, label=label, year=year, entity=entity, fallback_name=apm
+    )
+    return forms_more.render_goods(
+        goods, generated_at=generated_at, place=entity["city"] if entity else ""
+    )
+
+
+def reconciliation_pdf(
+    db: Session, scope: SchoolScope, year: int, account_id: uuid.UUID, generated_at: dt.datetime
+) -> bytes:
+    """The bank reconciliation of one PDDE account (a 404 for any other account)."""
+    account = repository.account_with_statement(db, scope.school_id, account_id, year)
+    if account is None:
+        raise not_found()
+    lines = year_lines(db, scope.school_id, year)
+    carry, _ = prior_balances(db, scope, year)
+    programs, _alerts = balances(lines, carry)
+    # The balance carried from the year before is by program, not by account: the conference is made only when
+    # the school has one PDDE account.
+    one_account = len(repository.accounts(db, scope.school_id)) == 1
+    entity = _entity_dict(db, scope)
+    apm, _school = repository.school_name(db, scope.school_id)
+    reconciliation = forms_more.build_reconciliation(
+        lines=lines, account_id=account_id, year=year, bank_name=account["bank_name"],
+        account_last4=account["account_last4"], statement_date=account["period_end"],
+        statement_cents=None if account["closing_balance_cents"] is None else int(account["closing_balance_cents"]),
+        program_balance_sum=sum(p.balance_cents for p in programs) if one_account else None,
+        entity=entity, fallback_name=apm,
+    )  # fmt: skip
+    return forms_more.render_reconciliation(
+        reconciliation, generated_at=generated_at, place=entity["city"] if entity else ""
+    )

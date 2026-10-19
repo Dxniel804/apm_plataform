@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCarryovers, parseEntity, parseMonth, parseYear, pddeDemonstrativoHref, pddeReportHref } from "./pdde";
+import { parseCarryovers, parseEntity, parseMonth, parseYear, pddeBensHref, pddeConciliacaoHref, pddeDemonstrativoHref, pddeReportHref } from "./pdde";
 
 const doc = (over: Record<string, unknown> = {}) => ({ id: "d1", doc_kind: "NFE", access_key: "1".repeat(44), doc_number: null, issued_on: "2025-03-19", vendor: "Papelaria", amount_cents: 100_000, stamped: true, voided: false, ...over });
 const line = (over: Record<string, unknown> = {}) => ({
@@ -93,6 +93,14 @@ describe("o que o formulario do FNDE pede", () => {
   it("le rendimento e devolucao", () => {
     const m = parseMonth(month({ lines: [line({ amount_cents: 1234, classification: { kind: "YIELD", program: "BASICO", program_label: null, economic_category: "CUSTEIO", object: null, note: null } })] }));
     expect(m?.lines[0]?.classification?.kind).toBe("YIELD");
+  });
+});
+
+describe("os outros dois formularios", () => {
+  it("a relacao de bens leva o programa e o ano; a conciliacao, a conta", () => {
+    expect(pddeBensHref("a b", 2025, "BASICO", null)).toBe("/api/v1/schools/a%20b/pdde/forms/bens.pdf?year=2025&program=BASICO");
+    expect(pddeBensHref("s", 2025, "OUTRO", "PDDE Mais")).toContain("program_label=PDDE%20Mais");
+    expect(pddeConciliacaoHref("s", 2025, "acc 1")).toBe("/api/v1/schools/s/pdde/forms/conciliacao.pdf?year=2025&account_id=acc%201");
   });
 });
 

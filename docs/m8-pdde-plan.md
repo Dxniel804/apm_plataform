@@ -23,7 +23,11 @@ O FNDE publica os formulários de prestação de contas (gov.br/fnde, "Resoluç�
 
 **O que o formulário não esconde:** o que os dados não preenchem fica em branco e entra na lista "CONFERIR ANTES DE ASSINAR" no topo: entidade sem dados, repasses sem custeio ou capital (não entram nas colunas), lançamentos sem classificação, pagamento sem documento ou sem CNPJ/CPF do favorecido, saldo do ano anterior em zero ou calculado.
 
-**Ainda não feito:** a Relação de bens (os campos de quantidade e especificação já são guardados), a Conciliação bancária, o Rol de materiais, a Consolidação de pesquisa de preços e o Termo de Doação. A Resolução 15/2021 diz que o demonstrativo segue "o modelo previsto no SiGPC": confira com uma prestação real entregue pela escola e com a prefeitura.
+**Os outros dois formulários (feitos):** a **Relação de bens adquiridos ou produzidos** (`GET .../pdde/forms/bens.pdf?year=&program=`, só bens de capital, uma linha por documento, valor unitário = valor do documento ÷ quantidade só quando a divisão é exata) e a **Conciliação bancária** (`GET .../pdde/forms/conciliacao.pdf?year=&account_id=`, uma conta do PDDE por formulário: banco, final da conta, saldo do último extrato importado até 31/12). Na conciliação, os campos 09 (agência) e 10 (conta inteira) e os campos 12 a 16 **ficam para a mão**: o sistema só guarda os últimos dígitos da conta e não adivinha créditos, débitos ou notas a pagar fora do extrato. Fora do formulário, uma **conferência do sistema** compara o saldo do extrato com a soma dos saldos dos programas (campo 15 de cada formulário) mais o que ainda não foi classificado, e diz "Bate" ou "Não bate" (só quando a escola tem uma conta do PDDE: o saldo do ano anterior é por programa, não por conta).
+
+**Visual (19/10):** os três formulários seguem o desenho do FNDE (blocos e campos numerados), sem barras coloridas: o título de cada bloco é texto em negrito sobre uma linha fina, com mais espaço entre os blocos e dentro das células.
+
+**Ainda não feito (e fora do alcance do sistema):** o Rol de materiais, a Consolidação de pesquisa de preços (precisam dos três orçamentos) e o Termo de Doação. A Resolução 15/2021 diz que o demonstrativo segue "o modelo previsto no SiGPC": confira com uma prestação real entregue pela escola e com a prefeitura.
 
 ## 1. Fontes lidas
 - Resolução CD/FNDE nº 17/2024 (PDDE Equidade): `fnde_modelooficial.pdf` na raiz do repositório.

@@ -139,13 +139,15 @@ describe("PddeArea: o formulario oficial", () => {
   it("cada programa tem o link do formulario do FNDE e a entidade faltando e avisada", async () => {
     setup(
       month([line()]),
-      year({ programs: [{ program: "BASICO", program_label: null, received_cents: 100_000, yield_cents: 1234, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 0, balance_cents: 101_234 }] }),
+      year({ accounts: [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }], programs: [{ program: "BASICO", program_label: null, received_cents: 100_000, yield_cents: 1234, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 0, balance_cents: 101_234 }] }),
     );
 
     const link = await screen.findByRole("link", { name: "Formulário do FNDE (PDF)" });
     expect(link).toHaveAttribute("href", expect.stringContaining("/pdde/forms/demonstrativo.pdf?year="));
     expect(link).toHaveAttribute("href", expect.stringContaining("program=BASICO"));
     expect(screen.getByText(/rendimento R\$ 12,34/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conciliação bancária: PDDE (PDF)" })).toHaveAttribute("href", expect.stringMatching(/\/pdde\/forms\/conciliacao\.pdf\?year=\d{4}&account_id=a1$/));
+    expect(screen.getByRole("link", { name: "Relação de bens (PDF)" })).toHaveAttribute("href", expect.stringContaining("/pdde/forms/bens.pdf?year="));
     expect(await screen.findByText(/Dados da entidade para os formulários \(faltam\)/)).toBeInTheDocument();
   });
 

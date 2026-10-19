@@ -164,3 +164,29 @@ def demonstrativo(
         )
     pdf = service.demonstrativo_pdf(db, scope, year, program, program_label, datetime.now(UTC))
     return _file(pdf, "application/pdf", f"demonstrativo-{program.lower()}-{year}.pdf")
+
+
+@router.get("/forms/bens.pdf", operation_id="pdde_form_goods", response_class=Response,
+            summary="The official form of the FNDE (Relação de bens), one program and one year",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def goods(
+    scope: Manage, db: TenantDb, year: Year, program: Program,
+    program_label: Annotated[str | None, Query(max_length=60)] = None,
+) -> Response:  # fmt: skip
+    if (program == "OUTRO") != (program_label is not None):
+        raise ProblemError(
+            422,
+            "validation_error",
+            "Invalid request",
+            errors=[{"field": "program_label", "code": "required_only_for_other"}],
+        )
+    pdf = service.goods_pdf(db, scope, year, program, program_label, datetime.now(UTC))
+    return _file(pdf, "application/pdf", f"relacao-de-bens-{program.lower()}-{year}.pdf")
+
+
+@router.get("/forms/conciliacao.pdf", operation_id="pdde_form_reconciliation", response_class=Response,
+            summary="The official form of the FNDE (Conciliação bancária), one PDDE account and one year",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def reconciliation(scope: Manage, db: TenantDb, year: Year, account_id: UUID) -> Response:
+    pdf = service.reconciliation_pdf(db, scope, year, account_id, datetime.now(UTC))
+    return _file(pdf, "application/pdf", f"conciliacao-bancaria-pdde-{year}.pdf")
