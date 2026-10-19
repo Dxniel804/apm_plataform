@@ -218,7 +218,7 @@ def test_a_first_secretaria_makes_the_empty_school_and_gets_a_session(
         "orgs": 1,
         "schools": 1,
         "settings": 1,
-        "categories": 21,
+        "categories": 22,
         "memberships": 1,
     }
     me = api.get("/api/v1/auth/me")
@@ -274,7 +274,7 @@ def test_the_notice_makes_the_school_before_anybody_comes_and_an_employee_may_en
         "orgs": 1,
         "schools": 1,
         "settings": 1,
-        "categories": 21,
+        "categories": 22,
         "memberships": 0,
     }
 

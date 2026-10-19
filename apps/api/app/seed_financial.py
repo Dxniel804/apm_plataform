@@ -60,6 +60,8 @@ DEFAULT_CATEGORIES: tuple[tuple[str, str, str, str], ...] = (
     ),
     ("capital_furniture", "Compra de móveis", "OUT", "EXPENSES_REIMBURSEMENTS"),
     ("capital_equipment", "Compra de máquinas e equipamentos", "OUT", "EXPENSES_REIMBURSEMENTS"),
+    # The payment of the taxes held back from the services (0029).
+    ("tax_payments", "Impostos retidos e tributos pagos", "OUT", "EXPENSES_REIMBURSEMENTS"),
 )
 
 # The categories whose expenses need no approver (the bank fees: the bank already took the money).

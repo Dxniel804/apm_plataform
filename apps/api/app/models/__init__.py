@@ -35,6 +35,7 @@ from app.models.reconciliation import (
 )
 from app.models.school import School, SchoolSlugHistory
 from app.models.staff_requests import StaffRequest, StaffRequestAttachment
+from app.models.tax import TaxRetention, TaxRule
 from app.models.user import User
 
 __all__ = [
@@ -70,6 +71,8 @@ __all__ = [
     "SchoolSlugHistory",
     "StaffRequest",
     "StaffRequestAttachment",
+    "TaxRetention",
+    "TaxRule",
     "User",
     "UserSession",
     "WebhookEvent",

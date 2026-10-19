@@ -8,6 +8,7 @@
  *   Nada do site e simulado: nao ha mais camada de mocks.
  */
 import { getBalancete, setBalance } from "./balancete";
+import { addTaxRetention, getTaxMonth, getTaxRules, previewTax, saveTaxRule, voidTaxRetention } from "./tax";
 import { addPddeDocument, classifyPddeLine, getPddeMonth, getPddeYear, voidPddeDocument } from "./pdde";
 import { acceptInvitation, changePassword, confirmPasswordReset, getMe, login, logout, requestPasswordReset, switchContext } from "./auth";
 import { getReadiness } from "./health";
@@ -128,6 +129,14 @@ export const api: {
     get: typeof getBalancete;
     set: typeof setBalance;
   };
+  tax: {
+    rules: typeof getTaxRules;
+    month: typeof getTaxMonth;
+    saveRule: typeof saveTaxRule;
+    preview: typeof previewTax;
+    addRetention: typeof addTaxRetention;
+    voidRetention: typeof voidTaxRetention;
+  };
   pdde: {
     month: typeof getPddeMonth;
     year: typeof getPddeYear;
@@ -242,6 +251,14 @@ export const api: {
   balancete: {
     get: getBalancete,
     set: setBalance,
+  },
+  tax: {
+    rules: getTaxRules,
+    month: getTaxMonth,
+    saveRule: saveTaxRule,
+    preview: previewTax,
+    addRetention: addTaxRetention,
+    voidRetention: voidTaxRetention,
   },
   pdde: {
     month: getPddeMonth,

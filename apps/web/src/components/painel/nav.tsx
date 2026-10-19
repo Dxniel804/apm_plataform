@@ -116,6 +116,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       icon: <BankIcon size={22} />,
     });
   }
+  if (areas.closeMonths) {
+    items.push({
+      area: "impostos",
+      label: "Impostos",
+      href: areaHref("impostos"),
+      icon: <CalendarCheckIcon size={22} />,
+    });
+  }
   if (areas.manageTeam) {
     items.push({
       area: "equipe",

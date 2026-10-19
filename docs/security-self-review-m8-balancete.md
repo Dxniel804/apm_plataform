@@ -39,3 +39,6 @@ as rotas de `/balancete` e `/pdde`, os relatórios (PDF e planilha) e o leitor d
 ## O que NÃO foi testado
 Produção (banco real, Dokploy, domínio), carga, restauração de backup, o leitor com OFX e CSV reais (só o PDF
 de julho do Banco do Brasil foi usado), o PDF de agosto (é imagem e o leitor recusa de propósito).
+
+## Adendo: impostos retidos (migração 0029, 2026-10-19)
+Mesmo padrão: `tax_rules` e `tax_retentions` com RLS forçada, só inserem (a retenção só muda as colunas de anulação), funções de gatilho sem `PUBLIC`, nenhuma função `SECURITY DEFINER`, auditoria que não copia texto livre, rotas só com `months:close` (testado por papel), outra escola recebe 404 ao usar uma regra alheia (chave composta `(rule_id, school_id)`). O cálculo é aritmética de inteiros (sem ponto flutuante). **Risco de produto, não de código:** uma regra errada gera um valor errado; por isso nada vem preenchido como verdade, a validação da contadora é um ato registrado (quem e quando) e a guia avisa enquanto a regra não for validada. Não guarda CPF nem CNPJ de quem recebeu. Não testado: a navegação real até o site da Receita (o endereço fica numa constante para conferir).

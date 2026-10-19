@@ -30,7 +30,9 @@ CAMPAIGN_TABLES = (
     "balancete_balances",
     "pdde_classifications",
     "pdde_documents",
-)  # 0013, 0014, 0016, 0027, 0028
+    "tax_rules",
+    "tax_retentions",
+)  # 0013, 0014, 0016, 0027, 0028, 0029
 
 
 def _constraint(error: IntegrityError) -> str:

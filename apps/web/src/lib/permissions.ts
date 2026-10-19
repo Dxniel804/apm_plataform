@@ -50,7 +50,7 @@ export function areasFor(permissions: readonly string[]): Areas {
   };
 }
 
-export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "conciliacao" | "pdde" | "equipe" | "configuracoes" | "fechamento" | "conta";
+export type PainelArea = "resumo" | "despesas" | "solicitacoes" | "campanhas" | "conciliacao" | "pdde" | "impostos" | "equipe" | "configuracoes" | "fechamento" | "conta";
 
 export function areaHref(area: PainelArea, params: { period?: string; tab?: "minhas" } = {}): string {
   const base = area === "resumo" ? "/painel" : `/painel/${area}`;

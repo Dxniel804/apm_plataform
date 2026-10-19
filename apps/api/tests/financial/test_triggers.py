@@ -117,6 +117,12 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
         B, {INS}, "assert_active_member"
     ),
     ("bank_statement_lines", "bank_statement_lines_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    # the tax guides (0029)
+    ("tax_rules", "tax_rules_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("tax_rules", "tax_rules_25_member"): _t(B, {INS}, "assert_active_member"),
+    ("tax_retentions", "tax_retentions_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("tax_retentions", "tax_retentions_20_check"): _t(B, {INS}, "tax_retentions_check"),
+    ("tax_retentions", "tax_retentions_25_member"): _t(B, {INS}, "assert_active_member"),
     # the PDDE accountability layer (0028)
     ("pdde_classifications", "pdde_classifications_05_no_update"): _t(B, {UPD}, "forbid_update"),
     ("pdde_classifications", "pdde_classifications_20_check"): _t(
@@ -215,6 +221,8 @@ AUDITED = [
     "balancete_balances",
     "pdde_classifications",
     "pdde_documents",
+    "tax_rules",
+    "tax_retentions",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -234,6 +242,8 @@ for _table in [
     "balancete_balances",
     "pdde_classifications",
     "pdde_documents",
+    "tax_rules",
+    "tax_retentions",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
@@ -326,6 +336,8 @@ EXPECTED_FUNCTIONS = {
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
     # the PDDE accountability layer (0028)
     "pdde_classifications_check", "pdde_documents_check",
+    # the tax guides (0029)
+    "tax_retentions_check",
 }  # fmt: skip
 # The only SECURITY DEFINER functions of the schema (ADR-016, 018 and 019, owned by apm_definer; the financial
 # schema has none). tests/test_app_role.py asserts their owner, search_path and who may execute them.

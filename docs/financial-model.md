@@ -351,6 +351,13 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | `bank_line_resolutions` (0018, what the management decided about a line) | `bank_line_resolutions_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a line is resolved once) |
 | | `bank_line_resolutions_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `bank_line_resolutions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the reason is audited by name only) |
+| `tax_rules` (0029, how the school works out a retention: rate, cap, guide code, due day; validated by whom) | `tax_rules_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a change is a new row of the same key and the latest counts) |
+| | `tax_rules_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `tax_rules_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the label, the instructions and the source are audited by name only) |
+| `tax_retentions` (0029, a tax held back from a service the APM paid) | `tax_retentions_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: only `voided_at` and `voided_by_user_id` change (voided, never deleted) |
+| | `tax_retentions_20_check` | BEFORE INSERT | `tax_retentions_check`: the rule is one of this school and applies to this kind of provider |
+| | `tax_retentions_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `tax_retentions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the name and the note are audited by name only) |
 | `pdde_classifications` (0028, what the management decided about a line of the PDDE bank account) | `pdde_classifications_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a correction is a new row and the latest counts) |
 | | `pdde_classifications_20_check` | BEFORE INSERT | `pdde_classifications_check`: only a line of an account whose purpose is PDDE; a transfer is money in and an expense is money out |
 | | `pdde_classifications_25_member` | BEFORE INSERT | `assert_active_member` |

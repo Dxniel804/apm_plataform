@@ -24,6 +24,7 @@ from app.routers.api import api_router
 from app.school_settings.router import router as school_settings_router
 from app.staff_requests.router import router as staff_requests_router
 from app.statement.routes import router as statement_router
+from app.tax.router import router as tax_router
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ def create_app(
     app.include_router(school_settings_router, prefix="/api/v1")  # settings and public link (0015)
     app.include_router(reconciliation_router, prefix="/api/v1")  # bank reconciliation (0017)
     app.include_router(pdde_router, prefix="/api/v1")  # PDDE accountability (0028)
+    app.include_router(tax_router, prefix="/api/v1")  # tax guides (0029)
     app.include_router(statement_router)
     app.include_router(closing_router)
     app.include_router(reports_router)

@@ -49,6 +49,8 @@ CAMPAIGN_TABLES = (
     "balancete_balances",
     "pdde_classifications",
     "pdde_documents",
+    "tax_rules",
+    "tax_retentions",
 )
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
@@ -199,6 +201,12 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("pdde_documents", "pdde_documents_select", "SELECT", "public"),
         ("pdde_documents", "pdde_documents_insert", "INSERT", "public"),
         ("pdde_documents", "pdde_documents_update", "UPDATE", "public"),
+        # 0029: the tax rules (insert-only) and the retentions (voidable).
+        ("tax_rules", "tax_rules_select", "SELECT", "public"),
+        ("tax_rules", "tax_rules_insert", "INSERT", "public"),
+        ("tax_retentions", "tax_retentions_select", "SELECT", "public"),
+        ("tax_retentions", "tax_retentions_insert", "INSERT", "public"),
+        ("tax_retentions", "tax_retentions_update", "UPDATE", "public"),
     }
 )
 
