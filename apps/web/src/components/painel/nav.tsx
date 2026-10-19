@@ -108,6 +108,14 @@ export function navFor(areas: Areas, period?: string, options: { statement?: boo
       icon: <BankIcon size={22} />,
     });
   }
+  if (areas.manageReconciliation) {
+    items.push({
+      area: "pdde",
+      label: "PDDE",
+      href: areaHref("pdde"),
+      icon: <BankIcon size={22} />,
+    });
+  }
   if (areas.manageTeam) {
     items.push({
       area: "equipe",

@@ -2,6 +2,20 @@
 
 Escrito em 2026-10-15. **Sem código.** Marcado como **[CONFIRMADO]** o que está nos documentos oficiais lidos, **[SUPOSIÇÃO]** o que eu deduzi e **[ABERTO]** o que só as respostas da APM resolvem.
 
+## 0. Estado em 19/10/2026: construído (migração 0028) e o que mudou desde o rascunho
+
+**Entregue (local, aguardando revisão):** a Opção A, a camada de classificação por cima das linhas do extrato da conta de finalidade PDDE. Tabelas `pdde_classifications` (só insere; vale a última decisão) e `pdde_documents` (anula, nunca apaga; os documentos de uma linha nunca somam mais que ela), API em `/schools/{id}/pdde/*` (`lines`, `summary`, classificar, documento, anular, `report.csv` e `report.pdf`), tela "PDDE" no painel e avisos. Usa a permissão `reconciliation:manage` (quem cuida das contas classifica as linhas), não uma nova.
+
+**Correções ao rascunho abaixo (fontes oficiais lidas em 19/10):**
+- A Resolução CD/FNDE 17/2024 (Equidade) foi **revogada pela Resolução 8/2026** (7/5/2026, art. 18, IV). Os eixos são SRM, Água/Campo/Agroecologia e Diversidades; a prestação continua igual (art. 13: a UEx classifica o extrato no BB Gestão Ágil; a prefeitura julga no SiGPC). O carimbo "Pagos com recursos do PDDE Equidade", seguido do nome do eixo, está no art. 12, IV, f.
+- **Básico (Res. 15/2021, lida):** usos do art. 4º (material permanente, pequenos reparos, material de consumo, avaliação de aprendizagem, projeto pedagógico, atividades educacionais); **vedado** tarifa bancária, pessoal, aluguel/telefone/água/luz e tributos que não incidam sobre a compra (art. 4º, § 2º); conta isenta de tarifas (art. 16, § 2º); duas parcelas (até 30/04 e 30/09); rendimentos voltam ao programa (art. 18, § 3º); prestação à prefeitura até 30/04 do ano seguinte, com demonstrativo, extratos, **conciliação bancária do saldo de 31/12**, cópias "Confere com o original" e atas (arts. 32 e 33); originais guardados por 5 anos após a aprovação (art. 28); parecer "aprovada com ressalva" quando custeio é usado em capital ou o contrário (art. 33, § 4º, b).
+- **Qualidade:** é o PDDE Mais Qualidade (Res. 17/2025), só para escolas selecionadas, nos moldes da 15/2021. **Educação Conectada:** Res. 9/2018, plano de aplicação com itens de custeio e capital, parcela única, rendimentos no programa.
+- A APM recebe Básico, Equidade, Qualidade e Conectado (resposta de 19/10).
+
+**Decisões tomadas (sem poder perguntar):** os programas são uma lista fixa de quatro mais "Outro programa" com nome livre; o **objeto** da despesa é texto livre (as portarias de categorias do BB Gestão Ágil pedem login e não foram lidas, então o sistema não finge conhecê-las); os repasses podem dizer se são custeio ou capital, e o gasto acima do recebido em uma categoria avisa; a tarifa bancária na conta do PDDE e a falta do extrato de dezembro avisam; o prazo de 30/04 é o da lei, mas a prefeitura define o da escola.
+
+**Não fez / aberto:** o objeto em lista oficial (precisa das portarias); estorno de uma despesa já classificada (REFUND só marca a linha); conferir o texto do carimbo em PDF anexado (não há OCR); ligar a despesa lançada no sistema à classificação (M8e).
+
 ## 1. Fontes lidas
 - Resolução CD/FNDE nº 17/2024 (PDDE Equidade): `fnde_modelooficial.pdf` na raiz do repositório.
 - Manual do BB Gestão Ágil, PDDE e Ações Integradas, FNDE, 1ª edição, outubro de 2024.

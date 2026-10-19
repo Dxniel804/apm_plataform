@@ -117,6 +117,17 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
         B, {INS}, "assert_active_member"
     ),
     ("bank_statement_lines", "bank_statement_lines_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    # the PDDE accountability layer (0028)
+    ("pdde_classifications", "pdde_classifications_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("pdde_classifications", "pdde_classifications_20_check"): _t(
+        B, {INS}, "pdde_classifications_check"
+    ),
+    ("pdde_classifications", "pdde_classifications_25_member"): _t(
+        B, {INS}, "assert_active_member"
+    ),
+    ("pdde_documents", "pdde_documents_05_immutable"): _t(B, {UPD}, "assert_immutable_columns"),
+    ("pdde_documents", "pdde_documents_20_check"): _t(B, {INS}, "pdde_documents_check"),
+    ("pdde_documents", "pdde_documents_25_member"): _t(B, {INS}, "assert_active_member"),
     # the balances the treasurer types for the balancete (0027)
     ("balancete_balances", "balancete_balances_05_no_update"): _t(B, {UPD}, "forbid_update"),
     ("balancete_balances", "balancete_balances_25_member"): _t(B, {INS}, "assert_active_member"),
@@ -202,6 +213,8 @@ AUDITED = [
     "bank_statement_imports",
     "bank_line_resolutions",
     "balancete_balances",
+    "pdde_classifications",
+    "pdde_documents",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -219,6 +232,8 @@ for _table in [
     "bank_statement_lines",
     "bank_line_resolutions",
     "balancete_balances",
+    "pdde_classifications",
+    "pdde_documents",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(
@@ -309,6 +324,8 @@ EXPECTED_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
+    # the PDDE accountability layer (0028)
+    "pdde_classifications_check", "pdde_documents_check",
 }  # fmt: skip
 # The only SECURITY DEFINER functions of the schema (ADR-016, 018 and 019, owned by apm_definer; the financial
 # schema has none). tests/test_app_role.py asserts their owner, search_path and who may execute them.

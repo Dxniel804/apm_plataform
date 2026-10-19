@@ -40,7 +40,7 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
             ? areas.requests
             : area === "campanhas"
               ? areas.manageCampaigns
-              : area === "conciliacao"
+              : area === "conciliacao" || area === "pdde"
                 ? areas.manageReconciliation
                 : area === "equipe"
                   ? areas.manageTeam

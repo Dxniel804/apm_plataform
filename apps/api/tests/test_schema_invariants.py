@@ -28,7 +28,9 @@ CAMPAIGN_TABLES = (
     "bank_statement_lines",
     "bank_line_resolutions",
     "balancete_balances",
-)  # 0013, 0014, 0016, 0027
+    "pdde_classifications",
+    "pdde_documents",
+)  # 0013, 0014, 0016, 0027, 0028
 
 
 def _constraint(error: IntegrityError) -> str:

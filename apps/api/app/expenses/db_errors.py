@@ -30,6 +30,11 @@ _BY_CONSTRAINT: dict[str, tuple[int, str, str]] = {
         "attachment_duplicate",
         "This file is already attached",
     ),
+    "uq_pdde_documents_school_id_access_key": (
+        409,
+        "document_key_used",
+        "This NF-e is already the proof of another line",
+    ),
     "pk_school_slug_history": (
         409,
         "slug_taken",

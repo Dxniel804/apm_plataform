@@ -301,6 +301,8 @@ FINANCIAL_TRIGGER_FUNCTIONS = (
     "contribution_items_copy_cost", "campaign_deliveries_check",
     # the fee of the gateway (0016)
     "contribution_fees_check",
+    # the PDDE accountability layer (0028)
+    "pdde_classifications_check", "pdde_documents_check",
 )  # fmt: skip
 FUNCTIONS.update(
     {
@@ -501,8 +503,8 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + the 7 of the Forklin sign-in (0023)
     # + the 4 of the school identity (0024: 2 of the application, 2 of the definer)
     # + the 2 of the revocation by the Central (0025, both of the definer)
-    # + the 2 of the balancete balances (0027)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2
+    # + the 2 of the balancete balances (0027) + the 5 of the PDDE (0028)
+    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
@@ -652,6 +654,8 @@ def test_application_role_table_privileges_are_exactly_these(admin_engine: Engin
                     "bank_statement_lines",
                     "bank_line_resolutions",
                     "balancete_balances",
+                    "pdde_classifications",
+                    "pdde_documents",
                 ]
             },
         ).all()

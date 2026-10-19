@@ -8,6 +8,7 @@
  *   Nada do site e simulado: nao ha mais camada de mocks.
  */
 import { getBalancete, setBalance } from "./balancete";
+import { addPddeDocument, classifyPddeLine, getPddeMonth, getPddeYear, voidPddeDocument } from "./pdde";
 import { acceptInvitation, changePassword, confirmPasswordReset, getMe, login, logout, requestPasswordReset, switchContext } from "./auth";
 import { getReadiness } from "./health";
 import { listClosings, createClosing, verifyClosing, reopenClosing, downloadClosingPdf } from "./closings";
@@ -127,6 +128,13 @@ export const api: {
     get: typeof getBalancete;
     set: typeof setBalance;
   };
+  pdde: {
+    month: typeof getPddeMonth;
+    year: typeof getPddeYear;
+    classify: typeof classifyPddeLine;
+    addDocument: typeof addPddeDocument;
+    voidDocument: typeof voidPddeDocument;
+  };
   closings: {
     list: typeof listClosings;
     create: typeof createClosing;
@@ -234,6 +242,13 @@ export const api: {
   balancete: {
     get: getBalancete,
     set: setBalance,
+  },
+  pdde: {
+    month: getPddeMonth,
+    year: getPddeYear,
+    classify: classifyPddeLine,
+    addDocument: addPddeDocument,
+    voidDocument: voidPddeDocument,
   },
   closings: {
     list: listClosings,

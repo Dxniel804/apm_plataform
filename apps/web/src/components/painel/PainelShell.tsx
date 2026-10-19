@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { ExpensesArea } from "@/components/despesas/ExpensesArea";
 import { ClosingsArea } from "@/components/fechamento/ClosingsArea";
 import { ReconciliationArea } from "@/components/conciliacao/ReconciliationArea";
+import { PddeArea } from "@/components/pdde/PddeArea";
 import { SettingsArea } from "@/components/configuracoes/SettingsArea";
 import { CampaignsArea } from "@/components/personalizacao/CampaignsArea";
 import { TeamArea } from "@/components/equipe/TeamArea";
@@ -207,6 +208,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <CampaignsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} campaignId={campaignId} tab={campaignTab} />
           ) : shownArea === "conciliacao" ? (
             <ReconciliationArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
+          ) : shownArea === "pdde" ? (
+            <PddeArea key={schoolId} schoolId={schoolId} />
           ) : shownArea === "equipe" ? (
             <TeamArea key={schoolId} />
           ) : shownArea === "configuracoes" ? (
@@ -242,6 +245,7 @@ function titleFor(area: PainelArea, section: PainelSection, manageExpenses: bool
   if (area === "campanhas") return { title: "Campanhas", icon: <BagIcon size={20} /> };
   if (area === "fechamento") return { title: "Fechamento", icon: <CalendarCheckIcon size={20} /> };
   if (area === "conciliacao") return { title: "Conciliação", icon: <BankIcon size={20} /> };
+  if (area === "pdde") return { title: "PDDE", icon: <BankIcon size={20} /> };
   if (area === "equipe") return { title: "Equipe", icon: <PeopleIcon size={20} /> };
   if (area === "configuracoes") return { title: "Configurações", icon: <SettingsIcon size={20} /> };
   if (section === "resumo") return { title: "Dashboard", icon: <BarChartIcon size={20} /> };

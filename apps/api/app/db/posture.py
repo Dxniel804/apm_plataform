@@ -47,6 +47,8 @@ CAMPAIGN_TABLES = (
     "bank_statement_lines",
     "bank_line_resolutions",
     "balancete_balances",
+    "pdde_classifications",
+    "pdde_documents",
 )
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
@@ -191,6 +193,12 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         # 0027: the balances the treasurer types for the balancete (insert-only).
         ("balancete_balances", "balancete_balances_select", "SELECT", "public"),
         ("balancete_balances", "balancete_balances_insert", "INSERT", "public"),
+        # 0028: the PDDE classifications (insert-only) and documents (voidable).
+        ("pdde_classifications", "pdde_classifications_select", "SELECT", "public"),
+        ("pdde_classifications", "pdde_classifications_insert", "INSERT", "public"),
+        ("pdde_documents", "pdde_documents_select", "SELECT", "public"),
+        ("pdde_documents", "pdde_documents_insert", "INSERT", "public"),
+        ("pdde_documents", "pdde_documents_update", "UPDATE", "public"),
     }
 )
 

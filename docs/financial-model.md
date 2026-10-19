@@ -351,6 +351,14 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | `bank_line_resolutions` (0018, what the management decided about a line) | `bank_line_resolutions_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a line is resolved once) |
 | | `bank_line_resolutions_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `bank_line_resolutions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the reason is audited by name only) |
+| `pdde_classifications` (0028, what the management decided about a line of the PDDE bank account) | `pdde_classifications_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a correction is a new row and the latest counts) |
+| | `pdde_classifications_20_check` | BEFORE INSERT | `pdde_classifications_check`: only a line of an account whose purpose is PDDE; a transfer is money in and an expense is money out |
+| | `pdde_classifications_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `pdde_classifications_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the object, the note and the name of another program are audited by name only) |
+| `pdde_documents` (0028, the proof of an expense line) | `pdde_documents_05_immutable` | BEFORE UPDATE | `assert_immutable_columns`: only `voided_at` and `voided_by_user_id` change (a mistaken document is voided, never deleted) |
+| | `pdde_documents_20_check` | BEFORE INSERT | `pdde_documents_check`: the line is money out of a PDDE account, and the documents of a line never add up to more than the line (one advisory lock per line) |
+| | `pdde_documents_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `pdde_documents_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the key, the number and the vendor are audited by name only) |
 | `balancete_balances` (0027, what the treasurer types for the balancete: the balance the school had when it started and the cash and invested money of a month) | `balancete_balances_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a correction is a new row and the latest counts) |
 | | `balancete_balances_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `balancete_balances_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
