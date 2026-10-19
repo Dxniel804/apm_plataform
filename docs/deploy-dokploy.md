@@ -136,6 +136,22 @@ São **duas** coisas, e as duas entram no plano:
   manutenção e o backup do dia em mãos.
 - **Girar o `AUTH_SECRET`:** derruba as sessões (todos entram de novo).
 
+### Subindo o balancete e o PDDE (migrações 0027 e 0028)
+Duas migrações **aditivas**: criam três tabelas novas (`balancete_balances`, `pdde_classifications`,
+`pdde_documents`), duas funções de gatilho e nove categorias de despesa padrão. Nenhuma coluna ou função
+existente muda, então a API antiga segue funcionando durante a troca.
+1. **Backup antes**, mesmo sendo aditiva: `pg_dump -Fc` do banco (ou o backup agendado do dia, conferido).
+2. *Deploy*. Quando o `migrate` terminar: `alembic current` deve mostrar `0028_pdde (head)`.
+3. `python -m app.posture` tem de dizer `posture OK` (as três tabelas têm RLS forçada e política só da própria escola).
+4. Conferência rápida, logado como a secretaria de uma escola de teste: abrir **Fechamento** (cartão "Balancete do
+   mês" carrega e o PDF baixa) e **PDDE** (sem conta do PDDE aparece o aviso "Falta a conta do PDDE").
+5. As escolas que já existem ganham as nove categorias novas; as que não ganharem (se o administrador do banco
+   não enxergar as categorias por causa da RLS) só ficam sem os nomes novos até alguém criá-los. Nada quebra.
+- **Voltar:** reimplante o commit anterior. `alembic downgrade 0026_central_link_check` apaga as três tabelas e o
+  que foi digitado nelas (as categorias ficam, por segurança); só com o backup do dia em mãos.
+- **Antes de usar o balancete numa escola que já tinha saldo:** digitar uma vez o saldo de quando ela começou
+  (Fechamento, "Saldo de quando a escola começou a usar o sistema"). O livro caixa parte de zero.
+
 ## Antes de ligar dinheiro de verdade
 Não é parte desta implantação, mas fica registrado: escolher e integrar o **gateway** Pix
 ([gateway-integration.md](gateway-integration.md)), a **revisão de segurança independente** do login,
