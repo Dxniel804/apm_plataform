@@ -130,6 +130,16 @@ _BB_PDF = [
 ]
 
 
+def test_the_line_under_a_pix_tells_who_it_is_with_and_the_cpf_is_masked() -> None:
+    lines = parse_pdf(_pdf(_BB_PDF)).lines
+
+    assert "PESSOA UM" in lines[0].memo and "FORNECEDOR UM" in lines[1].memo
+    assert "11111111111" not in lines[0].memo and "***" in lines[0].memo  # the CPF never stays
+    # a line without a detail keeps its own text, and an entry is never counted twice
+    assert [ln.amount_cents for ln in lines] == [3000, -20562, -217]
+    assert "Tarifa" in lines[2].memo
+
+
 def test_the_balance_rows_of_a_pdf_are_not_entries_and_the_closing_balance_is_proved() -> None:
     statement = parse_pdf(_pdf(_BB_PDF))
 

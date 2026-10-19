@@ -12,6 +12,7 @@ Bounded (size, pages, lines); nothing in the file is executed, only its text is 
 
 import hashlib
 import re
+from dataclasses import replace
 from datetime import date
 from io import BytesIO
 
@@ -37,6 +38,9 @@ _YEAR = re.compile(r"\b\d{2}/\d{2}/(\d{4})\b")
 # may start with the branch and the batch (BB prints "0000 00000000 Saldo Anterior"), so skip digits.
 _BALANCE = re.compile(r"^[\d\s]*s\s?a\s?l\s?d\s?o\b", re.IGNORECASE)
 _OPENING = re.compile(r"anterior", re.IGNORECASE)
+# The line under a Pix of the BB: "01/07 08:23 <CPF> <name>" (the hour, who it is with). Alone it has no
+# amount, so it is never an entry; it is added to the text of the entry above it.
+_DETAIL = re.compile(r"^\s*\d{2}/\d{2}\s+\d{2}:\d{2}\s+(.+?)\s*$")
 _OUT_WORDS = re.compile(
     r"pagamento|pgto|enviad|d[eé]bito|compra|saque|tarifa|\btar\b|taxa|iof|transfer[eê]ncia enviada|pix enviado",
     re.IGNORECASE,
@@ -91,7 +95,16 @@ def parse_pdf(data: bytes) -> OfxStatement:
     seen: dict[str, int] = {}
     opening: int | None = None
     closing: int | None = None
+    awaiting_detail = False  # the last line read was an entry: its detail line may come next
+    last_memo = ""
     for raw in text.splitlines():
+        detail = _DETAIL.match(raw) if awaiting_detail else None
+        if raw.strip():
+            awaiting_detail = False
+        if detail is not None and lines:
+            # The CPF and the CNPJ in it are masked like in any other text of a line (clean_memo).
+            lines[-1] = replace(lines[-1], memo=clean_memo(f"{last_memo} {detail.group(1)}"))
+            continue
         match = _LINE.match(raw)
         if match is None:
             continue
@@ -137,6 +150,8 @@ def parse_pdf(data: bytes) -> OfxStatement:
                 looks_like_fee=amount < 0 and _FEE_WORDS.search(memo) is not None,
             )
         )
+        awaiting_detail = True
+        last_memo = memo
         if len(lines) > MAX_LINES:
             raise PdfError("too_many_lines")
     if not lines:
