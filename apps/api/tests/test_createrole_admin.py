@@ -50,6 +50,8 @@ EXPECTED_TABLES = {
     "pdde_documents",
     "tax_rules",
     "tax_retentions",
+    "pdde_entities",
+    "pdde_carryovers",
     "password_reset_tokens",
     *FINANCIAL_TABLES,
 }
@@ -58,11 +60,11 @@ EXPECTED_TABLES = {
 # expense_attachments having no UPDATE, plus the 4 SELECT policies of apm_definer of 0008 and the
 # 2 of 0009.
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017) + 0018
 # + the 7 of the Forklin sign-in (0023) + the 2 of the revocation by the Central (0025)
 # + the 2 of the balancete balances (0027) + the 5 of the PDDE (0028)
-# + the 5 of the tax guides (0029)
+# + the 5 of the tax guides (0029) + the 4 of the PDDE forms (0030)
 # 7 functions of the tenancy core and of 0006 (app_org, app_school, app_session_id, app_user_id and
 # the 3 SECURITY DEFINER) plus the 35 functions of revision 0007 (0010 dropped the consolidated
 # statement of a network), the 3 of 0008 and the one of 0009.

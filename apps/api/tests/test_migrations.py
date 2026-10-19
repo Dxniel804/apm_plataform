@@ -57,17 +57,19 @@ EXPECTED_TABLES = {
     "pdde_documents",
     "tax_rules",
     "tax_retentions",
+    "pdde_entities",
+    "pdde_carryovers",
     "password_reset_tokens",
 } | FINANCIAL_TABLES
 # 30 of TASK-003 and 0006 (sessions, login_attempts, invitations, users self, apm_definer) + 37 of
 # the financial schema (13 select, 13 insert, 11 update) + 4 of the public flow (0008) + 2 of the
 # expiry job (0009)
 EXPECTED_POLICIES = (
-    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5
+    30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4
 )  # + requests (0012) + campaigns (0013) + deliveries (0014) + fees (0016) + bank (0017)
 # + 0018 + the 7 of the Forklin sign-in (0023) + the 4 of the school identity (0024)
 # + the 2 of the revocation by the Central (0025) + the 2 of the balancete balances (0027)
-# + the 5 of the PDDE (0028) + the 5 of the tax guides (0029)
+# + the 5 of the PDDE (0028) + the 5 of the tax guides (0029) + the 4 of the PDDE forms (0030)
 # 7 of TASK-003 and 0006 (app_org, app_school, app_session_id, app_user_id + the 3 SECURITY
 # DEFINER) + 35 financial functions (all SECURITY INVOKER, see test_financial_triggers) + the
 # pix_charges consistency function + the 3 SECURITY DEFINER of the public flow (0008) + the one of
@@ -132,7 +134,7 @@ def test_upgrade_from_an_empty_database_creates_everything(scratch_db: ScratchDb
     assert result.returncode == 0, result.stderr
     assert _catalog(scratch_db) == EXPECTED_CATALOG
     current = run_alembic(scratch_db, "current")
-    assert "0029_tax_guides (head)" in current.stdout + current.stderr
+    assert "0030_pdde_forms (head)" in current.stdout + current.stderr
     admin = _admin_engine(scratch_db)
     try:
         assert _role(admin, "apm_app") == (False, False, True, False, False)

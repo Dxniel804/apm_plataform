@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/Button";
 import { FormButtons, FormModal } from "@/components/ui/FormModal";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { SelectField, TextField } from "@/components/ui/TextField";
+import { FormsSetup } from "@/components/pdde/FormsSetup";
 import { api } from "@/lib/api";
 import type { ApiError, ApiResult } from "@/lib/api/types";
 import {
+  pddeDemonstrativoHref,
   pddeReportHref,
   type PddeAlert,
   type PddeDocKind,
@@ -31,7 +33,9 @@ const PROGRAM_LABELS: Record<PddeProgram, string> = {
 };
 const KIND_LABELS: Record<PddeKind, string> = {
   TRANSFER: "Repasse (dinheiro que entrou)",
+  YIELD: "Rendimento de aplicação financeira",
   EXPENSE: "Despesa",
+  RETURN_TO_FNDE: "Devolução de recursos ao FNDE",
   TAX_TO_EEX: "Imposto pago direto à prefeitura",
   REFUND: "Estorno ou devolução",
   INELIGIBLE: "Despesa não elegível",
@@ -57,7 +61,7 @@ function describe(error: ApiError): string {
     case "rule_violation":
       return "Não foi possível salvar: confira se o tipo combina com a linha (repasse é entrada, despesa é saída) e se os documentos não somam mais que a linha.";
     case "validation_error":
-      return "Confira os dados. Despesa precisa de programa, custeio ou capital e objeto; a chave da NF-e tem 44 números.";
+      return "Confira os dados. Despesa precisa de programa, custeio ou capital e objeto; a chave da NF-e tem 44 números; o CNPJ ou CPF precisa ser válido.";
     case "permission_denied":
       return "Você não tem permissão para mexer no PDDE.";
     default:
@@ -111,13 +115,16 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
   const [category, setCategory] = useState<PddeEconomic | "">(current?.economicCategory ?? "");
   const [object, setObject] = useState(current?.object ?? "");
   const [note, setNote] = useState(current?.note ?? "");
+  const [paymentNumber, setPaymentNumber] = useState(current?.paymentNumber ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const needsProgram = kind === "TRANSFER" || kind === "EXPENSE";
+  const needsProgram = kind === "TRANSFER" || kind === "EXPENSE" || kind === "YIELD" || kind === "RETURN_TO_FNDE";
+  const needsCategory = kind === "EXPENSE" || kind === "YIELD" || kind === "RETURN_TO_FNDE";
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (kind === "EXPENSE" && (category === "" || object.trim() === "")) return setError("Despesa precisa de custeio ou capital e do objeto.");
+    if (needsCategory && category === "") return setError("Escolha custeio ou capital.");
+    if (kind === "EXPENSE" && object.trim() === "") return setError("Despesa precisa do objeto.");
     if (needsProgram && program === "OUTRO" && label.trim() === "") return setError("Diga o nome do programa.");
     setBusy(true);
     setError(null);
@@ -127,13 +134,14 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
       ...(category !== "" && needsProgram ? { economicCategory: category } : {}),
       ...(kind === "EXPENSE" ? { object: object.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
+      ...(paymentNumber.trim() && (kind === "EXPENSE" || kind === "RETURN_TO_FNDE") ? { paymentNumber: paymentNumber.trim() } : {}),
     });
     setBusy(false);
     if (!r.ok) return setError(describe(r.error));
     onDone();
   }
 
-  const kinds: PddeKind[] = credit ? ["TRANSFER", "REFUND"] : ["EXPENSE", "TAX_TO_EEX", "INELIGIBLE", "REFUND"];
+  const kinds: PddeKind[] = credit ? ["TRANSFER", "YIELD", "REFUND"] : ["EXPENSE", "RETURN_TO_FNDE", "TAX_TO_EEX", "INELIGIBLE", "REFUND"];
   return (
     <FormModal title="Classificar o lançamento" intro={`${formatDayLong(line.postedOn)} · ${formatBRL(line.amountCents)} · ${line.memo}`} onClose={onClose} busy={busy}>
       <form method="post" onSubmit={(e) => void submit(e)} className="space-y-5">
@@ -153,8 +161,8 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
                 </option>
               ))}
             </SelectField>
-            <SelectField id="pdde-category" label="Custeio ou capital" optional={kind === "TRANSFER"} value={category} onChange={(e) => setCategory(e.target.value as PddeEconomic | "")}>
-              <option value="">{kind === "TRANSFER" ? "Não informar" : "Escolha"}</option>
+            <SelectField id="pdde-category" label="Custeio ou capital" optional={!needsCategory} value={category} onChange={(e) => setCategory(e.target.value as PddeEconomic | "")}>
+              <option value="">{needsCategory ? "Escolha" : "Não informar (o formulário do FNDE precisa)"}</option>
               {(Object.keys(ECONOMIC_LABELS) as PddeEconomic[]).map((c) => (
                 <option key={c} value={c}>
                   {ECONOMIC_LABELS[c]}
@@ -165,6 +173,7 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
         )}
         {needsProgram && program === "OUTRO" && <TextField label="Nome do programa" name="program-label" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />}
         {kind === "EXPENSE" && <TextField label="Objeto da despesa" name="object" maxLength={120} hint="Como a resolução do programa chama o gasto. Exemplo: material de consumo." value={object} onChange={(e) => setObject(e.target.value)} />}
+        {(kind === "EXPENSE" || kind === "RETURN_TO_FNDE") && <TextField label="Número do cheque ou da ordem bancária" optional name="payment-number" maxLength={40} hint="Sai no campo 26 do formulário do FNDE. Está no extrato." value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} />}
         <TextField label="Observação" optional name="note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
         <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
         <FormButtons onCancel={onClose} submitLabel="Salvar" pending={busy} />
@@ -184,6 +193,10 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
   const [vendor, setVendor] = useState("");
   const [cents, setCents] = useState(left > 0 ? left : 0);
   const [stamped, setStamped] = useState(false);
+  const [taxId, setTaxId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [specification, setSpecification] = useState("");
+  const capital = line.classification?.economicCategory === "CAPITAL";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -201,6 +214,9 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
       vendor: vendor.trim(),
       amountCents: cents,
       stamped,
+      ...(taxId.trim() ? { vendorTaxId: taxId.trim() } : {}),
+      ...(capital && quantity.trim() ? { quantity: Number(quantity) } : {}),
+      ...(capital && specification.trim() ? { specification: specification.trim() } : {}),
     });
     setBusy(false);
     if (!r.ok) return setError(describe(r.error));
@@ -222,7 +238,16 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
           <TextField label="Número" optional name="number" maxLength={40} value={number} onChange={(e) => setNumber(e.target.value)} />
           <TextField label="Data do documento" name="issued-on" type="date" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
         </div>
-        <TextField label="Fornecedor" name="vendor" maxLength={120} value={vendor} onChange={(e) => setVendor(e.target.value)} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField label="Fornecedor" name="vendor" maxLength={120} value={vendor} onChange={(e) => setVendor(e.target.value)} />
+          <TextField label="CNPJ ou CPF do fornecedor" optional name="tax-id" inputMode="numeric" autoComplete="off" maxLength={24} hint="Sai no campo 21 do formulário do FNDE." value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+        </div>
+        {capital && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextField label="Quantidade" optional name="quantity" inputMode="numeric" maxLength={7} hint="Para a relação de bens." value={quantity} onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ""))} />
+            <TextField className="sm:col-span-2" label="O que é o bem" optional name="specification" maxLength={200} hint="Marca, modelo, o que for preciso para identificar." value={specification} onChange={(e) => setSpecification(e.target.value)} />
+          </div>
+        )}
         <Money label="Valor deste documento" cents={cents} onChange={setCents} hint="Pode ser menos que a linha: os documentos somam até o valor dela." />
         <label className="flex items-start gap-3 text-sub">
           <input type="checkbox" checked={stamped} onChange={(e) => setStamped(e.target.checked)} className="mt-1 size-5" />
@@ -395,15 +420,19 @@ export function PddeArea({ schoolId }: Props) {
         {y && y.ok && (
           <>
             <Alerts alerts={y.data.alerts} />
+            <FormsSetup schoolId={schoolId} year={year} />
             {y.data.programs.length > 0 && (
               <ul aria-label="Saldo por programa" className="mt-4 grid gap-3 sm:grid-cols-2">
                 {y.data.programs.map((p) => (
                   <li key={`${p.program}-${p.programLabel ?? ""}`} className="rounded-[var(--r-md)] border border-line px-4 py-3">
                     <p className="font-semibold">{programName(p.program, p.programLabel)}</p>
                     <p className="text-sub text-ink-2">
-                      Recebido {formatBRL(p.receivedCents)} · custeio {formatBRL(p.spentCusteioCents)} · capital {formatBRL(p.spentCapitalCents)}
+                      Recebido {formatBRL(p.receivedCents)}{p.yieldCents > 0 ? ` · rendimento ${formatBRL(p.yieldCents)}` : ""}{p.returnedCents > 0 ? ` · devolvido ${formatBRL(p.returnedCents)}` : ""} · custeio {formatBRL(p.spentCusteioCents)} · capital {formatBRL(p.spentCapitalCents)}
                     </p>
                     <p className="text-[1.125rem] font-bold tabular-nums text-brand-800">Saldo {formatBRL(p.balanceCents)}</p>
+                    <a className="mt-2 inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeDemonstrativoHref(schoolId, year, p.program, p.programLabel)} download>
+                      Formulário do FNDE (PDF)
+                    </a>
                   </li>
                 ))}
               </ul>

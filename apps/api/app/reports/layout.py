@@ -12,7 +12,7 @@ from typing import Any
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
@@ -250,27 +250,34 @@ class NumberedCanvas(canvas.Canvas):  # type: ignore[misc]
         super().save()
 
     def _decorate(self, total: int) -> None:
+        page_width, page_height = self._pagesize
         self.setStrokeColor(RULE)
         self.setLineWidth(0.5)
         self.setFont("Helvetica", 7)
         self.setFillColor(MUTED)
-        self.drawString(MARGIN, PAGE_HEIGHT - 10 * mm, printable(self._header))
-        self.line(MARGIN, PAGE_HEIGHT - 11.5 * mm, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 11.5 * mm)
-        self.line(MARGIN, 14 * mm, PAGE_WIDTH - MARGIN, 14 * mm)
+        self.drawString(MARGIN, page_height - 10 * mm, printable(self._header))
+        self.line(MARGIN, page_height - 11.5 * mm, page_width - MARGIN, page_height - 11.5 * mm)
+        self.line(MARGIN, 14 * mm, page_width - MARGIN, 14 * mm)
         self.drawString(MARGIN, 10 * mm, printable(self._footer_code))
-        self.drawRightString(PAGE_WIDTH - MARGIN, 10 * mm, f"Página {self._pageNumber} de {total}")
+        self.drawRightString(page_width - MARGIN, 10 * mm, f"Página {self._pageNumber} de {total}")
         self.drawString(MARGIN, 6.5 * mm, printable(self._footer_note))
 
 
 def build_pdf(
-    story: list[Flowable], *, title: str, header: str, footer_code: str, footer_note: str
+    story: list[Flowable],
+    *,
+    title: str,
+    header: str,
+    footer_code: str,
+    footer_note: str,
+    landscape_page: bool = False,
 ) -> bytes:
     """The whole document as bytes. `invariant` makes the file depend only on its content (no clock
     and no random id of the library inside it), so the same data gives the same bytes."""
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
-        pagesize=A4,
+        pagesize=landscape(A4) if landscape_page else A4,
         leftMargin=MARGIN,
         rightMargin=MARGIN,
         topMargin=18 * mm,

@@ -16,6 +16,15 @@ Escrito em 2026-10-15. **Sem código.** Marcado como **[CONFIRMADO]** o que est�
 
 **Não fez / aberto:** o objeto em lista oficial (precisa das portarias); estorno de uma despesa já classificada (REFUND só marca a linha); conferir o texto do carimbo em PDF anexado (não há OCR); ligar a despesa lançada no sistema à classificação (M8e).
 
+## 0.1 O formulário oficial do FNDE (19/10/2026, migração 0030)
+O FNDE publica os formulários de prestação de contas (gov.br/fnde, "Resoluções e formulários" do PDDE). O sistema gera o **Demonstrativo da execução da receita e da despesa e de pagamentos efetuados**, um PDF por programa e ano, com os quatro blocos e os campos numerados de 01 a 28 do modelo (o arquivo do FNDE é .doc e não é copiado: o desenho é refeito). `GET /schools/{id}/pdde/forms/demonstrativo.pdf?year=&program=[&program_label=]`.
+
+**De onde vem cada campo:** 01 a 07 da entidade (`pdde_entities`: nome como no cartão do CNPJ, CNPJ, endereço, município, UF); 08 do saldo do ano anterior (digitado em `pdde_carryovers`, ou calculado dos extratos de anos anteriores, ou zero: o formulário diz qual); 09 dos repasses classificados; 10 sempre zero (o sistema não tem recursos próprios); 11 do novo tipo "rendimento de aplicação"; 12 do novo tipo "devolução ao FNDE"; 13 a 15 somas; 16 zero; 17 do primeiro crédito (ou da primeira despesa, se houve saldo reprogramado, como mandam as instruções do FNDE) até 31/12; 18 sempre 1; 19 a 27 das despesas classificadas e dos documentos (favorecido, CNPJ ou CPF, objeto, origem FNDE, C ou K, documento NF/FT/RB, número do cheque ou da ordem bancária); 28 soma.
+
+**O que o formulário não esconde:** o que os dados não preenchem fica em branco e entra na lista "CONFERIR ANTES DE ASSINAR" no topo: entidade sem dados, repasses sem custeio ou capital (não entram nas colunas), lançamentos sem classificação, pagamento sem documento ou sem CNPJ/CPF do favorecido, saldo do ano anterior em zero ou calculado.
+
+**Ainda não feito:** a Relação de bens (os campos de quantidade e especificação já são guardados), a Conciliação bancária, o Rol de materiais, a Consolidação de pesquisa de preços e o Termo de Doação. A Resolução 15/2021 diz que o demonstrativo segue "o modelo previsto no SiGPC": confira com uma prestação real entregue pela escola e com a prefeitura.
+
 ## 1. Fontes lidas
 - Resolução CD/FNDE nº 17/2024 (PDDE Equidade): `fnde_modelooficial.pdf` na raiz do repositório.
 - Manual do BB Gestão Ágil, PDDE e Ações Integradas, FNDE, 1ª edição, outubro de 2024.

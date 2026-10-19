@@ -51,6 +51,8 @@ CAMPAIGN_TABLES = (
     "pdde_documents",
     "tax_rules",
     "tax_retentions",
+    "pdde_entities",
+    "pdde_carryovers",
 )
 # Every table with row level security: the tenant tables, the authentication tables, the financial
 # ones, the requests and the campaigns.
@@ -207,6 +209,11 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("tax_retentions", "tax_retentions_select", "SELECT", "public"),
         ("tax_retentions", "tax_retentions_insert", "INSERT", "public"),
         ("tax_retentions", "tax_retentions_update", "UPDATE", "public"),
+        # 0030: the entity and the carry-over of the PDDE forms (insert-only).
+        ("pdde_entities", "pdde_entities_select", "SELECT", "public"),
+        ("pdde_entities", "pdde_entities_insert", "INSERT", "public"),
+        ("pdde_carryovers", "pdde_carryovers_select", "SELECT", "public"),
+        ("pdde_carryovers", "pdde_carryovers_insert", "INSERT", "public"),
     }
 )
 

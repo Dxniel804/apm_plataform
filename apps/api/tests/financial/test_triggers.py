@@ -117,6 +117,11 @@ EXPECTED_TRIGGERS: dict[tuple[str, str], Trigger] = {
         B, {INS}, "assert_active_member"
     ),
     ("bank_statement_lines", "bank_statement_lines_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    # the entity and the carry-over of the PDDE forms (0030)
+    ("pdde_entities", "pdde_entities_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("pdde_entities", "pdde_entities_25_member"): _t(B, {INS}, "assert_active_member"),
+    ("pdde_carryovers", "pdde_carryovers_05_no_update"): _t(B, {UPD}, "forbid_update"),
+    ("pdde_carryovers", "pdde_carryovers_25_member"): _t(B, {INS}, "assert_active_member"),
     # the tax guides (0029)
     ("tax_rules", "tax_rules_05_no_update"): _t(B, {UPD}, "forbid_update"),
     ("tax_rules", "tax_rules_25_member"): _t(B, {INS}, "assert_active_member"),
@@ -223,6 +228,8 @@ AUDITED = [
     "pdde_documents",
     "tax_rules",
     "tax_retentions",
+    "pdde_entities",
+    "pdde_carryovers",
 ]
 for _table in AUDITED:
     EXPECTED_TRIGGERS[(_table, f"{_table}_95_audit")] = _t(A, {INS, UPD}, "audit_row_change")
@@ -244,6 +251,8 @@ for _table in [
     "pdde_documents",
     "tax_rules",
     "tax_retentions",
+    "pdde_entities",
+    "pdde_carryovers",
 ]:
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_delete")] = _t(B, {DEL}, "forbid_delete")
     EXPECTED_TRIGGERS[(_table, f"{_table}_no_truncate")] = _t(

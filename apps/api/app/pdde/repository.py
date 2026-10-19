@@ -35,11 +35,12 @@ def lines(db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date) -> Se
             text(
                 "SELECT l.id AS line_id, l.posted_on, l.amount_cents, l.memo, l.looks_like_fee, "
                 "a.id AS account_id, a.nickname AS account_nickname, "
-                "c.kind, c.program, c.program_label, c.economic_category, c.object, c.note "
+                "c.kind, c.program, c.program_label, c.economic_category, c.object, c.note, "
+                "c.payment_number "
                 "FROM bank_statement_lines l "
                 "JOIN bank_accounts a ON a.id = l.bank_account_id AND a.school_id = l.school_id "
                 "LEFT JOIN LATERAL (SELECT x.kind, x.program, x.program_label, x.economic_category, "
-                "  x.object, x.note FROM pdde_classifications x "
+                "  x.object, x.note, x.payment_number FROM pdde_classifications x "
                 "  WHERE x.line_id = l.id ORDER BY x.created_at DESC, x.id DESC LIMIT 1) c ON true "
                 "WHERE l.school_id = :school_id AND a.purpose = 'PDDE' "
                 "AND l.posted_on BETWEEN :start AND :end ORDER BY l.posted_on, l.id"
@@ -58,7 +59,8 @@ def documents(db: Session, school_id: uuid.UUID, line_ids: Sequence[uuid.UUID]) 
         db.execute(
             text(
                 "SELECT id, line_id, doc_kind, access_key, doc_number, issued_on, vendor, "
-                "amount_cents, stamped, voided_at IS NOT NULL AS voided "
+                "amount_cents, stamped, voided_at IS NOT NULL AS voided, vendor_tax_id, quantity, "
+                "specification "
                 "FROM pdde_documents WHERE school_id = :school_id AND line_id = ANY(:ids) "
                 "ORDER BY created_at, id"
             ),
@@ -97,9 +99,9 @@ def insert_classification(
     db.execute(
         text(
             "INSERT INTO pdde_classifications (organization_id, school_id, line_id, kind, program, "
-            "program_label, economic_category, object, note, created_by_user_id) "
+            "program_label, economic_category, object, note, payment_number, created_by_user_id) "
             "VALUES (:organization_id, :school_id, :line_id, :kind, :program, :program_label, "
-            ":economic_category, :object, :note, :user_id)"
+            ":economic_category, :object, :note, :payment_number, :user_id)"
         ),
         {
             "organization_id": organization_id,
@@ -112,6 +114,7 @@ def insert_classification(
             "economic_category": values.get("economic_category"),
             "object": values.get("object"),
             "note": values.get("note"),
+            "payment_number": values.get("payment_number"),
         },
     )
 
@@ -128,9 +131,11 @@ def insert_document(
     new_id: uuid.UUID = db.execute(
         text(
             "INSERT INTO pdde_documents (organization_id, school_id, line_id, doc_kind, access_key, "
-            "doc_number, issued_on, vendor, amount_cents, stamped, created_by_user_id) "
+            "doc_number, issued_on, vendor, amount_cents, stamped, vendor_tax_id, quantity, specification, "
+            "created_by_user_id) "
             "VALUES (:organization_id, :school_id, :line_id, :doc_kind, :access_key, :doc_number, "
-            ":issued_on, :vendor, :amount_cents, :stamped, :user_id) RETURNING id"
+            ":issued_on, :vendor, :amount_cents, :stamped, :vendor_tax_id, :quantity, :specification, "
+            ":user_id) RETURNING id"
         ),
         {
             "organization_id": organization_id,
@@ -187,3 +192,86 @@ def december_balances(db: Session, school_id: uuid.UUID, year: int) -> Sequence[
         .mappings()
         .all()
     )
+
+
+# --- what the official forms print ---------------------------------------------------------------
+
+
+def latest_entity(db: Session, school_id: uuid.UUID) -> Row | None:
+    """The identification of the entity (CNPJ, address, city, state): the latest row counts."""
+    return (
+        db.execute(
+            text(
+                "SELECT legal_name, cnpj, address, city, state FROM pdde_entities WHERE school_id = :school_id "
+                "ORDER BY created_at DESC, id DESC LIMIT 1"
+            ),
+            {"school_id": school_id},
+        )
+        .mappings()
+        .first()
+    )
+
+
+def insert_entity(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    school_id: uuid.UUID,
+    user_id: uuid.UUID,
+    values: dict[str, Any],
+) -> None:
+    db.execute(
+        text(
+            "INSERT INTO pdde_entities (organization_id, school_id, legal_name, cnpj, address, city, "
+            "state, created_by_user_id) VALUES (:organization_id, :school_id, :legal_name, :cnpj, :address, :city, "
+            ":state, :user_id)"
+        ),
+        {"organization_id": organization_id, "school_id": school_id, "user_id": user_id, **values},
+    )
+
+
+def carryovers(db: Session, school_id: uuid.UUID, year: int) -> Sequence[Row]:
+    """The latest carry-over of each program for the year."""
+    return (
+        db.execute(
+            text(
+                "SELECT DISTINCT ON (program, coalesce(program_label, '')) program, program_label, "
+                "custeio_cents, capital_cents FROM pdde_carryovers "
+                "WHERE school_id = :school_id AND year = :year "
+                "ORDER BY program, coalesce(program_label, ''), created_at DESC, id DESC"
+            ),
+            {"school_id": school_id, "year": year},
+        )
+        .mappings()
+        .all()
+    )
+
+
+def insert_carryover(
+    db: Session,
+    *,
+    organization_id: uuid.UUID,
+    school_id: uuid.UUID,
+    user_id: uuid.UUID,
+    values: dict[str, Any],
+) -> None:
+    db.execute(
+        text(
+            "INSERT INTO pdde_carryovers (organization_id, school_id, year, program, program_label, "
+            "custeio_cents, capital_cents, created_by_user_id) VALUES (:organization_id, :school_id, "
+            ":year, :program, :program_label, :custeio_cents, :capital_cents, :user_id)"
+        ),
+        {"organization_id": organization_id, "school_id": school_id, "user_id": user_id, **values},
+    )
+
+
+def school_name(db: Session, school_id: uuid.UUID) -> tuple[str, str]:
+    """(the APM, the school): the name of the entity printed on the form when no other was given."""
+    row = db.execute(
+        text(
+            "SELECT o.name, s.name FROM schools s JOIN organizations o ON o.id = s.organization_id "
+            "WHERE s.id = :school_id"
+        ),
+        {"school_id": school_id},
+    ).one()
+    return str(row[0]), str(row[1])

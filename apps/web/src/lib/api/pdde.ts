@@ -9,13 +9,13 @@ import type { ApiResult } from "./types";
 
 export type PddeProgram = "BASICO" | "EQUIDADE" | "QUALIDADE" | "CONECTADO" | "OUTRO";
 export type PddeEconomic = "CUSTEIO" | "CAPITAL";
-export type PddeKind = "TRANSFER" | "EXPENSE" | "TAX_TO_EEX" | "REFUND" | "INELIGIBLE";
+export type PddeKind = "TRANSFER" | "YIELD" | "EXPENSE" | "RETURN_TO_FNDE" | "TAX_TO_EEX" | "REFUND" | "INELIGIBLE";
 export type PddeDocKind = "NFE" | "INVOICE" | "RECEIPT" | "OTHER";
 export type PddeStatus = "PENDING" | "PARTIAL" | "DONE";
 export type PddeAlertCode = "fee_on_pdde_account" | "pending_lines" | "spent_over_received" | "year_end_reconciliation" | "deadline" | "deadline_passed";
 
 const PROGRAMS: readonly PddeProgram[] = ["BASICO", "EQUIDADE", "QUALIDADE", "CONECTADO", "OUTRO"];
-const KINDS: readonly PddeKind[] = ["TRANSFER", "EXPENSE", "TAX_TO_EEX", "REFUND", "INELIGIBLE"];
+const KINDS: readonly PddeKind[] = ["TRANSFER", "YIELD", "EXPENSE", "RETURN_TO_FNDE", "TAX_TO_EEX", "REFUND", "INELIGIBLE"];
 const DOC_KINDS: readonly PddeDocKind[] = ["NFE", "INVOICE", "RECEIPT", "OTHER"];
 const STATUSES: readonly PddeStatus[] = ["PENDING", "PARTIAL", "DONE"];
 const ALERTS: readonly PddeAlertCode[] = ["fee_on_pdde_account", "pending_lines", "spent_over_received", "year_end_reconciliation", "deadline", "deadline_passed"];
@@ -30,6 +30,9 @@ export interface PddeDocument {
   amountCents: number;
   stamped: boolean;
   voided: boolean;
+  vendorTaxId: string | null;
+  quantity: number | null;
+  specification: string | null;
 }
 
 export interface PddeClassification {
@@ -39,6 +42,7 @@ export interface PddeClassification {
   economicCategory: PddeEconomic | null;
   object: string | null;
   note: string | null;
+  paymentNumber: string | null;
 }
 
 export interface PddeLine {
@@ -83,6 +87,8 @@ export interface PddeProgramBalance {
   program: PddeProgram;
   programLabel: string | null;
   receivedCents: number;
+  yieldCents: number;
+  returnedCents: number;
   spentCusteioCents: number;
   spentCapitalCents: number;
   balanceCents: number;
@@ -104,6 +110,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 const int = (value: unknown): number | null => (typeof value === "number" && Number.isSafeInteger(value) ? value : null);
+const nint = (value: unknown): number | null | undefined => (value === null || value === undefined ? null : (int(value) ?? undefined));
 const str = (value: unknown): string | null => (typeof value === "string" ? value : null);
 const oneOf = <T extends string>(list: readonly T[], value: unknown): T | null => (typeof value === "string" && (list as readonly string[]).includes(value) ? (value as T) : null);
 const nullable = <T>(value: unknown, parse: (v: unknown) => T | null): T | null | undefined => (value === null || value === undefined ? null : (parse(value) ?? undefined));
@@ -117,7 +124,9 @@ function parseDocument(raw: unknown): PddeDocument | null {
   const vendor = str(raw.vendor);
   if (!docKind || amountCents === null || !id || !issuedOn || !vendor) return null;
   if (typeof raw.stamped !== "boolean" || typeof raw.voided !== "boolean") return null;
-  return { id, docKind, accessKey: str(raw.access_key), docNumber: str(raw.doc_number), issuedOn, vendor, amountCents, stamped: raw.stamped, voided: raw.voided };
+  const quantity = nint(raw.quantity);
+  if (quantity === undefined) return null;
+  return { id, docKind, accessKey: str(raw.access_key), docNumber: str(raw.doc_number), issuedOn, vendor, amountCents, stamped: raw.stamped, voided: raw.voided, vendorTaxId: str(raw.vendor_tax_id), quantity, specification: str(raw.specification) };
 }
 
 function parseClassification(raw: unknown): PddeClassification | null | undefined {
@@ -128,7 +137,7 @@ function parseClassification(raw: unknown): PddeClassification | null | undefine
   const program = nullable(raw.program, (v) => oneOf(PROGRAMS, v));
   const economicCategory = nullable(raw.economic_category, (v) => oneOf(["CUSTEIO", "CAPITAL"] as const, v));
   if (program === undefined || economicCategory === undefined) return undefined;
-  return { kind, program, programLabel: str(raw.program_label), economicCategory, object: str(raw.object), note: str(raw.note) };
+  return { kind, program, programLabel: str(raw.program_label), economicCategory, object: str(raw.object), note: str(raw.note), paymentNumber: str(raw.payment_number) };
 }
 
 function parseLine(raw: unknown): PddeLine | null {
@@ -202,7 +211,10 @@ function parseBalance(raw: unknown): PddeProgramBalance | null {
   const spentCapitalCents = int(raw.spent_capital_cents);
   const balanceCents = int(raw.balance_cents);
   if (!program || receivedCents === null || spentCusteioCents === null || spentCapitalCents === null || balanceCents === null) return null;
-  return { program, programLabel: str(raw.program_label), receivedCents, spentCusteioCents, spentCapitalCents, balanceCents };
+  const yieldCents = int(raw.yield_cents ?? 0);
+  const returnedCents = int(raw.returned_cents ?? 0);
+  if (yieldCents === null || returnedCents === null) return null;
+  return { program, programLabel: str(raw.program_label), receivedCents, yieldCents, returnedCents, spentCusteioCents, spentCapitalCents, balanceCents };
 }
 
 export function parseYear(body: unknown): PddeYear | null {
@@ -241,6 +253,7 @@ export interface ClassificationInput {
   economicCategory?: PddeEconomic;
   object?: string;
   note?: string;
+  paymentNumber?: string;
 }
 
 const saved = (body: unknown, status: number) => (status === 201 && isRecord(body) ? { ok: true as const } : null);
@@ -253,6 +266,7 @@ export function classifyPddeLine(schoolId: string, lineId: string, input: Classi
   if (input.economicCategory) body.economic_category = input.economicCategory;
   if (input.object) body.object = input.object;
   if (input.note) body.note = input.note;
+  if (input.paymentNumber) body.payment_number = input.paymentNumber;
   return apiSend("POST", `${school(schoolId)}/lines/${enc(lineId)}/classification`, body, saved, options);
 }
 
@@ -264,6 +278,9 @@ export interface DocumentInput {
   vendor: string;
   amountCents: number;
   stamped: boolean;
+  vendorTaxId?: string;
+  quantity?: number;
+  specification?: string;
 }
 
 /** POST .../pdde/lines/{id}/documents: o documento que comprova a despesa. */
@@ -277,6 +294,9 @@ export function addPddeDocument(schoolId: string, lineId: string, input: Documen
   };
   if (input.accessKey) body.access_key = input.accessKey;
   if (input.docNumber) body.doc_number = input.docNumber;
+  if (input.vendorTaxId) body.vendor_tax_id = input.vendorTaxId;
+  if (input.quantity) body.quantity = input.quantity;
+  if (input.specification) body.specification = input.specification;
   return apiSend("POST", `${school(schoolId)}/lines/${enc(lineId)}/documents`, body, saved, options);
 }
 
@@ -288,4 +308,72 @@ export function voidPddeDocument(schoolId: string, documentId: string, options: 
 /** Links dos relatorios do ano (navegacoes, nao fetch). */
 export function pddeReportHref(schoolId: string, year: number, format: "csv" | "pdf"): string {
   return `${school(schoolId)}/report.${format}?year=${year}`;
+}
+
+// --- the entity, the carry-over and the official form ------------------------------------------------
+
+export interface PddeEntity {
+  legalName: string;
+  cnpj: string;
+  address: string;
+  city: string;
+  state: string;
+}
+
+export function parseEntity(body: unknown): PddeEntity | null | undefined {
+  if (body === null) return null;
+  if (!isRecord(body)) return undefined;
+  const legalName = str(body.legal_name);
+  const cnpj = str(body.cnpj);
+  const address = str(body.address);
+  const city = str(body.city);
+  const state = str(body.state);
+  return legalName && cnpj && address && city && state ? { legalName, cnpj, address, city, state } : undefined;
+}
+
+/** GET .../pdde/entity: o nome, o CNPJ e o endereco que saem no formulario (null: ainda nao informados). */
+export function getPddeEntity(schoolId: string, options?: RequestOptions): Promise<ApiResult<PddeEntity | null>> {
+  return apiGet(`${school(schoolId)}/entity`, (body, status) => {
+    if (status !== 200) return null;
+    const parsed = parseEntity(body);
+    return parsed === undefined ? null : parsed;
+  }, options) as Promise<ApiResult<PddeEntity | null>>;
+}
+
+export function savePddeEntity(schoolId: string, input: PddeEntity, options: SendOptions = {}): Promise<ApiResult<{ ok: true }>> {
+  const body = { legal_name: input.legalName, cnpj: input.cnpj, address: input.address, city: input.city, state: input.state };
+  return apiSend("POST", `${school(schoolId)}/entity`, body, saved, options);
+}
+
+export interface PddeCarryover {
+  program: PddeProgram;
+  programLabel: string | null;
+  custeioCents: number;
+  capitalCents: number;
+}
+
+export function parseCarryovers(body: unknown): PddeCarryover[] | null {
+  return list(body, (raw) => {
+    if (!isRecord(raw)) return null;
+    const program = oneOf(PROGRAMS, raw.program);
+    const custeioCents = int(raw.custeio_cents);
+    const capitalCents = int(raw.capital_cents);
+    return program && custeioCents !== null && capitalCents !== null ? { program, programLabel: str(raw.program_label), custeioCents, capitalCents } : null;
+  });
+}
+
+/** GET .../pdde/carryovers?year=: o saldo do ano anterior que a escola digitou. */
+export function getPddeCarryovers(schoolId: string, year: number, options?: RequestOptions): Promise<ApiResult<PddeCarryover[]>> {
+  return apiGet(`${school(schoolId)}/carryovers?year=${year}`, (body, status) => (status === 200 ? parseCarryovers(body) : null), options);
+}
+
+export function savePddeCarryover(schoolId: string, year: number, input: PddeCarryover, options: SendOptions = {}): Promise<ApiResult<{ ok: true }>> {
+  const body: Record<string, string | number> = { year, program: input.program, custeio_cents: input.custeioCents, capital_cents: input.capitalCents };
+  if (input.programLabel) body.program_label = input.programLabel;
+  return apiSend("POST", `${school(schoolId)}/carryovers`, body, saved, options);
+}
+
+/** Link do formulario oficial do FNDE (Demonstrativo), um por programa e ano (navegacao, nao fetch). */
+export function pddeDemonstrativoHref(schoolId: string, year: number, program: PddeProgram, programLabel: string | null): string {
+  return `${school(schoolId)}/forms/demonstrativo.pdf?year=${year}&program=${program}${programLabel ? `&program_label=${enc(programLabel)}` : ""}`;
 }

@@ -9,7 +9,7 @@
  */
 import { getBalancete, setBalance } from "./balancete";
 import { addTaxRetention, getTaxMonth, getTaxRules, previewTax, saveTaxRule, voidTaxRetention } from "./tax";
-import { addPddeDocument, classifyPddeLine, getPddeMonth, getPddeYear, voidPddeDocument } from "./pdde";
+import { addPddeDocument, classifyPddeLine, getPddeCarryovers, getPddeEntity, getPddeMonth, getPddeYear, savePddeCarryover, savePddeEntity, voidPddeDocument } from "./pdde";
 import { acceptInvitation, changePassword, confirmPasswordReset, getMe, login, logout, requestPasswordReset, switchContext } from "./auth";
 import { getReadiness } from "./health";
 import { listClosings, createClosing, verifyClosing, reopenClosing, downloadClosingPdf } from "./closings";
@@ -143,6 +143,10 @@ export const api: {
     classify: typeof classifyPddeLine;
     addDocument: typeof addPddeDocument;
     voidDocument: typeof voidPddeDocument;
+    entity: typeof getPddeEntity;
+    saveEntity: typeof savePddeEntity;
+    carryovers: typeof getPddeCarryovers;
+    saveCarryover: typeof savePddeCarryover;
   };
   closings: {
     list: typeof listClosings;
@@ -266,6 +270,10 @@ export const api: {
     classify: classifyPddeLine,
     addDocument: addPddeDocument,
     voidDocument: voidPddeDocument,
+    entity: getPddeEntity,
+    saveEntity: savePddeEntity,
+    carryovers: getPddeCarryovers,
+    saveCarryover: savePddeCarryover,
   },
   closings: {
     list: listClosings,

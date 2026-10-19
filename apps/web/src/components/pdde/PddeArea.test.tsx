@@ -39,6 +39,8 @@ afterEach(() => vi.restoreAllMocks());
 function setup(m: PddeMonth, y: PddeYear = year()) {
   vi.spyOn(api.pdde, "month").mockResolvedValue(ok(m));
   vi.spyOn(api.pdde, "year").mockResolvedValue(ok(y));
+  vi.spyOn(api.pdde, "entity").mockResolvedValue(ok(null));
+  vi.spyOn(api.pdde, "carryovers").mockResolvedValue(ok([]));
   render(<PddeArea schoolId={SCHOOL_ID} />);
   return userEvent.setup();
 }
@@ -55,7 +57,7 @@ describe("PddeArea", () => {
     setup(
       month([line(), line({ line_id: "l-ok", memo: "CREDITO REPASSE", amount_cents: 1_000_000, status: "DONE", classification: { kind: "TRANSFER", program: "BASICO", program_label: null, economic_category: null, object: null, note: null } })]),
       year({
-        programs: [{ program: "BASICO", program_label: null, received_cents: 1_000_000, spent_custeio_cents: 0, spent_capital_cents: 150_000, balance_cents: 850_000 }],
+        programs: [{ program: "BASICO", program_label: null, received_cents: 1_000_000, yield_cents: 0, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 150_000, balance_cents: 850_000 }],
         alerts: [
           { code: "fee_on_pdde_account", count: 1, cents: 1200, program: null, economic_category: null, date: null },
           { code: "spent_over_received", count: 0, cents: 5000, program: "BASICO", economic_category: "CAPITAL", date: null },
@@ -81,7 +83,7 @@ describe("PddeArea", () => {
     const dialog = await screen.findByRole("dialog");
 
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Despesa precisa de custeio ou capital e do objeto.");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Escolha custeio ou capital.");
     expect(classify).not.toHaveBeenCalled();
 
     await user.selectOptions(within(dialog).getByLabelText("Custeio ou capital"), "CAPITAL");
@@ -130,5 +132,64 @@ describe("PddeArea", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Não foi possível salvar");
     expect(screen.queryByText(/rule_violation/)).toBeNull();
+  });
+});
+
+describe("PddeArea: o formulario oficial", () => {
+  it("cada programa tem o link do formulario do FNDE e a entidade faltando e avisada", async () => {
+    setup(
+      month([line()]),
+      year({ programs: [{ program: "BASICO", program_label: null, received_cents: 100_000, yield_cents: 1234, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 0, balance_cents: 101_234 }] }),
+    );
+
+    const link = await screen.findByRole("link", { name: "Formulário do FNDE (PDF)" });
+    expect(link).toHaveAttribute("href", expect.stringContaining("/pdde/forms/demonstrativo.pdf?year="));
+    expect(link).toHaveAttribute("href", expect.stringContaining("program=BASICO"));
+    expect(screen.getByText(/rendimento R\$ 12,34/)).toBeInTheDocument();
+    expect(await screen.findByText(/Dados da entidade para os formulários \(faltam\)/)).toBeInTheDocument();
+  });
+
+  it("salva os dados da entidade e manda o CNPJ como foi digitado (a API confere)", async () => {
+    const save = vi.spyOn(api.pdde, "saveEntity").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line()]), year());
+    await user.click(await screen.findByText(/Dados da entidade para os formulários/));
+
+    await user.type(screen.getByLabelText("Nome (como no cartão do CNPJ)"), "APM Exemplo");
+    await user.type(screen.getByLabelText("CNPJ"), "11.222.333/0001-81");
+    await user.type(screen.getByLabelText("Endereço"), "Rua das Flores, 100");
+    await user.type(screen.getByLabelText("Município"), "Jundiaí");
+    await user.click(screen.getByRole("button", { name: "Salvar os dados" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0]![1]).toEqual({ legalName: "APM Exemplo", cnpj: "11.222.333/0001-81", address: "Rua das Flores, 100", city: "Jundiaí", state: "SP" });
+    expect(await screen.findByText("Dados da entidade salvos.")).toBeInTheDocument();
+  });
+
+  it("digita o saldo do ano anterior por programa", async () => {
+    const save = vi.spyOn(api.pdde, "saveCarryover").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line()]), year());
+    await user.click(await screen.findByText(/Saldo que veio de/));
+
+    await user.type(screen.getByLabelText("Saldo de custeio"), "30000");
+    await user.click(screen.getByRole("button", { name: "Salvar o saldo" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0]).toMatchObject([SCHOOL_ID, expect.any(Number), { program: "BASICO", custeioCents: 30_000, capitalCents: 0 }]);
+  });
+
+  it("rendimento e devolucao exigem custeio ou capital, e o numero do pagamento vai junto", async () => {
+    const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line({ amount_cents: 1234, memo: "RENDIMENTO" })]), year());
+    await user.click(await screen.findByRole("button", { name: "Classificar" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.selectOptions(within(dialog).getByLabelText("O que é este lançamento"), "YIELD");
+
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Escolha custeio ou capital");
+    await user.selectOptions(within(dialog).getByLabelText("Custeio ou capital"), "CUSTEIO");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    expect(classify.mock.calls[0]![2]).toMatchObject({ kind: "YIELD", program: "BASICO", economicCategory: "CUSTEIO" });
   });
 });

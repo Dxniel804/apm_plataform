@@ -351,6 +351,12 @@ Within a table and a timing, triggers fire in **alphabetical order of their name
 | `bank_line_resolutions` (0018, what the management decided about a line) | `bank_line_resolutions_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a line is resolved once) |
 | | `bank_line_resolutions_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `bank_line_resolutions_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the reason is audited by name only) |
+| `pdde_entities` (0030, the name as in the CNPJ card, the CNPJ and the address printed on the official forms) | `pdde_entities_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (the latest row counts) |
+| | `pdde_entities_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `pdde_entities_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the name, the CNPJ, the address and the city are audited by name only) |
+| `pdde_carryovers` (0030, the balance that came from the year before, by program) | `pdde_carryovers_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (the latest row counts) |
+| | `pdde_carryovers_25_member` | BEFORE INSERT | `assert_active_member` |
+| | `pdde_carryovers_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` |
 | `tax_rules` (0029, how the school works out a retention: rate, cap, guide code, due day; validated by whom) | `tax_rules_05_no_update` | BEFORE UPDATE | `forbid_update`: insert-only (a change is a new row of the same key and the latest counts) |
 | | `tax_rules_25_member` | BEFORE INSERT | `assert_active_member` |
 | | `tax_rules_95_audit` | AFTER INSERT OR UPDATE | `audit_row_change` (the label, the instructions and the source are audited by name only) |

@@ -749,6 +749,8 @@ class Sandbox:
             (date(2026, 10, 6), 350_000, "CREDITO FNDE EDUCACAO CONECTADA"),
             (date(2026, 10, 9), -48_000, "PAGAMENTO TELECOM EXEMPLO"),
             (date(2026, 10, 14), -125_000, "PAGAMENTO SERVICOS REPARO PREDIAL"),
+            (date(2026, 9, 30), 1_832, "RENDIMENTO APLICACAO FINANCEIRA"),
+            (date(2026, 10, 16), -10_000, "DEVOLUCAO SALDO AO FNDE"),
         ]
         for day, amount, memo in rows:
             self.bank_row("pdde", day, amount, memo, fee="TARIFA" in memo)
@@ -757,11 +759,16 @@ class Sandbox:
         line = {r["memo"]: r["line_id"] for r in self.bank["pdde"]}
 
         def classify(
-            memo: str, kind: str, program: str | None, category: str | None, obj: str | None
+            memo: str,
+            kind: str,
+            program: str | None,
+            category: str | None,
+            obj: str | None,
+            pay: str | None = None,
         ) -> None:
             self.c.execute(
                 text(
-                    "INSERT INTO pdde_classifications (organization_id, school_id, line_id, kind, program, economic_category, object, created_by_user_id) VALUES (:o, :s, :l, :k, :p, :c, :ob, :u)"
+                    "INSERT INTO pdde_classifications (organization_id, school_id, line_id, kind, program, economic_category, object, payment_number, created_by_user_id) VALUES (:o, :s, :l, :k, :p, :c, :ob, :pay, :u)"
                 ),
                 {
                     "o": self.org,
@@ -771,12 +778,22 @@ class Sandbox:
                     "p": program,
                     "c": category,
                     "ob": obj,
+                    "pay": pay,
                     "u": self.treasurer,
                 },
             )
 
         def document(
-            memo: str, kind: str, number: str, day: date, vendor: str, cents: int, stamped: bool
+            memo: str,
+            kind: str,
+            number: str,
+            day: date,
+            vendor: str,
+            cents: int,
+            stamped: bool,
+            tax: str | None = None,
+            qty: int | None = None,
+            spec: str | None = None,
         ) -> None:
             key = None
             if kind == "NFE":
@@ -786,7 +803,7 @@ class Sandbox:
                 key = body + str(nfe.check_digit(body))
             self.c.execute(
                 text(
-                    "INSERT INTO pdde_documents (organization_id, school_id, line_id, doc_kind, access_key, doc_number, issued_on, vendor, amount_cents, stamped, created_by_user_id) VALUES (:o, :s, :l, :k, :a, :n, :d, :v, :c, :st, :u)"
+                    "INSERT INTO pdde_documents (organization_id, school_id, line_id, doc_kind, access_key, doc_number, issued_on, vendor, amount_cents, stamped, vendor_tax_id, quantity, specification, created_by_user_id) VALUES (:o, :s, :l, :k, :a, :n, :d, :v, :c, :st, :t, :q, :sp, :u)"
                 ),
                 {
                     "o": self.org,
@@ -799,6 +816,9 @@ class Sandbox:
                     "v": vendor,
                     "c": cents,
                     "st": stamped,
+                    "t": tax,
+                    "q": qty,
+                    "sp": spec,
                     "u": self.treasurer,
                 },
             )
@@ -806,7 +826,12 @@ class Sandbox:
         classify("CREDITO FNDE PDDE BASICO CUSTEIO", "TRANSFER", "BASICO", "CUSTEIO", None)
         classify("CREDITO FNDE PDDE BASICO CAPITAL", "TRANSFER", "BASICO", "CAPITAL", None)
         classify(
-            "PAGAMENTO PAPELARIA MODELO LTDA", "EXPENSE", "BASICO", "CUSTEIO", "Material de consumo"
+            "PAGAMENTO PAPELARIA MODELO LTDA",
+            "EXPENSE",
+            "BASICO",
+            "CUSTEIO",
+            "Material de consumo",
+            "OB 2026091201",
         )
         document(
             "PAGAMENTO PAPELARIA MODELO LTDA",
@@ -816,9 +841,15 @@ class Sandbox:
             "Papelaria Modelo Ltda",
             115_040,
             True,
+            "11444777000161",
         )
         classify(
-            "PAGAMENTO LOJA ELETRO EXEMPLO", "EXPENSE", "BASICO", "CAPITAL", "Material permanente"
+            "PAGAMENTO LOJA ELETRO EXEMPLO",
+            "EXPENSE",
+            "BASICO",
+            "CAPITAL",
+            "Material permanente",
+            "OB 2026091801",
         )
         document(
             "PAGAMENTO LOJA ELETRO EXEMPLO",
@@ -828,13 +859,34 @@ class Sandbox:
             "Loja Eletro Exemplo",
             200_000,
             True,
+            "12345678000195",
+            4,
+            "Ventilador de parede 60 cm",
         )  # only part of it is proved
+        classify("RENDIMENTO APLICACAO FINANCEIRA", "YIELD", "BASICO", "CUSTEIO", None)
+        classify(
+            "DEVOLUCAO SALDO AO FNDE", "RETURN_TO_FNDE", "BASICO", "CUSTEIO", None, "OB 2026101601"
+        )
         classify("CREDITO FNDE EDUCACAO CONECTADA", "TRANSFER", "CONECTADO", None, None)
         # A repair paid with PDDE and classified as capital by mistake: it makes the "spent more than came in capital" warning appear.
         classify(
             "PAGAMENTO SERVICOS REPARO PREDIAL", "EXPENSE", "BASICO", "CAPITAL", "Pequenos reparos"
         )
         # "PAGAMENTO TELECOM EXEMPLO" and the fee of September are left for the person to classify.
+        # What the official form asks for and the school typed once (all invented): the entity and the
+        # balance that came from the year before.
+        self.c.execute(
+            text(
+                "INSERT INTO pdde_entities (organization_id, school_id, legal_name, cnpj, address, city, state, created_by_user_id) VALUES (:o, :s, 'ASSOCIACAO DE PAIS E MESTRES DA EMEB SOL NASCENTE (SANDBOX)', '11222333000181', 'Rua das Flores, 100', 'Jundiaí', 'SP', :u)"
+            ),
+            {"o": self.org, "s": self.school, "u": self.treasurer},
+        )
+        self.c.execute(
+            text(
+                "INSERT INTO pdde_carryovers (organization_id, school_id, year, program, program_label, custeio_cents, capital_cents, created_by_user_id) VALUES (:o, :s, 2026, 'BASICO', NULL, 120000, 0, :u)"
+            ),
+            {"o": self.org, "s": self.school, "u": self.treasurer},
+        )
 
     # --- taxes -----------------------------------------------------------------------------------
 

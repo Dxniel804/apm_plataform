@@ -14,9 +14,20 @@ from sqlalchemy.orm import Session
 
 from app.auth.permissions import Permission
 from app.auth.responses import problem_responses
+from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, school_scope
 from app.pdde import report, service
-from app.pdde.schemas import ClassificationIn, DocumentIn, MonthOut, YearOut
+from app.pdde.schemas import (
+    CarryoverIn,
+    CarryoverOut,
+    ClassificationIn,
+    DocumentIn,
+    EntityIn,
+    EntityOut,
+    MonthOut,
+    Program,
+    YearOut,
+)
 from app.reports import queries as report_queries
 from app.routers.deps import get_tenant_db
 from app.statement.periods import PERIOD_PATTERN
@@ -97,10 +108,59 @@ def report_csv(scope: Manage, db: TenantDb, year: Year) -> Response:
             responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
 def report_pdf(scope: Manage, db: TenantDb, year: Year) -> Response:
     lines = service.report_rows(db, scope, year)
-    programs, _ = service.balances(lines)
+    carry, _ = service.prior_balances(db, scope, year)
+    programs, _ = service.balances(lines, carry)
     organization_name, school_name = report_queries.names(db, scope.school_id)
     pdf = report.render_pdf(
         lines=lines, programs=programs, year=year, organization_name=organization_name,
         school_name=school_name, generated_at=datetime.now(UTC),
     )  # fmt: skip
     return _file(pdf, "application/pdf", f"pdde-{year}.pdf")
+
+
+@router.get("/entity", operation_id="pdde_entity", response_model=EntityOut | None,
+            summary="The identification of the entity printed on the official forms",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def entity(scope: Manage, db: TenantDb) -> EntityOut | None:
+    return service.get_entity(db, scope)
+
+
+@router.post("/entity", operation_id="pdde_entity_save", status_code=201,
+             summary="Save the name, the CNPJ and the address of the entity (the latest counts)",
+             responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def save_entity(body: EntityIn, scope: Manage, db: TenantDb) -> dict[str, str]:
+    service.save_entity(db, scope, body)
+    return {"status": "saved"}
+
+
+@router.get("/carryovers", operation_id="pdde_carryovers", response_model=list[CarryoverOut],
+            summary="The balance that came from the year before, as the school typed it",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def carryovers(scope: Manage, db: TenantDb, year: Year) -> list[CarryoverOut]:
+    return service.list_carryovers(db, scope, year)
+
+
+@router.post("/carryovers", operation_id="pdde_carryover_save", status_code=201,
+             summary="Type the balance that came from the year before (the latest counts)",
+             responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def save_carryover(body: CarryoverIn, scope: Manage, db: TenantDb) -> dict[str, str]:
+    service.save_carryover(db, scope, body)
+    return {"status": "saved"}
+
+
+@router.get("/forms/demonstrativo.pdf", operation_id="pdde_form_demonstrativo", response_class=Response,
+            summary="The official form of the FNDE (Demonstrativo), one program and one year",
+            responses=_ERRORS, openapi_extra=_PERMISSION)  # fmt: skip
+def demonstrativo(
+    scope: Manage, db: TenantDb, year: Year, program: Program,
+    program_label: Annotated[str | None, Query(max_length=60)] = None,
+) -> Response:  # fmt: skip
+    if (program == "OUTRO") != (program_label is not None):
+        raise ProblemError(
+            422,
+            "validation_error",
+            "Invalid request",
+            errors=[{"field": "program_label", "code": "required_only_for_other"}],
+        )
+    pdf = service.demonstrativo_pdf(db, scope, year, program, program_label, datetime.now(UTC))
+    return _file(pdf, "application/pdf", f"demonstrativo-{program.lower()}-{year}.pdf")

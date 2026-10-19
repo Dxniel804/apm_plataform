@@ -26,7 +26,7 @@ from app.models.financial_support import (
 )
 from app.models.membership import Membership
 from app.models.organization import Organization
-from app.models.pdde import PddeClassification, PddeDocument
+from app.models.pdde import PddeCarryover, PddeClassification, PddeDocument, PddeEntity
 from app.models.reconciliation import (
     BankAccount,
     BankLineResolution,
@@ -60,8 +60,10 @@ __all__ = [
     "Membership",
     "MonthlyClosing",
     "Organization",
+    "PddeCarryover",
     "PddeClassification",
     "PddeDocument",
+    "PddeEntity",
     "PaymentAccount",
     "PixCharge",
     "Refund",

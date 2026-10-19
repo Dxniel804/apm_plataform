@@ -17,14 +17,18 @@ from sqlalchemy.orm import Session
 from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, not_found
 from app.expenses.db_errors import database_rules
-from app.pdde import repository
+from app.pdde import forms, repository
 from app.pdde.schemas import (
     AccountOut,
     AlertOut,
+    CarryoverIn,
+    CarryoverOut,
     ClassificationIn,
     ClassificationOut,
     DocumentIn,
     DocumentOut,
+    EntityIn,
+    EntityOut,
     LineOut,
     MonthOut,
     Program,
@@ -67,6 +71,9 @@ def _lines_out(db: Session, school_id: uuid.UUID, rows: Sequence[Row]) -> list[L
                 amount_cents=int(d["amount_cents"]),
                 stamped=bool(d["stamped"]),
                 voided=bool(d["voided"]),
+                vendor_tax_id=d["vendor_tax_id"],
+                quantity=d["quantity"],
+                specification=d["specification"],
             )  # fmt: skip
         )
     out: list[LineOut] = []
@@ -82,6 +89,7 @@ def _lines_out(db: Session, school_id: uuid.UUID, rows: Sequence[Row]) -> list[L
                 economic_category=r["economic_category"],
                 object=r["object"],
                 note=r["note"],
+                payment_number=r["payment_number"],
             )  # fmt: skip
         )
         documented = sum(d.amount_cents for d in documents if not d.voided)
@@ -146,13 +154,26 @@ def year_lines(db: Session, school_id: uuid.UUID, year: int) -> list[LineOut]:
     )
 
 
-def balances(lines: list[LineOut]) -> tuple[list[ProgramBalance], list[AlertOut]]:
-    """The balance of each program: what came in (the repasses) minus what was spent. When the repasses
-    say which category they are, spending more than came in that category is the use of custeio in
-    capital or the opposite, which makes a prestação 'aprovada com ressalva' (Res. 15/2021, art. 33)."""
-    received: dict[tuple[str, str | None], int] = {}
-    received_by_category: dict[tuple[str, str], int] = {}
-    spent: dict[tuple[str, str | None], dict[str, int]] = {}
+Key = tuple[str, str | None]
+
+
+def balances(
+    lines: list[LineOut], carry: dict[Key, tuple[int, int]] | None = None
+) -> tuple[list[ProgramBalance], list[AlertOut]]:
+    """The balance of each program: the balance that came from the year before, plus what came in (the
+    repasses and the yield of the investment), minus what was returned to the FNDE and what was spent.
+    When the money says which category it is, spending more than came in that category is the use of
+    custeio in capital or the opposite, which makes a prestação 'aprovada com ressalva' (Res. 15/2021,
+    art. 33)."""
+    carry = carry or {}
+    received: dict[Key, int] = {}
+    yielded: dict[Key, int] = {}
+    returned: dict[Key, int] = {}
+    came: dict[tuple[str, str], int] = {}
+    spent: dict[Key, dict[str, int]] = {}
+    for key, (custeio, capital) in carry.items():
+        came[(key[0], "CUSTEIO")] = came.get((key[0], "CUSTEIO"), 0) + custeio
+        came[(key[0], "CAPITAL")] = came.get((key[0], "CAPITAL"), 0) + capital
     for ln in lines:
         c = ln.classification
         if c is None or c.program is None:
@@ -160,46 +181,110 @@ def balances(lines: list[LineOut]) -> tuple[list[ProgramBalance], list[AlertOut]
         key = (c.program, c.program_label)
         if c.kind == "TRANSFER" and ln.amount_cents > 0:
             received[key] = received.get(key, 0) + ln.amount_cents
-            if c.economic_category is not None:
-                received_by_category[(c.program, c.economic_category)] = (
-                    received_by_category.get((c.program, c.economic_category), 0) + ln.amount_cents
-                )
+        elif c.kind == "YIELD" and ln.amount_cents > 0:
+            yielded[key] = yielded.get(key, 0) + ln.amount_cents
+        elif c.kind == "RETURN_TO_FNDE" and ln.amount_cents < 0:
+            returned[key] = returned.get(key, 0) - ln.amount_cents
         elif c.kind == "EXPENSE" and ln.amount_cents < 0 and c.economic_category is not None:
             bucket = spent.setdefault(key, {"CUSTEIO": 0, "CAPITAL": 0})
             bucket[c.economic_category] += -ln.amount_cents
+        if (
+            c.kind in ("TRANSFER", "YIELD")
+            and ln.amount_cents > 0
+            and c.economic_category is not None
+        ):
+            came[(c.program, c.economic_category)] = (
+                came.get((c.program, c.economic_category), 0) + ln.amount_cents
+            )
     out: list[ProgramBalance] = []
     alerts: list[AlertOut] = []
-    for pkey in sorted(set(received) | set(spent), key=lambda k: (k[0], k[1] or "")):
+    keys = (
+        set(received)
+        | set(spent)
+        | set(yielded)
+        | set(returned)
+        | {k for k, v in carry.items() if any(v)}
+    )
+    for pkey in sorted(keys, key=lambda k: (k[0], k[1] or "")):
         program, label = pkey
         bucket = spent.get(pkey, {"CUSTEIO": 0, "CAPITAL": 0})
         got = received.get(pkey, 0)
+        before = sum(carry.get(pkey, (0, 0)))
         out.append(
             ProgramBalance(
                 program=cast(Program, program),
                 program_label=label,
                 received_cents=got,
+                yield_cents=yielded.get(pkey, 0),
+                returned_cents=returned.get(pkey, 0),
                 spent_custeio_cents=bucket["CUSTEIO"],
                 spent_capital_cents=bucket["CAPITAL"],
-                balance_cents=got - bucket["CUSTEIO"] - bucket["CAPITAL"],
+                balance_cents=before
+                + got
+                + yielded.get(pkey, 0)
+                - returned.get(pkey, 0)
+                - bucket["CUSTEIO"]
+                - bucket["CAPITAL"],
             )
         )
         for category in ("CUSTEIO", "CAPITAL"):
-            came = received_by_category.get((program, category), 0)
-            if came > 0 and bucket[category] > came:
+            total_in = came.get((program, category), 0)
+            if total_in > 0 and bucket[category] > total_in:
                 alerts.append(
                     AlertOut(
                         code="spent_over_received",
                         program=cast(Program, program),
                         economic_category=category,
-                        cents=bucket[category] - came,
+                        cents=bucket[category] - total_in,
                     )
                 )
     return out, alerts
 
 
+def prior_balances(
+    db: Session, scope: SchoolScope, year: int
+) -> tuple[dict[Key, tuple[int, int]], str]:
+    """The balance that came from the year before (field 08 of the form), by program: what the school
+    typed for the year, else what the lines of the earlier years leave, else nothing. The second
+    element says which one it was, because the form must not pass a guess as a fact."""
+    typed = {
+        (str(r["program"]), r["program_label"]): (int(r["custeio_cents"]), int(r["capital_cents"]))
+        for r in repository.carryovers(db, scope.school_id, year)
+    }
+    if typed:
+        return typed, "typed"
+    earlier = _lines_out(
+        db,
+        scope.school_id,
+        repository.lines(db, scope.school_id, dt.date(2000, 1, 1), dt.date(year - 1, 12, 31)),
+    )
+    computed: dict[Key, list[int]] = {}
+    for ln in earlier:
+        c = ln.classification
+        # A repasse of an earlier year with no custeio or capital cannot be split, so it is left out
+        # (the form says the balance is a calculation and the school can type the right one).
+        if c is None or c.program is None or c.economic_category is None:
+            continue
+        sign = (
+            1
+            if c.kind in ("TRANSFER", "YIELD")
+            else -1
+            if c.kind in ("EXPENSE", "RETURN_TO_FNDE")
+            else 0
+        )
+        if sign == 0:
+            continue
+        slot = computed.setdefault((c.program, c.program_label), [0, 0])
+        slot[0 if c.economic_category == "CUSTEIO" else 1] += sign * abs(ln.amount_cents)
+    if computed:
+        return {k: (v[0], v[1]) for k, v in computed.items()}, "computed"
+    return {}, "none"
+
+
 def year_view(db: Session, scope: SchoolScope, year: int) -> YearOut:
     lines = year_lines(db, scope.school_id, year)
-    programs, over = balances(lines)
+    carry, _ = prior_balances(db, scope, year)
+    programs, over = balances(lines, carry)
     today = repository.today(db, scope.school_id)
     year_end = [
         YearEndBalance(
@@ -275,3 +360,58 @@ def void_document(db: Session, scope: SchoolScope, document_id: uuid.UUID) -> No
 def report_rows(db: Session, scope: SchoolScope, year: int) -> list[LineOut]:
     """Every line of the year, in the order of the bank's screen (the date)."""
     return year_lines(db, scope.school_id, year)
+
+
+# --- the official forms ----------------------------------------------------------------------------
+
+
+def get_entity(db: Session, scope: SchoolScope) -> EntityOut | None:
+    row = repository.latest_entity(db, scope.school_id)
+    return None if row is None else EntityOut.model_validate(dict(row))
+
+
+def save_entity(db: Session, scope: SchoolScope, body: EntityIn) -> None:
+    with database_rules(db):
+        repository.insert_entity(
+            db, organization_id=scope.organization_id, school_id=scope.school_id,
+            user_id=scope.user_id, values=body.model_dump(),
+        )  # fmt: skip
+        db.commit()
+
+
+def list_carryovers(db: Session, scope: SchoolScope, year: int) -> list[CarryoverOut]:
+    return [
+        CarryoverOut.model_validate(dict(r))
+        for r in repository.carryovers(db, scope.school_id, year)
+    ]
+
+
+def save_carryover(db: Session, scope: SchoolScope, body: CarryoverIn) -> None:
+    with database_rules(db):
+        repository.insert_carryover(
+            db, organization_id=scope.organization_id, school_id=scope.school_id,
+            user_id=scope.user_id, values=body.model_dump(),
+        )  # fmt: skip
+        db.commit()
+
+
+def demonstrativo_pdf(
+    db: Session,
+    scope: SchoolScope,
+    year: int,
+    program: str,
+    label: str | None,
+    generated_at: dt.datetime,
+) -> bytes:
+    """One form per program and year. A program that has nothing in the year is a 404 (there is nothing to account)."""
+    lines = year_lines(db, scope.school_id, year)
+    carry, source = prior_balances(db, scope, year)
+    if not any(forms._same(ln, program, label) for ln in lines) and (program, label) not in carry:
+        raise not_found()
+    entity = repository.latest_entity(db, scope.school_id)
+    apm, _ = repository.school_name(db, scope.school_id)
+    form = forms.build_demonstrativo(
+        lines=lines, program=program, label=label, year=year, carry=carry, carry_source=source,
+        entity=None if entity is None else {k: str(v) for k, v in entity.items()}, fallback_name=apm,
+    )  # fmt: skip
+    return forms.render_pdf(form, generated_at=generated_at, place=entity["city"] if entity else "")

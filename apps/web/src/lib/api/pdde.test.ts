@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMonth, parseYear, pddeReportHref } from "./pdde";
+import { parseCarryovers, parseEntity, parseMonth, parseYear, pddeDemonstrativoHref, pddeReportHref } from "./pdde";
 
 const doc = (over: Record<string, unknown> = {}) => ({ id: "d1", doc_kind: "NFE", access_key: "1".repeat(44), doc_number: null, issued_on: "2025-03-19", vendor: "Papelaria", amount_cents: 100_000, stamped: true, voided: false, ...over });
 const line = (over: Record<string, unknown> = {}) => ({
@@ -66,5 +66,50 @@ describe("parseYear", () => {
 describe("pddeReportHref", () => {
   it("e uma navegacao para o relatorio do ano", () => {
     expect(pddeReportHref("a b", 2025, "pdf")).toBe("/api/v1/schools/a%20b/pdde/report.pdf?year=2025");
+  });
+});
+
+describe("o que o formulario do FNDE pede", () => {
+  it("le o documento com CNPJ, quantidade e especificacao, e o numero do pagamento", () => {
+    const m = parseMonth(
+      month({
+        lines: [
+          line({
+            classification: { kind: "EXPENSE", program: "BASICO", program_label: null, economic_category: "CAPITAL", object: "Material permanente", note: null, payment_number: "OB 123" },
+            documents: [doc({ vendor_tax_id: "11222333000181", quantity: 2, specification: "Ventilador" })],
+          }),
+        ],
+      }),
+    );
+    expect(m?.lines[0]?.classification?.paymentNumber).toBe("OB 123");
+    expect(m?.lines[0]?.documents[0]).toMatchObject({ vendorTaxId: "11222333000181", quantity: 2, specification: "Ventilador" });
+  });
+
+  it("um documento antigo (sem esses campos) continua valido; quantidade torta nao", () => {
+    expect(parseMonth(month())?.lines[0]?.documents[0]?.vendorTaxId).toBeNull();
+    expect(parseMonth(month({ lines: [line({ documents: [doc({ quantity: 1.5 })] })] }))).toBeNull();
+  });
+
+  it("le rendimento e devolucao", () => {
+    const m = parseMonth(month({ lines: [line({ amount_cents: 1234, classification: { kind: "YIELD", program: "BASICO", program_label: null, economic_category: "CUSTEIO", object: null, note: null } })] }));
+    expect(m?.lines[0]?.classification?.kind).toBe("YIELD");
+  });
+});
+
+describe("entidade, saldo e formulario", () => {
+  it("le a entidade (ou null quando ainda nao foi informada)", () => {
+    expect(parseEntity(null)).toBeNull();
+    expect(parseEntity({ legal_name: "APM", cnpj: "11222333000181", address: "Rua A", city: "Jundiaí", state: "SP" })).toEqual({ legalName: "APM", cnpj: "11222333000181", address: "Rua A", city: "Jundiaí", state: "SP" });
+    expect(parseEntity({ legal_name: "APM" })).toBeUndefined();
+  });
+
+  it("le os saldos do ano anterior e recusa o torto", () => {
+    expect(parseCarryovers([{ program: "BASICO", program_label: null, custeio_cents: 100, capital_cents: 0 }])).toEqual([{ program: "BASICO", programLabel: null, custeioCents: 100, capitalCents: 0 }]);
+    expect(parseCarryovers([{ program: "NOPE", custeio_cents: 1, capital_cents: 1 }])).toBeNull();
+  });
+
+  it("o link do formulario leva o programa, o ano e o nome de outro programa escapado", () => {
+    expect(pddeDemonstrativoHref("a b", 2025, "BASICO", null)).toBe("/api/v1/schools/a%20b/pdde/forms/demonstrativo.pdf?year=2025&program=BASICO");
+    expect(pddeDemonstrativoHref("s", 2025, "OUTRO", "PDDE Mais")).toContain("program_label=PDDE%20Mais");
   });
 });
