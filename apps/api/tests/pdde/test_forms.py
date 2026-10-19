@@ -345,6 +345,7 @@ def test_what_the_data_cannot_fill_is_listed_and_never_hidden(
         "sem custeio ou capital",
         "sem classificação neste ano",
         "sem o CNPJ ou CPF do favorecido",
+        "cobrem só R$ 1.000,00 de R$ 1.500,00",
     ):
         assert notice in text, notice
 

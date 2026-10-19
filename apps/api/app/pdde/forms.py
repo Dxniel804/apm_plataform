@@ -144,7 +144,11 @@ def build_demonstrativo(
                     .replace(".", ",")
                     .replace("X", ".")
                 )
-            elif any(d.vendor_tax_id is None for d in docs):
+            elif sum(d.amount_cents for d in docs) < amount:
+                notices.append(
+                    f"Os documentos do pagamento {len(rows)} cobrem só {brl(sum(d.amount_cents for d in docs))} de {brl(amount)}."
+                )
+            if docs and any(d.vendor_tax_id is None for d in docs):
                 notices.append(
                     f"O pagamento {len(rows)} está sem o CNPJ ou CPF do favorecido (campo 21)."
                 )
