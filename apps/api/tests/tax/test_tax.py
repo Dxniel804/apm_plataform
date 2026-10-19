@@ -127,12 +127,14 @@ def test_a_rule_is_validated_only_when_somebody_says_the_accountant_confirmed_it
     _rule(gestao)
     unconfirmed = gestao.get("/tax/rules").json()["rules"][0]
 
-    gestao.post("/tax/rules", {**IRRF, "validated": True, "source_note": "Contadora, 19/10"})
+    gestao.post(
+        "/tax/rules", {**IRRF, "validated": True, "source_note": "gov.br/receitafederal, 19/10"}
+    )
     confirmed = gestao.get("/tax/rules").json()["rules"][0]
 
     assert unconfirmed["validated"] is False and unconfirmed["validated_at"] is None
     assert confirmed["validated"] is True and confirmed["validated_at"] is not None
-    assert confirmed["source_note"] == "Contadora, 19/10"
+    assert confirmed["source_note"] == "gov.br/receitafederal, 19/10"
     assert confirmed["id"] != unconfirmed["id"]  # a new row: the old one is kept
 
 
@@ -151,6 +153,20 @@ def test_a_bad_rule_is_refused(
 
     assert gestao.post("/tax/rules", {**IRRF, **change}).status_code == 422
     assert gestao.get("/tax/rules").json()["rules"] == []
+
+
+def test_a_rule_marked_as_checked_must_say_where_it_was_checked(
+    apis: ApiFactory, school: PublicSchool, admin_engine: Engine
+) -> None:
+    gestao = _gestao(apis, school, admin_engine)
+
+    without_source = gestao.post("/tax/rules", {**IRRF, "validated": True})
+    with_source = gestao.post(
+        "/tax/rules", {**IRRF, "validated": True, "source_note": "planalto.gov.br, art. 647"}
+    )
+
+    assert without_source.status_code == 422 and with_source.status_code == 201
+    assert gestao.get("/tax/rules").json()["rules"][0]["validated"] is True
 
 
 def test_a_rule_can_say_how_to_pay_instead_of_a_code(
@@ -219,7 +235,7 @@ def test_a_retention_keeps_the_version_of_the_rule_it_used(
     old = _rule(gestao)
     _retention(gestao, old, 100_000)
 
-    newer = _rule(gestao, rate_bps=200, validated=True)
+    newer = _rule(gestao, rate_bps=200, validated=True, source_note="fonte oficial")
     _retention(gestao, newer, 100_000, name="Outra Empresa")
 
     month = gestao.get("/tax/month?period=2026-10").json()
@@ -237,7 +253,7 @@ def test_a_guide_adds_a_tax_up_with_its_code_and_due_date_and_voiding_takes_one_
     apis: ApiFactory, school: PublicSchool, admin_engine: Engine
 ) -> None:
     gestao = _gestao(apis, school, admin_engine)
-    rule = _rule(gestao, validated=True)
+    rule = _rule(gestao, validated=True, source_note="fonte oficial")
     first = _retention(gestao, rule, 100_000).json()["id"]
     _retention(gestao, rule, 200_000, name="Jardim Exemplo")
 

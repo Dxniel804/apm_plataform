@@ -3,7 +3,7 @@ import type { ApiResult } from "./types";
 
 /**
  * Impostos retidos (docs/tax-guides.md). O site NAO decide a lei nem fala com a Receita: a escola escreve as
- * regras (com a contadora), a API calcula e soma, e o site mostra o que digitar no site da Receita. Dinheiro em
+ * regras (lendo a lei e os sites do governo), a API calcula e soma, e o site mostra o que digitar no site da Receita. Dinheiro em
  * centavos; a aliquota em pontos-base (1,5% = 150).
  */
 

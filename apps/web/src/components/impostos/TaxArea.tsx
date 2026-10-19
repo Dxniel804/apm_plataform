@@ -76,6 +76,7 @@ function RuleModal({ schoolId, rule, suggestion, onClose, onDone }: { schoolId: 
     if (rateBps === null) return setError("Informe a alíquota em porcentagem, por exemplo 1,5.");
     if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return setError("Informe o dia do vencimento, de 1 a 31.");
     if (d.darfCode.trim() === "" && d.howto.trim() === "") return setError("Diga o código da guia ou como ela é paga.");
+    if (validated && d.sourceNote.trim() === "") return setError("Para marcar como conferida, anote o endereço da fonte oficial.");
     setBusy(true);
     setError(null);
     const r = await api.tax.saveRule(schoolId, {
@@ -136,10 +137,10 @@ function RuleModal({ schoolId, rule, suggestion, onClose, onDone }: { schoolId: 
             <option value="NEXT">Pagar no dia útil seguinte</option>
           </SelectField>
         </div>
-        <TextField label="De onde vem esta regra" optional name="source" maxLength={200} hint="Exemplo: contadora Ana, 19/10, por e-mail." value={d.sourceNote} onChange={(e) => set("sourceNote", e.target.value)} />
+        <TextField label="Fonte oficial" optional name="source" maxLength={200} hint="O endereço da lei ou da página do governo onde você conferiu esta regra. Obrigatório para marcá-la como conferida." value={d.sourceNote} onChange={(e) => set("sourceNote", e.target.value)} />
         <label className="flex items-start gap-3 text-sub">
           <input type="checkbox" checked={validated} onChange={(e) => setValidated(e.target.checked)} className="mt-1 size-5" />
-          <span>A contadora confirmou esta regra. Só marque se for verdade: o que ficar sem marcar aparece como &quot;não validada&quot;.</span>
+          <span>Conferi esta regra na fonte oficial acima. Só marque se for verdade: o que ficar sem marcar aparece como &quot;não conferida&quot;.</span>
         </label>
         <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
         <FormButtons onCancel={onClose} submitLabel="Salvar a regra" pending={busy} />
@@ -192,7 +193,7 @@ function RetentionModal({ schoolId, rules, period, onClose, onDone }: { schoolId
           {rules.map((r) => (
             <option key={r.id} value={r.id}>
               {r.label}
-              {r.validated ? "" : " (não validada)"}
+              {r.validated ? "" : " (não conferida)"}
             </option>
           ))}
         </SelectField>
@@ -240,7 +241,7 @@ function GuideCard({ guide: g }: { guide: TaxGuide }) {
       </div>
       {!g.validated && (
         <p role="note" className="mx-5 mb-3 rounded-[var(--r-md)] bg-warn-soft px-4 py-3 text-sub text-warn sm:mx-6">
-          <strong>A regra ainda não foi validada pela contadora.</strong> Não pague com base neste valor sem conferir com ela.
+          <strong>A regra ainda não foi conferida numa fonte oficial.</strong> Não pague com base neste valor antes de conferir a alíquota, o código e o vencimento no site do governo.
         </p>
       )}
       {g.mixedVersions && <p className="mx-5 mb-3 rounded-[var(--r-md)] bg-info-soft px-4 py-3 text-sub text-brand-800 sm:mx-6">Este mês tem retenções calculadas com versões diferentes da regra.</p>}
@@ -275,10 +276,10 @@ interface Props {
 }
 
 /**
- * Impostos retidos (docs/tax-guides.md). A escola, com a contadora, escreve as regras; aqui se registra o que foi
+ * Impostos retidos (docs/tax-guides.md). A escola escreve as regras, lendo a lei e os sites do governo; aqui se registra o que foi
  * retido de cada serviço pago e se vê, por imposto e por mês, a "cola": o valor, o código, o período e o vencimento
  * para digitar no site da Receita. O sistema não fala com o governo e não decide a lei: uma regra só aparece como
- * validada se alguém disse que a contadora confirmou.
+ * conferida se alguém marcou que a leu numa fonte oficial e anotou o endereço.
  */
 export function TaxArea({ schoolId }: Props) {
   const [latest] = useState(() => currentLocalPeriod());
@@ -315,12 +316,12 @@ export function TaxArea({ schoolId }: Props) {
       <section aria-label="Regras" className="rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
         <h2 className="text-heading">Regras</h2>
         <p className="mt-1 max-w-[64ch] text-sub text-ink-2">
-          O sistema não fala com a Receita e não sabe a lei. Você, com a contadora, escreve como cada imposto é calculado e onde se paga; ele guarda o que foi retido, soma por mês e mostra o que digitar no site do governo.
+          O sistema não fala com a Receita e não sabe a lei. Você escreve, a partir da lei e dos sites do governo, como cada imposto é calculado e onde se paga; ele guarda o que foi retido, soma por mês e mostra o que digitar no site do governo.
         </p>
         {rules && !rules.ok && <p className="mt-3 text-sub text-ink-2">Não foi possível carregar as regras.</p>}
         {rules && rules.ok && (
           <>
-            {rules.data.rules.length === 0 && <p className="mt-4 text-sub">Nenhuma regra ainda. Comece por uma sugestão abaixo (não validada) ou crie a sua.</p>}
+            {rules.data.rules.length === 0 && <p className="mt-4 text-sub">Nenhuma regra ainda. Comece por uma sugestão abaixo (não conferida) ou crie a sua.</p>}
             <ul aria-label="Regras da escola" className="mt-4 space-y-3">
               {rules.data.rules.map((r) => (
                 <li key={r.id} className="rounded-[var(--r-md)] border border-line px-4 py-3">
@@ -332,7 +333,7 @@ export function TaxArea({ schoolId }: Props) {
                         {r.darfCode ? ` · código ${r.darfCode}` : ""} · vence dia {r.dueDay}
                       </p>
                       <p className={`text-sub ${r.validated ? "text-ok" : "font-semibold text-warn"}`}>
-                        {r.validated && r.validatedAt ? `Validada pela contadora (marcado em ${formatDateLong(r.validatedAt)})` : "Não validada pela contadora"}
+                        {r.validated && r.validatedAt ? `Conferida em fonte oficial (marcado em ${formatDateLong(r.validatedAt)})` : "Não conferida em fonte oficial"}
                       </p>
                     </div>
                     <Button variant="chip" size="md" onClick={() => setEditing({ rule: r, suggestion: null })} aria-label={`Mudar a regra ${r.label}`} className="min-h-11">

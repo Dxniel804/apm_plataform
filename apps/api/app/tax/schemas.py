@@ -51,13 +51,16 @@ class RuleIn(Strict):
     due_day: int = Field(ge=1, le=31)
     due_roll: Roll
     source_note: Source | None = None
-    # The accountant confirmed this rule. Never assumed: an unticked rule counts as NOT validated.
+    # Somebody checked this rule in an official source (the law or a government page). Never assumed:
+    # an unticked rule counts as NOT validated, and a ticked one must name the source it was read in.
     validated: bool = False
 
     @model_validator(mode="after")
     def _where_to_pay(self) -> "RuleIn":
         if self.darf_code is None and self.howto is None:
             raise ValueError("say the code of the guide or how it is paid")
+        if self.validated and self.source_note is None:
+            raise ValueError("say where the rule was checked (the address of the official source)")
         return self
 
 

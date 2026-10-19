@@ -36,7 +36,7 @@ RECEITA_SICALC_URL = "https://sicalc.receita.economia.gov.br/sicalc/principal"
 
 WARNING = (
     "Sugestão de partida, NÃO validada: os números vêm de fontes que não são oficiais e a lei muda. "
-    "Confirme cada um com a contadora antes de marcar a regra como validada."
+    "Confira cada um numa fonte oficial (a lei ou a página do governo) e anote o endereço antes de marcar a regra como conferida."
 )
 SUGGESTIONS = (
     SuggestionOut(
@@ -59,7 +59,7 @@ SUGGESTIONS = (
         rate_bps=1100,
         base_cap_cents=None,
         darf_code=None,
-        howto="Peça à contadora como recolher: o INSS retido costuma passar pelo eSocial e pela DCTFWeb.",
+        howto="Veja no site da Receita como se recolhe o INSS retido: costuma passar pelo eSocial e pela DCTFWeb.",
         warning=WARNING + " O limite (teto) muda todo ano: informe o do ano.",
     ),
     SuggestionOut(
@@ -71,7 +71,7 @@ SUGGESTIONS = (
         base_cap_cents=None,
         darf_code=None,
         howto="Pague a guia do ISS no site da prefeitura do seu município.",
-        warning=WARNING + " A alíquota é do município: pergunte à contadora.",
+        warning=WARNING + " A alíquota é do município: procure no site da prefeitura.",
     ),
 )
 

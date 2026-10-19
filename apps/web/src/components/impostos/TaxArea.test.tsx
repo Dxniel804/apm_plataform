@@ -37,7 +37,7 @@ describe("TaxArea", () => {
     expect(card).toHaveTextContent("R$ 45,00");
     expect(card).toHaveTextContent("1708");
     expect(card).toHaveTextContent("outubro de 2026");
-    expect(card).toHaveTextContent("A regra ainda não foi validada pela contadora");
+    expect(card).toHaveTextContent("A regra ainda não foi conferida numa fonte oficial");
     expect(within(card).getByRole("link", { name: /Abrir o site da Receita/ })).toHaveAttribute("href", "https://sicalc.exemplo.gov.br");
     expect(within(card).getByRole("link", { name: /Abrir o site da Receita/ })).toHaveAttribute("rel", "noopener noreferrer");
   });
@@ -46,12 +46,12 @@ describe("TaxArea", () => {
     setup(rules([rule({ validated: true, validated_at: "2026-10-19T12:00:00Z" })]), month([guide({ validated: true, below_minimum: true, total_cents: 450 })]));
 
     const card = await screen.findByTestId("guide-irrf-servicos-pj");
-    expect(card).not.toHaveTextContent("ainda não foi validada");
+    expect(card).not.toHaveTextContent("ainda não foi conferida");
     expect(card).toHaveTextContent("abaixo do mínimo");
-    expect(await screen.findByText(/Validada pela contadora/)).toBeInTheDocument();
+    expect(await screen.findByText(/Conferida em fonte oficial/)).toBeInTheDocument();
   });
 
-  it("salva uma regra pela sugestao: aliquota e vencimento vem de quem digita, e a validacao so se marcada", async () => {
+  it("salva uma regra pela sugestao: aliquota e vencimento vem de quem digita, e a conferencia so com a fonte anotada", async () => {
     const save = vi.spyOn(api.tax, "saveRule").mockResolvedValue({ ok: true, data: { ok: true } });
     const user = setup(rules(), month());
     await user.click(await screen.findByRole("button", { name: /Sugestão: ISS retido/ }));
@@ -64,10 +64,16 @@ describe("TaxArea", () => {
 
     await user.type(within(dialog).getByLabelText("Alíquota (%)"), "5");
     await user.type(within(dialog).getByLabelText("Dia do vencimento (no mês seguinte)"), "10");
+    await user.click(within(dialog).getByLabelText(/Conferi esta regra na fonte oficial/));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar a regra" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("anote o endereço da fonte oficial");
+    expect(save).not.toHaveBeenCalled();
+
+    await user.type(within(dialog).getByLabelText(/^Fonte oficial/), "prefeitura.exemplo.gov.br/iss");
     await user.click(within(dialog).getByRole("button", { name: "Salvar a regra" }));
 
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    expect(save.mock.calls[0]![1]).toMatchObject({ ruleKey: "iss-municipal", rateBps: 500, dueDay: 10, taxKind: "ISS", validated: false });
+    expect(save.mock.calls[0]![1]).toMatchObject({ ruleKey: "iss-municipal", rateBps: 500, dueDay: 10, taxKind: "ISS", validated: true, sourceNote: "prefeitura.exemplo.gov.br/iss" });
   });
 
   it("registra uma retencao e mostra o calculo antes de salvar", async () => {
