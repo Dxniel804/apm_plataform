@@ -349,7 +349,7 @@ def test_nothing_prints_to_the_console_but_the_command_line_tools() -> None:
         if re.search(r"^\s*print\(", path.read_text(), re.MULTILINE)
     }
 
-    assert printers <= {"app/seed.py", "app/posture.py", "app/db/posture.py"}
+    assert printers <= {"app/seed.py", "app/seed_sandbox.py", "app/posture.py", "app/db/posture.py"}
 
 
 def test_a_random_secret_is_not_a_constant_anywhere_in_the_code() -> None:
