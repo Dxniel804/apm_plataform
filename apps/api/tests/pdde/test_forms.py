@@ -350,6 +350,24 @@ def test_what_the_data_cannot_fill_is_listed_and_never_hidden(
         assert notice in text, notice
 
 
+def test_the_year_report_knows_every_kind_of_line(
+    apis: ApiFactory, school: PublicSchool, admin_engine: Engine
+) -> None:
+    gestao, ids = _setup(apis, school, admin_engine)
+    _fill(gestao, ids)  # a repasse, an expense, a yield and a return to the FNDE
+
+    csv_response = gestao.get("/pdde/report.csv?year=2025")
+    pdf_response = gestao.get("/pdde/report.pdf?year=2025")
+
+    assert csv_response.status_code == 200 and pdf_response.status_code == 200, (
+        csv_response.text,
+        pdf_response.text,
+    )
+    text = csv_response.content.decode("utf-8-sig")
+    assert "Rendimento de aplicação" in text and "Devolução ao FNDE" in text
+    assert text_of(pdf_response.content).count("Rendimento de aplicação") >= 1
+
+
 def test_the_form_is_one_program_and_a_program_with_nothing_is_not_there(
     apis: ApiFactory, school: PublicSchool, admin_engine: Engine
 ) -> None:

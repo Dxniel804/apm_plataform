@@ -30,6 +30,8 @@ PROGRAMS = {
 }
 KINDS = {
     "TRANSFER": "Repasse",
+    "YIELD": "Rendimento de aplicação",
+    "RETURN_TO_FNDE": "Devolução ao FNDE",
     "EXPENSE": "Despesa",
     "TAX_TO_EEX": "Imposto pago direto à prefeitura",
     "REFUND": "Estorno ou devolução",
