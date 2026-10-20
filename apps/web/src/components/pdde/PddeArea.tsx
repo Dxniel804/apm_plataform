@@ -20,8 +20,10 @@ import {
   type PddeLine,
   type PddeMonth,
   type PddeProgram,
+  type PddeProgramBalance,
   type PddeYear,
 } from "@/lib/api/pdde";
+import { PDDE_OBJECTS, suggestCredit, suggestObject } from "@/lib/pdde-objects";
 import { formatDayLong } from "@/lib/format";
 import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { currentLocalPeriod, periodLabel, recentPeriods } from "@/lib/statement-labels";
@@ -34,68 +36,65 @@ const PROGRAM_LABELS: Record<PddeProgram, string> = {
   OUTRO: "Outro programa",
 };
 const KIND_LABELS: Record<PddeKind, string> = {
-  TRANSFER: "Repasse (dinheiro que entrou)",
-  YIELD: "Rendimento de aplicação financeira",
-  EXPENSE: "Despesa",
-  RETURN_TO_FNDE: "Devolução de recursos ao FNDE",
-  TAX_TO_EEX: "Imposto pago direto à prefeitura",
-  REFUND: "Estorno ou devolução",
-  INELIGIBLE: "Despesa não elegível",
+  TRANSFER: "Repasse do FNDE",
+  YIELD: "Rendimento",
+  EXPENSE: "Compra",
+  RETURN_TO_FNDE: "Devolução ao FNDE",
+  TAX_TO_EEX: "Imposto pago à prefeitura",
+  REFUND: "Estorno",
+  INELIGIBLE: "Não pode ser paga com o PDDE",
 };
 const DOC_LABELS: Record<PddeDocKind, string> = { NFE: "Nota fiscal eletrônica (NF-e)", INVOICE: "Fatura", RECEIPT: "Recibo", OTHER: "Outro documento" };
 const ECONOMIC_LABELS: Record<PddeEconomic, string> = { CUSTEIO: "Custeio", CAPITAL: "Capital" };
-const STATUS: Record<PddeLine["status"], { tone: "warning" | "info" | "success"; label: string }> = {
-  PENDING: { tone: "warning", label: "Pendente" },
-  PARTIAL: { tone: "info", label: "Parcial" },
-  DONE: { tone: "success", label: "Concluída" },
-};
 
 const programName = (program: PddeProgram | null, label: string | null) => (program === null ? "" : program === "OUTRO" ? (label ?? PROGRAM_LABELS.OUTRO) : PROGRAM_LABELS[program]);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function describe(error: ApiError): string {
-  if (error.kind === "network" || error.kind === "timeout") return "Não foi possível falar com o servidor. Nada foi alterado.";
+  if (error.kind === "network" || error.kind === "timeout") return "Sem conexão com o servidor. Nada foi alterado.";
   switch (error.code) {
     case "document_key_used":
-      return "Esta nota fiscal já comprova outra linha.";
+      return "Esta nota já comprova outro lançamento.";
     case "line_is_not_an_expense":
-      return "Documento só se registra em uma saída da conta.";
+      return "Só saídas recebem nota.";
     case "rule_violation":
-      return "Não foi possível salvar: confira se o tipo combina com a linha (repasse é entrada, despesa é saída) e se os documentos não somam mais que a linha.";
+      return "Não foi possível salvar: confira o tipo e o valor das notas.";
     case "validation_error":
-      return "Confira os dados. Despesa precisa de programa, custeio ou capital e objeto; a chave da NF-e tem 44 números; o CNPJ ou CPF precisa ser válido.";
+      return "Confira os dados. A chave da NF-e tem 44 números.";
     case "permission_denied":
       return "Você não tem permissão para mexer no PDDE.";
     default:
-      return error.status === 404 ? "Esta linha não está mais aqui. Atualize a página." : "Não foi possível concluir. Tente de novo.";
+      return error.status === 404 ? "Este lançamento não está mais aqui. Atualize a página." : "Não foi possível concluir. Tente de novo.";
   }
 }
 
-function alertText(a: PddeAlert): string {
+/** Avisos curtos. A contagem de pendências fica no resumo, nao aqui. */
+function alertText(a: PddeAlert): string | null {
   const where = a.program ? programName(a.program, null) : "";
   switch (a.code) {
     case "fee_on_pdde_account":
-      return `${plural(a.count, "tarifa bancária", "tarifas bancárias")} na conta do PDDE (${formatBRL(a.cents)}). A conta do PDDE é isenta de tarifas e o dinheiro não pode pagá-las: peça ao banco o estorno.`;
-    case "pending_lines":
-      return `${plural(a.count, "lançamento", "lançamentos")} sem classificação ou sem documento.`;
+      return `${plural(a.count, "tarifa bancária", "tarifas bancárias")} na conta do PDDE (${formatBRL(a.cents)}). Peça o estorno ao banco.`;
     case "spent_over_received":
-      return `${where}: gastou ${formatBRL(a.cents)} a mais em ${a.economicCategory === "CAPITAL" ? "capital" : "custeio"} do que recebeu nessa categoria. Usar custeio em capital, ou o contrário, faz a prestação ser aprovada só com ressalva.`;
+      return `${where}: ${formatBRL(a.cents)} a mais em ${a.economicCategory === "CAPITAL" ? "capital" : "custeio"} do que entrou.`;
     case "year_end_reconciliation":
-      return `Falta o extrato de dezembro (até 31/12) em ${plural(a.count, "conta", "contas")}: a prestação pede a conciliação bancária do saldo de 31/12.`;
+      return `Falta o extrato de dezembro em ${plural(a.count, "conta", "contas")}.`;
     case "deadline":
-      return `A Secretaria de Educação recebe a prestação até ${a.date ? formatDayLong(a.date) : "30/04"} e ainda há ${plural(a.count, "pendência", "pendências")}. Confirme com ela o prazo da sua escola.`;
+      return `Prazo na Secretaria: ${a.date ? formatDayLong(a.date) : "30/04"}.`;
     case "deadline_passed":
-      return `O prazo de ${a.date ? formatDayLong(a.date) : "30/04"} já passou e ainda há ${plural(a.count, "pendência", "pendências")}. Procure a Secretaria de Educação.`;
+      return `O prazo de ${a.date ? formatDayLong(a.date) : "30/04"} passou.`;
+    case "pending_lines":
+      return null;
   }
 }
 
 function Alerts({ alerts }: { alerts: PddeAlert[] }) {
-  if (alerts.length === 0) return null;
+  const texts = alerts.map(alertText).filter((t): t is string => t !== null);
+  if (texts.length === 0) return null;
   return (
     <ul aria-label="Atenção" className="mt-4 space-y-2">
-      {alerts.map((a, i) => (
-        <li key={`${a.code}-${i}`} className="rounded-[var(--r-md)] bg-warn-soft px-4 py-3 text-sub text-warn">
-          {alertText(a)}
+      {texts.map((t) => (
+        <li key={t} className="rounded-[var(--r-md)] bg-warn-soft px-4 py-3 text-sub text-warn">
+          {t}
         </li>
       ))}
     </ul>
@@ -106,27 +105,66 @@ function Money({ label, cents, onChange, hint }: { label: string; cents: number;
   return <TextField label={label} name={label} prefix="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" hint={hint} value={cents === 0 ? "" : formatBRLNumber(cents)} onChange={(e) => onChange(centsFromDigits(e.target.value))} />;
 }
 
+/** Custeio ou capital em dois botoes: vem escolhido pelo sistema, um clique troca. */
+function EconomicChips({ value, onChange }: { value: PddeEconomic | ""; onChange: (v: PddeEconomic) => void }) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-sub font-semibold">Conta como</legend>
+      <div className="flex gap-2">
+        {(Object.keys(ECONOMIC_LABELS) as PddeEconomic[]).map((c) => (
+          <label key={c} className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border px-5 text-sub font-semibold ${value === c ? "border-brand-800 bg-brand-800 text-white" : "border-line-strong bg-white text-brand-800"}`}>
+            <input type="radio" name="pdde-economic" value={c} checked={value === c} onChange={() => onChange(c)} className="sr-only" />
+            {ECONOMIC_LABELS[c]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 // --- classify ------------------------------------------------------------------------------------
 
-function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; line: PddeLine; onClose: () => void; onDone: () => void }) {
+const OTHER_KINDS: PddeKind[] = ["RETURN_TO_FNDE", "TAX_TO_EEX", "INELIGIBLE", "REFUND"];
+const CREDIT_KINDS: PddeKind[] = ["TRANSFER", "YIELD", "REFUND"];
+
+function ClassifyModal({ schoolId, line, programs, onClose, onDone }: { schoolId: string; line: PddeLine; programs: PddeProgramBalance[]; onClose: () => void; onDone: () => void }) {
   const credit = line.amountCents > 0;
   const current = line.classification;
-  const [kind, setKind] = useState<PddeKind>(current?.kind ?? (credit ? "TRANSFER" : "EXPENSE"));
-  const [program, setProgram] = useState<PddeProgram>(current?.program ?? "BASICO");
-  const [label, setLabel] = useState(current?.programLabel ?? "");
-  const [category, setCategory] = useState<PddeEconomic | "">(current?.economicCategory ?? "");
-  const [object, setObject] = useState(current?.object ?? "");
+  const onlyProgram = programs.length === 1 ? programs[0]! : null;
+  const creditHint = credit ? suggestCredit(line.memo) : null;
+  const objectHint = !credit ? suggestObject(line.memo) : null;
+
+  const [kind, setKind] = useState<PddeKind>(current?.kind ?? (credit ? (creditHint?.kind ?? "TRANSFER") : "EXPENSE"));
+  const [objectLabel, setObjectLabel] = useState(current?.kind === "EXPENSE" ? (current.object ?? "") : (objectHint?.label ?? ""));
+  const [program, setProgram] = useState<PddeProgram>(current?.program ?? creditHint?.program ?? onlyProgram?.program ?? "BASICO");
+  const [label, setLabel] = useState(current?.programLabel ?? onlyProgram?.programLabel ?? "");
+  const [category, setCategory] = useState<PddeEconomic | "">(current?.economicCategory ?? creditHint?.economic ?? objectHint?.economic ?? "");
   const [note, setNote] = useState(current?.note ?? "");
   const [paymentNumber, setPaymentNumber] = useState(current?.paymentNumber ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const needsProgram = kind === "TRANSFER" || kind === "EXPENSE" || kind === "YIELD" || kind === "RETURN_TO_FNDE";
-  const needsCategory = kind === "EXPENSE" || kind === "YIELD" || kind === "RETURN_TO_FNDE";
+  const needsCategory = needsProgram;
+  const showProgram = needsProgram && (credit || onlyProgram === null);
+
+  // Debit: one list, the purchases first and then the other kinds of outflow. Choosing a purchase sets custeio or capital.
+  const choice = kind === "EXPENSE" ? `obj:${objectLabel}` : `kind:${kind}`;
+  function choose(value: string) {
+    if (value.startsWith("obj:")) {
+      const found = PDDE_OBJECTS.find((o) => o.label === value.slice(4));
+      setKind("EXPENSE");
+      setObjectLabel(found?.label ?? "");
+      if (found) setCategory(found.economic);
+    } else {
+      setKind(value.slice(5) as PddeKind);
+      setObjectLabel("");
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (kind === "EXPENSE" && objectLabel === "") return setError("Escolha o que foi comprado.");
     if (needsCategory && category === "") return setError("Escolha custeio ou capital.");
-    if (kind === "EXPENSE" && object.trim() === "") return setError("Despesa precisa do objeto.");
     if (needsProgram && program === "OUTRO" && label.trim() === "") return setError("Diga o nome do programa.");
     setBusy(true);
     setError(null);
@@ -134,7 +172,7 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
       kind,
       ...(needsProgram ? { program, ...(program === "OUTRO" ? { programLabel: label.trim() } : {}) } : {}),
       ...(category !== "" && needsProgram ? { economicCategory: category } : {}),
-      ...(kind === "EXPENSE" ? { object: object.trim() } : {}),
+      ...(kind === "EXPENSE" ? { object: objectLabel } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(paymentNumber.trim() && (kind === "EXPENSE" || kind === "RETURN_TO_FNDE") ? { paymentNumber: paymentNumber.trim() } : {}),
     });
@@ -143,40 +181,56 @@ function ClassifyModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
     onDone();
   }
 
-  const kinds: PddeKind[] = credit ? ["TRANSFER", "YIELD", "REFUND"] : ["EXPENSE", "RETURN_TO_FNDE", "TAX_TO_EEX", "INELIGIBLE", "REFUND"];
   return (
-    <FormModal title="Classificar o lançamento" intro={`${formatDayLong(line.postedOn)} · ${formatBRL(line.amountCents)} · ${line.memo}`} onClose={onClose} busy={busy}>
+    <FormModal title={credit ? "O que entrou" : "O que foi comprado"} intro={`${formatDayLong(line.postedOn)} · ${formatBRL(line.amountCents)} · ${line.memo}`} onClose={onClose} busy={busy}>
       <form method="post" onSubmit={(e) => void submit(e)} className="space-y-5">
-        <SelectField id="pdde-kind" label="O que é este lançamento" value={kind} onChange={(e) => setKind(e.target.value as PddeKind)}>
-          {kinds.map((k) => (
-            <option key={k} value={k}>
-              {KIND_LABELS[k]}
-            </option>
-          ))}
-        </SelectField>
-        {needsProgram && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField id="pdde-program" label="Programa" value={program} onChange={(e) => setProgram(e.target.value as PddeProgram)}>
-              {(Object.keys(PROGRAM_LABELS) as PddeProgram[]).map((p) => (
-                <option key={p} value={p}>
-                  {PROGRAM_LABELS[p]}
+        {credit ? (
+          <SelectField id="pdde-kind" label="Tipo" value={kind} onChange={(e) => setKind(e.target.value as PddeKind)}>
+            {CREDIT_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABELS[k]}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <SelectField id="pdde-what" label="Item" value={choice} onChange={(e) => choose(e.target.value)}>
+            <option value="obj:">Escolha</option>
+            <optgroup label="Compra">
+              {PDDE_OBJECTS.map((o) => (
+                <option key={o.label} value={`obj:${o.label}`}>
+                  {o.label}
                 </option>
               ))}
-            </SelectField>
-            <SelectField id="pdde-category" label="Custeio ou capital" optional={!needsCategory} value={category} onChange={(e) => setCategory(e.target.value as PddeEconomic | "")}>
-              <option value="">{needsCategory ? "Escolha" : "Não informar (o formulário do FNDE precisa)"}</option>
-              {(Object.keys(ECONOMIC_LABELS) as PddeEconomic[]).map((c) => (
-                <option key={c} value={c}>
-                  {ECONOMIC_LABELS[c]}
+            </optgroup>
+            <optgroup label="Outra saída">
+              {OTHER_KINDS.map((k) => (
+                <option key={k} value={`kind:${k}`}>
+                  {KIND_LABELS[k]}
                 </option>
               ))}
-            </SelectField>
-          </div>
+            </optgroup>
+          </SelectField>
         )}
-        {needsProgram && program === "OUTRO" && <TextField label="Nome do programa" name="program-label" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />}
-        {kind === "EXPENSE" && <TextField label="Objeto da despesa" name="object" maxLength={120} hint="Como a resolução do programa chama o gasto. Exemplo: material de consumo." value={object} onChange={(e) => setObject(e.target.value)} />}
-        {(kind === "EXPENSE" || kind === "RETURN_TO_FNDE") && <TextField label="Número do cheque ou da ordem bancária" optional name="payment-number" maxLength={40} hint="Sai no campo 26 do formulário do FNDE. Está no extrato." value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} />}
-        <TextField label="Observação" optional name="note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
+        {showProgram && (
+          <SelectField id="pdde-program" label="Programa" value={program} onChange={(e) => setProgram(e.target.value as PddeProgram)}>
+            {(Object.keys(PROGRAM_LABELS) as PddeProgram[]).map((p) => (
+              <option key={p} value={p}>
+                {PROGRAM_LABELS[p]}
+              </option>
+            ))}
+          </SelectField>
+        )}
+        {needsProgram && program === "OUTRO" && showProgram && <TextField label="Nome do programa" name="program-label" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />}
+        {needsCategory && (kind !== "EXPENSE" || objectLabel !== "") && <EconomicChips value={category} onChange={setCategory} />}
+        {(kind === "EXPENSE" || kind === "RETURN_TO_FNDE") && (
+          <details>
+            <summary className="cursor-pointer text-sub font-semibold text-brand-800">Mais dados</summary>
+            <div className="mt-3 space-y-4">
+              <TextField label="Nº do cheque ou da ordem bancária" optional name="payment-number" maxLength={40} value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} />
+              <TextField label="Observação" optional name="note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+          </details>
+        )}
         <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
         <FormButtons onCancel={onClose} submitLabel="Salvar" pending={busy} />
       </form>
@@ -194,7 +248,7 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
   const [issuedOn, setIssuedOn] = useState("");
   const [vendor, setVendor] = useState("");
   const [cents, setCents] = useState(left > 0 ? left : 0);
-  const [stamped, setStamped] = useState(false);
+  const [stamped, setStamped] = useState(true);
   const [taxId, setTaxId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [specification, setSpecification] = useState("");
@@ -204,7 +258,7 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(issuedOn)) return setError("Informe a data do documento.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(issuedOn)) return setError("Informe a data da nota.");
     if (vendor.trim() === "" || cents <= 0) return setError("Informe o fornecedor e o valor.");
     setBusy(true);
     setError(null);
@@ -226,37 +280,40 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
   }
 
   return (
-    <FormModal title="Registrar documento da despesa" intro={`${line.memo} · falta comprovar ${formatBRL(Math.max(left, 0))}`} onClose={onClose} busy={busy}>
+    <FormModal title="Anexar nota" intro={`${line.memo} · falta ${formatBRL(Math.max(left, 0))}`} onClose={onClose} busy={busy}>
       <form method="post" onSubmit={(e) => void submit(e)} className="space-y-5">
-        <SelectField id="pdde-doc-kind" label="Tipo de documento" value={docKind} onChange={(e) => setDocKind(e.target.value as PddeDocKind)}>
+        <SelectField id="pdde-doc-kind" label="Tipo" value={docKind} onChange={(e) => setDocKind(e.target.value as PddeDocKind)}>
           {(Object.keys(DOC_LABELS) as PddeDocKind[]).map((k) => (
             <option key={k} value={k}>
               {DOC_LABELS[k]}
             </option>
           ))}
         </SelectField>
-        {docKind === "NFE" && <TextField label="Chave de acesso da NF-e" name="access-key" inputMode="numeric" autoComplete="off" hint="Os 44 números, com ou sem espaços." value={key} onChange={(e) => setKey(e.target.value)} />}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label="Número" optional name="number" maxLength={40} value={number} onChange={(e) => setNumber(e.target.value)} />
-          <TextField label="Data do documento" name="issued-on" type="date" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
-        </div>
+        {docKind === "NFE" && <TextField label="Chave da NF-e (44 números)" name="access-key" inputMode="numeric" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} />}
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label="Fornecedor" name="vendor" maxLength={120} value={vendor} onChange={(e) => setVendor(e.target.value)} />
-          <TextField label="CNPJ ou CPF do fornecedor" optional name="tax-id" inputMode="numeric" autoComplete="off" maxLength={24} hint="Sai no campo 21 do formulário do FNDE." value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+          <TextField label="Data da nota" name="issued-on" type="date" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
         </div>
+        <Money label="Valor da nota" cents={cents} onChange={setCents} />
         {capital && (
           <div className="grid gap-4 sm:grid-cols-3">
-            <TextField label="Quantidade" optional name="quantity" inputMode="numeric" maxLength={7} hint="Para a relação de bens." value={quantity} onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ""))} />
-            <TextField className="sm:col-span-2" label="O que é o bem" optional name="specification" maxLength={200} hint="Marca, modelo, o que for preciso para identificar." value={specification} onChange={(e) => setSpecification(e.target.value)} />
+            <TextField label="Quantidade" optional name="quantity" inputMode="numeric" maxLength={7} value={quantity} onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ""))} />
+            <TextField className="sm:col-span-2" label="Qual é o bem" optional name="specification" maxLength={200} value={specification} onChange={(e) => setSpecification(e.target.value)} />
           </div>
         )}
-        <Money label="Valor deste documento" cents={cents} onChange={setCents} hint="Pode ser menos que a linha: os documentos somam até o valor dela." />
+        <details>
+          <summary className="cursor-pointer text-sub font-semibold text-brand-800">Mais dados</summary>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <TextField label="Número da nota" optional name="number" maxLength={40} value={number} onChange={(e) => setNumber(e.target.value)} />
+            <TextField label="CNPJ ou CPF do fornecedor" optional name="tax-id" inputMode="numeric" autoComplete="off" maxLength={24} value={taxId} onChange={(e) => setTaxId(e.target.value)} />
+          </div>
+        </details>
         <label className="flex items-start gap-3 text-sub">
           <input type="checkbox" checked={stamped} onChange={(e) => setStamped(e.target.checked)} className="mt-1 size-5" />
-          <span>O documento tem a expressão &quot;Pagos com recursos do&quot; e o nome do programa, e o atesto de recebimento assinado.</span>
+          <span>Tem o carimbo &quot;Pagos com recursos do&quot; e o programa</span>
         </label>
         <div aria-live="polite">{error && <p role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">{error}</p>}</div>
-        <FormButtons onCancel={onClose} submitLabel="Registrar" pending={busy} />
+        <FormButtons onCancel={onClose} submitLabel="Anexar" pending={busy} />
       </form>
     </FormModal>
   );
@@ -264,13 +321,43 @@ function DocumentModal({ schoolId, line, onClose, onDone }: { schoolId: string; 
 
 // --- a line --------------------------------------------------------------------------------------
 
-function LineItem({ schoolId, line, onChanged }: { schoolId: string; line: PddeLine; onChanged: () => void }) {
+function lineState(line: PddeLine): { tone: "warning" | "info" | "success"; label: string } {
+  const c = line.classification;
+  if (!c) return { tone: "warning", label: "Classificar" };
+  if (c.kind === "EXPENSE" && line.status !== "DONE") return { tone: line.status === "PARTIAL" ? "info" : "warning", label: "Falta nota" };
+  return { tone: "success", label: "Pronto" };
+}
+
+function LineItem({ schoolId, line, programs, onChanged }: { schoolId: string; line: PddeLine; programs: PddeProgramBalance[]; onChanged: () => void }) {
   const [classifying, setClassifying] = useState(false);
   const [documenting, setDocumenting] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const c = line.classification;
   const isExpense = c?.kind === "EXPENSE";
-  const s = STATUS[line.status];
+  const credit = line.amountCents > 0;
+  const s = lineState(line);
+  // An income line whose text already says the program and custeio or capital is confirmed in one click.
+  const hint = credit && !c ? suggestCredit(line.memo) : null;
+  const onlyProgram = programs.length === 1 ? programs[0]!.program : null;
+  const readyProgram = hint ? (hint.program ?? onlyProgram) : null;
+  const canConfirm = hint !== null && readyProgram !== null && hint.economic !== null;
+
+  async function confirm() {
+    if (!hint || !readyProgram || !hint.economic) return;
+    setBusy(true);
+    setError(null);
+    const only = programs.length === 1 ? programs[0]! : null;
+    const r = await api.pdde.classify(schoolId, line.lineId, {
+      kind: hint.kind,
+      program: readyProgram,
+      ...(readyProgram === "OUTRO" && only?.programLabel ? { programLabel: only.programLabel } : {}),
+      economicCategory: hint.economic,
+    });
+    setBusy(false);
+    if (!r.ok) return setError(describe(r.error));
+    onChanged();
+  }
 
   async function voidDocument(id: string) {
     setError(null);
@@ -283,57 +370,59 @@ function LineItem({ schoolId, line, onChanged }: { schoolId: string; line: PddeL
     <li className="rounded-[var(--r-lg)] border border-line bg-white px-5 py-4 sm:px-6" data-status={line.status}>
       <div className="flex flex-wrap items-start gap-x-5 gap-y-2">
         <div className="min-w-0 flex-1 basis-60">
-          <p className="text-sub text-ink-2">
-            {formatDayLong(line.postedOn)} · {line.accountNickname}
-          </p>
+          <p className="text-sub text-ink-2">{formatDayLong(line.postedOn)}</p>
           <p className="font-semibold [overflow-wrap:anywhere]">{line.memo}</p>
           <p className="text-sub text-ink-2">
             {c
               ? [KIND_LABELS[c.kind], programName(c.program, c.programLabel), c.economicCategory ? ECONOMIC_LABELS[c.economicCategory] : "", c.object ?? ""].filter(Boolean).join(" · ")
-              : "Ainda sem classificação"}
+              : canConfirm
+                ? `Sugestão: ${[programName(readyProgram, null), ECONOMIC_LABELS[hint!.economic!]].join(" · ")}`
+                : ""}
           </p>
         </div>
         <p className={`text-[1.125rem] font-bold tabular-nums ${line.amountCents < 0 ? "text-bad" : "text-ok"}`}>{formatBRL(line.amountCents)}</p>
         <StatusPill tone={s.tone}>{s.label}</StatusPill>
       </div>
-      {line.looksLikeFee && line.amountCents < 0 && <p className="mt-2 text-sub text-warn">Parece uma tarifa do banco: a conta do PDDE não paga tarifas.</p>}
-      {isExpense && (
-        <div className="mt-3 border-t border-line pt-3">
-          <p className="text-sub text-ink-2">
-            Comprovado {formatBRL(line.documentedCents)} de {formatBRL(-line.amountCents)}
-          </p>
-          <ul className="mt-1 space-y-1">
-            {line.documents
-              .filter((d) => !d.voided)
-              .map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center gap-x-3 text-sub">
-                  <span className="[overflow-wrap:anywhere]">
-                    {DOC_LABELS[d.docKind]} {d.docNumber ? `nº ${d.docNumber}` : ""} · {d.vendor} · {formatBRL(d.amountCents)}
-                    {d.stamped ? "" : " · sem o carimbo do programa"}
-                  </span>
-                  <Button variant="plain" size="md" onClick={() => void voidDocument(d.id)} aria-label={`Anular o documento de ${d.vendor}`} className="rounded-full!">
-                    Anular
-                  </Button>
-                </li>
-              ))}
-          </ul>
-        </div>
+      {line.looksLikeFee && line.amountCents < 0 && <p className="mt-2 text-sub text-warn">Parece tarifa: o PDDE não paga tarifa.</p>}
+      {isExpense && line.documents.some((d) => !d.voided) && (
+        <ul className="mt-3 space-y-1 border-t border-line pt-3">
+          {line.documents
+            .filter((d) => !d.voided)
+            .map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-x-3 text-sub">
+                <span className="[overflow-wrap:anywhere]">
+                  {DOC_LABELS[d.docKind]} {d.docNumber ? `nº ${d.docNumber}` : ""} · {d.vendor} · {formatBRL(d.amountCents)}
+                  {d.stamped ? "" : " · sem carimbo"}
+                </span>
+                <Button variant="plain" size="md" onClick={() => void voidDocument(d.id)} aria-label={`Anular a nota de ${d.vendor}`} className="rounded-full!">
+                  Anular
+                </Button>
+              </li>
+            ))}
+        </ul>
       )}
+      {isExpense && line.status !== "DONE" && <p className="mt-2 text-sub text-ink-2">Falta {formatBRL(-line.amountCents - line.documentedCents)}</p>}
       <div aria-live="polite">{error && <p role="alert" className="mt-2 rounded-[var(--r-md)] bg-bad-soft px-4 py-2 text-sub font-medium text-bad">{error}</p>}</div>
       <div className="mt-3 flex flex-wrap gap-3">
-        <Button variant="chip" size="md" onClick={() => setClassifying(true)} className="min-h-11">
-          {c ? "Mudar a classificação" : "Classificar"}
-        </Button>
-        {isExpense && line.status !== "DONE" && (
-          <Button variant="chip" size="md" onClick={() => setDocumenting(true)} className="min-h-11">
-            Registrar documento
+        {canConfirm && (
+          <Button variant="chip" size="md" disabled={busy} onClick={() => void confirm()} className="min-h-11">
+            Confirmar
           </Button>
         )}
+        {isExpense && line.status !== "DONE" && (
+          <Button variant="chip" size="md" onClick={() => setDocumenting(true)} className="min-h-11">
+            Anexar nota
+          </Button>
+        )}
+        <Button variant={canConfirm || !c || (isExpense && line.status !== "DONE") ? "secondary" : "chip"} size="md" onClick={() => setClassifying(true)} className="min-h-11">
+          {c ? "Mudar" : credit ? "Escolher" : "O que foi comprado?"}
+        </Button>
       </div>
       {classifying && (
         <ClassifyModal
           schoolId={schoolId}
           line={line}
+          programs={programs}
           onClose={() => setClassifying(false)}
           onDone={() => {
             setClassifying(false);
@@ -360,20 +449,23 @@ function LineItem({ schoolId, line, onChanged }: { schoolId: string; line: PddeL
 
 const link = "inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sub font-semibold text-brand-800 hover:bg-bg";
 
+type Step = "in" | "out" | "deliver";
+
 interface Props {
   schoolId: string;
 }
 
 /**
- * PDDE: a prestação de contas do dinheiro federal. A conta do PDDE (cadastrada em Conciliação, com a finalidade
- * PDDE) tem o extrato importado; aqui cada lançamento é classificado (programa, custeio ou capital, objeto) e cada
- * despesa é comprovada por documentos, como na tela do BB Gestão Ágil. A situação de cada linha e o saldo de cada
- * programa vêm da API; o site não soma nada. O relatório do ano é o espelho que a escola guarda.
+ * PDDE em tres passos: o que entrou (o texto do extrato ja diz programa e custeio ou capital, so confirmar), o que
+ * foi gasto (escolhe-se o item comprado; o site deduz custeio ou capital) e o que entregar. A escola imprime os
+ * formularios do FNDE e leva o papel a Secretaria de Educacao, que presta contas no sistema: nada e enviado daqui.
+ * A situacao de cada linha e o saldo de cada programa vem da API; o site nao soma nada.
  */
 export function PddeArea({ schoolId }: Props) {
   const [latest] = useState(() => currentLocalPeriod());
   const options = recentPeriods(latest, 36);
   const [period, setPeriod] = useState(options[0]!);
+  const [step, setStep] = useState<Step>("in");
   const year = Number(period.slice(0, 4));
   const [version, setVersion] = useState(0);
   // What was loaded stays on the screen while it is read again (after a save); it is hidden only when
@@ -394,14 +486,33 @@ export function PddeArea({ schoolId }: Props) {
   const y = summary?.year === year ? summary.res : null;
   const refresh = () => setVersion((n) => n + 1);
 
+  const lines = m && m.ok ? m.data.lines : [];
+  const incoming = lines.filter((l) => l.amountCents > 0);
+  const outgoing = lines.filter((l) => l.amountCents < 0);
+  const inTodo = incoming.filter((l) => !l.classification).length;
+  const outTodo = outgoing.filter((l) => lineState(l).label !== "Pronto").length;
+  const programs = y && y.ok ? y.data.programs : [];
+  const noAccount = m && m.ok && m.data.accounts.length === 0;
+
+  const tab = (id: Step, text: string, todo: number) => (
+    <button
+      key={id}
+      type="button"
+      role="tab"
+      aria-selected={step === id}
+      onClick={() => setStep(id)}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-5 text-sub font-semibold ${step === id ? "border-brand-800 bg-brand-800 text-white" : "border-line-strong bg-white text-brand-800 hover:bg-bg"}`}
+    >
+      {text}
+      {todo > 0 && <span className={`rounded-full px-2 py-0.5 text-[0.75rem] ${step === id ? "bg-white text-brand-800" : "bg-warn-soft text-warn"}`}>{todo}</span>}
+    </button>
+  );
+
   return (
     <div>
-      <section aria-label="PDDE do ano" className="mb-8 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
-        <h2 className="text-heading">PDDE: {year}</h2>
-        <p className="mt-1 max-w-[62ch] text-sub text-ink-2">
-          Classifique cada lançamento da conta do PDDE e comprove as despesas com documentos. Imprima os formulários do FNDE, assine e entregue com os documentos à Secretaria de Educação, que presta contas no sistema.
-        </p>
-        <div className="mt-4 flex flex-wrap items-end gap-4">
+      <section aria-label="PDDE" className="mb-6 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="text-heading">PDDE {year}</h2>
           <div className="min-w-0 basis-56">
             <SelectField id="pdde-period" label="Mês" value={period} onChange={(e) => setPeriod(e.target.value)}>
               {options.map((p) => (
@@ -411,55 +522,17 @@ export function PddeArea({ schoolId }: Props) {
               ))}
             </SelectField>
           </div>
-          <a className={link} href={pddeReportHref(schoolId, year, "pdf")} download>
-            Relatório do ano (PDF)
-          </a>
-          <a className={link} href={pddeReportHref(schoolId, year, "csv")} download>
-            Relatório do ano (planilha)
-          </a>
         </div>
-        {y && !y.ok && <p className="mt-4 text-sub text-ink-2">Não foi possível carregar o resumo do ano.</p>}
-        {y && y.ok && (
-          <>
-            <Alerts alerts={y.data.alerts} />
-            <FormsSetup schoolId={schoolId} year={year} />
-            {y.data.accounts.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {y.data.accounts.map((a) => (
-                  <a key={a.id} className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeConciliacaoHref(schoolId, year, a.id)} download>
-                    Conciliação bancária: {a.nickname} (PDF)
-                  </a>
-                ))}
-              </div>
-            )}
-            {y.data.programs.length > 0 && (
-              <ul aria-label="Saldo por programa" className="mt-4 grid gap-3 sm:grid-cols-2">
-                {y.data.programs.map((p) => (
-                  <li key={`${p.program}-${p.programLabel ?? ""}`} className="rounded-[var(--r-md)] border border-line px-4 py-3">
-                    <p className="font-semibold">{programName(p.program, p.programLabel)}</p>
-                    <p className="text-sub text-ink-2">
-                      Recebido {formatBRL(p.receivedCents)}{p.yieldCents > 0 ? ` · rendimento ${formatBRL(p.yieldCents)}` : ""}{p.returnedCents > 0 ? ` · devolvido ${formatBRL(p.returnedCents)}` : ""} · custeio {formatBRL(p.spentCusteioCents)} · capital {formatBRL(p.spentCapitalCents)}
-                    </p>
-                    <p className="text-[1.125rem] font-bold tabular-nums text-brand-800">Saldo {formatBRL(p.balanceCents)}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <a className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeDemonstrativoHref(schoolId, year, p.program, p.programLabel)} download>
-                        Formulário do FNDE (PDF)
-                      </a>
-                      <a className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-4 text-sub font-semibold text-brand-800 hover:bg-bg" href={pddeBensHref(schoolId, year, p.program, p.programLabel)} download>
-                        Relação de bens (PDF)
-                      </a>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+        <div role="tablist" aria-label="Passos do PDDE" className="mt-4 flex flex-wrap gap-2">
+          {tab("in", "1 · Entrou", inTodo)}
+          {tab("out", "2 · Gastei", outTodo)}
+          {tab("deliver", "3 · Entregar", 0)}
+        </div>
       </section>
 
       {!m && (
         <p role="status" aria-busy="true" className="text-sub text-ink-2">
-          Carregando o PDDE…
+          Carregando…
         </p>
       )}
       {m && !m.ok && (
@@ -467,26 +540,82 @@ export function PddeArea({ schoolId }: Props) {
           {m.error.status === 403 ? "O seu perfil não mexe no PDDE desta escola." : describe(m.error)}
         </p>
       )}
-      {m && m.ok && m.data.accounts.length === 0 && (
+      {noAccount && (
         <div className="rounded-[var(--r-lg)] border border-line px-6 py-10 text-center">
           <h2 className="text-heading">Falta a conta do PDDE</h2>
           <p className="mx-auto mt-2 max-w-[48ch] text-body text-ink-2">
-            Em <a className="font-semibold underline" href="/painel/conciliacao">Conciliação</a>, cadastre a conta do PDDE (finalidade PDDE) e importe o extrato dela. Os lançamentos aparecem aqui para classificar.
+            Cadastre-a em <a className="font-semibold underline" href="/painel/conciliacao">Conciliação</a> e importe o extrato.
           </p>
         </div>
       )}
-      {m && m.ok && m.data.accounts.length > 0 && m.data.lines.length === 0 && (
-        <div className="rounded-[var(--r-lg)] border border-line px-6 py-10 text-center">
-          <h2 className="text-heading">Nenhum lançamento em {periodLabel(period)}</h2>
-          <p className="mx-auto mt-2 max-w-[48ch] text-body text-ink-2">Importe o extrato deste mês da conta do PDDE em Conciliação, ou escolha outro mês.</p>
-        </div>
+
+      {m && m.ok && !noAccount && step !== "deliver" && (
+        <>
+          {(step === "in" ? incoming : outgoing).length === 0 ? (
+            <div className="rounded-[var(--r-lg)] border border-line px-6 py-10 text-center">
+              <h2 className="text-heading">{step === "in" ? "Nenhuma entrada" : "Nenhuma saída"} em {periodLabel(period)}</h2>
+              <p className="mx-auto mt-2 max-w-[48ch] text-body text-ink-2">Importe o extrato em Conciliação ou escolha outro mês.</p>
+            </div>
+          ) : (
+            <ul aria-label="Lançamentos da conta do PDDE" className="space-y-3">
+              {(step === "in" ? incoming : outgoing).map((line) => (
+                <LineItem key={line.lineId} schoolId={schoolId} line={line} programs={programs} onChanged={refresh} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
-      {m && m.ok && m.data.lines.length > 0 && (
-        <ul aria-label="Lançamentos da conta do PDDE" className="space-y-3">
-          {m.data.lines.map((line) => (
-            <LineItem key={line.lineId} schoolId={schoolId} line={line} onChanged={refresh} />
-          ))}
-        </ul>
+
+      {step === "deliver" && (
+        <section aria-label="Entregar" className="rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
+          {y && !y.ok && <p className="text-sub text-ink-2">Não foi possível carregar o ano.</p>}
+          {!y && <p className="text-sub text-ink-2">Carregando…</p>}
+          {y && y.ok && (
+            <>
+              <p className={`rounded-[var(--r-md)] px-4 py-3 text-body font-semibold ${y.data.pendingCount > 0 ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}>
+                {y.data.pendingCount > 0 ? `Faltam ${plural(y.data.pendingCount, "lançamento", "lançamentos")}` : "Tudo pronto para entregar"}
+              </p>
+              <Alerts alerts={y.data.alerts} />
+              {programs.length > 0 && (
+                <ul aria-label="Saldo por programa" className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {programs.map((p) => (
+                    <li key={`${p.program}-${p.programLabel ?? ""}`} className="rounded-[var(--r-md)] border border-line px-4 py-3">
+                      <p className="font-semibold">{programName(p.program, p.programLabel)}</p>
+                      <p className="text-sub text-ink-2">
+                        Entrou {formatBRL(p.receivedCents)} · Saldo {formatBRL(p.balanceCents)}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <a className={link} href={pddeDemonstrativoHref(schoolId, year, p.program, p.programLabel)} download>
+                          Demonstrativo (PDF)
+                        </a>
+                        {p.spentCapitalCents > 0 && (
+                          <a className={link} href={pddeBensHref(schoolId, year, p.program, p.programLabel)} download>
+                            Relação de bens (PDF)
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-5 flex flex-wrap gap-2">
+                {y.data.accounts.map((a) => (
+                  <a key={a.id} className={link} href={pddeConciliacaoHref(schoolId, year, a.id)} download>
+                    Conciliação bancária{y.data.accounts.length > 1 ? `: ${a.nickname}` : ""} (PDF)
+                  </a>
+                ))}
+                <a className={link} href={pddeReportHref(schoolId, year, "pdf")} download>
+                  Lista dos lançamentos (PDF)
+                </a>
+                <a className={link} href={pddeReportHref(schoolId, year, "csv")} download>
+                  Lista dos lançamentos (planilha)
+                </a>
+              </div>
+              <p className="mt-5 text-sub text-ink-2">Levar junto: extratos, notas e recibos, atas.</p>
+              <FormsSetup schoolId={schoolId} year={year} />
+            </>
+          )}
+        </section>
       )}
     </div>
   );

@@ -50,17 +50,16 @@ function Entity({ schoolId }: { schoolId: string }) {
     const r = await api.pdde.saveEntity(schoolId, { ...form, legalName: form.legalName.trim(), address: form.address.trim(), city: form.city.trim() });
     setBusy(false);
     if (!r.ok) return setError(describe(r.error));
-    setNotice("Dados da entidade salvos.");
+    setNotice("Dados salvos.");
   }
 
   const set = (key: keyof typeof form) => (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
   return (
     <details className="rounded-[var(--r-md)] border border-line px-4 py-3">
       <summary className="cursor-pointer text-sub font-semibold text-brand-800">
-        Dados da entidade para os formulários {loaded?.ok && loaded.data === null ? "(faltam)" : ""}
+        Dados da escola para os formulários {loaded?.ok && loaded.data === null ? "(faltam)" : ""}
       </summary>
       <form method="post" onSubmit={(e) => void submit(e)} className="mt-3 space-y-4">
-        <p className="max-w-[62ch] text-sub text-ink-2">Saem nos campos 03 a 07 do formulário do FNDE. O nome é o do cartão do CNPJ.</p>
         <TextField label="Nome (como no cartão do CNPJ)" name="legal-name" maxLength={120} value={form.legalName} onChange={(e) => set("legalName")(e.target.value)} />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label="CNPJ" name="cnpj" inputMode="numeric" autoComplete="off" maxLength={24} value={form.cnpj} onChange={(e) => set("cnpj")(e.target.value)} />
@@ -125,9 +124,7 @@ function Carryover({ schoolId, year }: { schoolId: string; year: number }) {
     <details className="rounded-[var(--r-md)] border border-line px-4 py-3">
       <summary className="cursor-pointer text-sub font-semibold text-brand-800">Saldo que veio de {year - 1} para {year}</summary>
       <form method="post" onSubmit={(e) => void submit(e)} className="mt-3 space-y-4">
-        <p className="max-w-[62ch] text-sub text-ink-2">
-          Sai no campo 08 do formulário. Digite o que sobrou do ano passado em cada programa, se a escola já tinha saldo quando começou a usar o sistema. Sem isso, o formulário usa o que os extratos de anos anteriores mostram, ou zero.
-        </p>
+        <p className="max-w-[62ch] text-sub text-ink-2">Só se a escola já tinha saldo ao começar a usar o sistema.</p>
         {list.length > 0 && (
           <ul aria-label="Saldos informados" className="space-y-1 text-sub">
             {list.map((c) => (

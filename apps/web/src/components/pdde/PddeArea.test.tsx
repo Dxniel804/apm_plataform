@@ -45,88 +45,121 @@ function setup(m: PddeMonth, y: PddeYear = year()) {
   return userEvent.setup();
 }
 
+const credit = (over: Record<string, unknown> = {}) =>
+  line({ line_id: "l-credit", memo: "CREDITO FNDE PDDE BASICO CAPITAL", amount_cents: 360_000, ...over });
+const programBasico = { program: "BASICO", program_label: null, received_cents: 360_000, yield_cents: 0, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 150_000, balance_cents: 210_000 };
+const accounts = [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }];
+
 describe("PddeArea", () => {
-  it("sem conta do PDDE, explica onde cadastrar", async () => {
+  it("sem conta do PDDE, diz onde cadastrar", async () => {
     setup(month([], { accounts: [] }));
 
     expect(await screen.findByText("Falta a conta do PDDE")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Conciliação" })).toHaveAttribute("href", "/painel/conciliacao");
   });
 
-  it("lista as linhas com a situacao, e os avisos e o saldo de cada programa", async () => {
-    setup(
-      month([line(), line({ line_id: "l-ok", memo: "CREDITO REPASSE", amount_cents: 1_000_000, status: "DONE", classification: { kind: "TRANSFER", program: "BASICO", program_label: null, economic_category: null, object: null, note: null } })]),
-      year({
-        programs: [{ program: "BASICO", program_label: null, received_cents: 1_000_000, yield_cents: 0, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 150_000, balance_cents: 850_000 }],
-        alerts: [
-          { code: "fee_on_pdde_account", count: 1, cents: 1200, program: null, economic_category: null, date: null },
-          { code: "spent_over_received", count: 0, cents: 5000, program: "BASICO", economic_category: "CAPITAL", date: null },
-        ],
-      }),
-    );
+  it("separa o que entrou do que foi gasto, com a contagem do que falta", async () => {
+    const user = setup(month([credit(), line()]));
 
-    const list = await screen.findByRole("list", { name: "Lançamentos da conta do PDDE" });
-    const rows = within(list).getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("PAGAMENTO MATERIAL ESCOLAR");
-    expect(rows[0]).toHaveTextContent("Pendente");
-    expect(rows[1]).toHaveTextContent("Concluída");
-    expect(await screen.findByText(/1 tarifa bancária na conta do PDDE \(R\$ 12,00\)/)).toBeInTheDocument();
-    expect(screen.getByText(/gastou R\$ 50,00 a mais em capital/)).toBeInTheDocument();
-    const balances = screen.getByRole("list", { name: "Saldo por programa" });
-    expect(balances).toHaveTextContent("Saldo R$ 8.500,00");
+    expect(await screen.findByRole("tab", { name: /1 · Entrou\s?1/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /2 · Gastei\s?1/ })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Lançamentos da conta do PDDE" })).getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("CREDITO FNDE PDDE BASICO CAPITAL")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /2 · Gastei/ }));
+    expect(screen.getByText("PAGAMENTO MATERIAL ESCOLAR")).toBeInTheDocument();
+    expect(screen.queryByText("CREDITO FNDE PDDE BASICO CAPITAL")).toBeNull();
   });
 
-  it("classifica uma despesa: pede custeio ou capital e o objeto, e manda a decisao", async () => {
+  it("uma entrada cujo texto diz programa e capital e confirmada com um clique", async () => {
     const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
-    const user = setup(month([line()]));
-    await user.click(await screen.findByRole("button", { name: "Classificar" }));
+    const user = setup(month([credit()]));
+
+    expect(await screen.findByText("Sugestão: PDDE Básico · Capital")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    expect(classify.mock.calls[0]![1]).toBe("l-credit");
+    expect(classify.mock.calls[0]![2]).toEqual({ kind: "TRANSFER", program: "BASICO", economicCategory: "CAPITAL" });
+  });
+
+  it("uma entrada sem o programa no texto nao tem Confirmar: abre a escolha", async () => {
+    setup(month([credit({ memo: "CREDITO DIVERSOS" })]));
+
+    await screen.findByText("CREDITO DIVERSOS");
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Escolher" })).toBeInTheDocument();
+  });
+
+  it("na compra, escolher o item define capital ou custeio, e a decisao vai para a API", async () => {
+    const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line({ memo: "PIX VENTILADOR DE PAREDE" })]), year({ programs: [programBasico] }));
+    await user.click(await screen.findByRole("tab", { name: /2 · Gastei/ }));
+    await user.click(screen.getByRole("button", { name: "O que foi comprado?" }));
     const dialog = await screen.findByRole("dialog");
 
-    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Escolha custeio ou capital.");
-    expect(classify).not.toHaveBeenCalled();
+    // The text of the statement already suggests the item, and the item sets "Capital".
+    expect(within(dialog).getByLabelText("Item")).toHaveValue("obj:Eletro ou eletrônico (ventilador, geladeira, TV)");
+    expect(within(dialog).getByRole("radio", { name: "Capital" })).toBeChecked();
+    // One program only: it is not asked.
+    expect(within(dialog).queryByLabelText("Programa")).toBeNull();
 
-    await user.selectOptions(within(dialog).getByLabelText("Custeio ou capital"), "CAPITAL");
-    await user.type(within(dialog).getByLabelText("Objeto da despesa"), "Material permanente");
+    await user.selectOptions(within(dialog).getByLabelText("Item"), "obj:Serviço (mão de obra, frete, instalação)");
+    expect(within(dialog).getByRole("radio", { name: "Custeio" })).toBeChecked();
+    await user.click(within(dialog).getByRole("radio", { name: "Capital" }));
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
-    expect(classify.mock.calls[0]![1]).toBe("l-debit");
-    expect(classify.mock.calls[0]![2]).toMatchObject({ kind: "EXPENSE", program: "BASICO", economicCategory: "CAPITAL", object: "Material permanente" });
+    expect(classify.mock.calls[0]![2]).toMatchObject({ kind: "EXPENSE", program: "BASICO", economicCategory: "CAPITAL", object: "Serviço (mão de obra, frete, instalação)" });
   });
 
-  it("uma despesa classificada recebe documentos; um documento errado e anulado", async () => {
+  it("sem item escolhido, a compra nao salva", async () => {
+    const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line({ memo: "PAGAMENTO DIVERSOS" })]));
+    await user.click(await screen.findByRole("tab", { name: /2 · Gastei/ }));
+    await user.click(screen.getByRole("button", { name: "O que foi comprado?" }));
+    const dialog = await screen.findByRole("dialog");
+
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Escolha o que foi comprado.");
+    expect(classify).not.toHaveBeenCalled();
+  });
+
+  it("uma compra classificada recebe notas; uma nota errada e anulada", async () => {
     const add = vi.spyOn(api.pdde, "addDocument").mockResolvedValue({ ok: true, data: { ok: true } });
     const voided = vi.spyOn(api.pdde, "voidDocument").mockResolvedValue({ ok: true, data: { ok: true } });
     const classified = line({
       status: "PARTIAL",
-      classification: { kind: "EXPENSE", program: "BASICO", program_label: null, economic_category: "CAPITAL", object: "Material permanente", note: null },
+      classification: { kind: "EXPENSE", program: "BASICO", program_label: null, economic_category: "CAPITAL", object: "Móveis (mesa, cadeira, armário)", note: null },
       documents: [{ id: "d1", doc_kind: "RECEIPT", access_key: null, doc_number: "12", issued_on: "2025-03-19", vendor: "Papelaria Exemplo", amount_cents: 100_000, stamped: false, voided: false }],
       documented_cents: 100_000,
     });
     const user = setup(month([classified]));
+    await user.click(await screen.findByRole("tab", { name: /2 · Gastei/ }));
 
-    expect(await screen.findByText(/Comprovado R\$ 1.000,00 de R\$ 1.500,00/)).toBeInTheDocument();
-    expect(screen.getByText(/sem o carimbo do programa/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Anular o documento de Papelaria Exemplo" }));
+    expect(screen.getByText("Falta R$ 500,00")).toBeInTheDocument();
+    expect(screen.getByText(/sem carimbo/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Anular a nota de Papelaria Exemplo" }));
     expect(voided).toHaveBeenCalledWith(SCHOOL_ID, "d1");
 
-    await user.click(screen.getByRole("button", { name: "Registrar documento" }));
+    await user.click(screen.getByRole("button", { name: "Anexar nota" }));
     const dialog = await screen.findByRole("dialog");
-    await user.selectOptions(within(dialog).getByLabelText("Tipo de documento"), "RECEIPT");
+    await user.selectOptions(within(dialog).getByLabelText("Tipo"), "RECEIPT");
     await user.type(within(dialog).getByLabelText("Fornecedor"), "Gráfica Exemplo");
-    await user.type(within(dialog).getByLabelText("Data do documento"), "2025-03-21");
-    await user.click(within(dialog).getByRole("button", { name: "Registrar" }));
+    await user.type(within(dialog).getByLabelText("Data da nota"), "2025-03-21");
+    await user.click(within(dialog).getByRole("button", { name: "Anexar" }));
 
     await waitFor(() => expect(add).toHaveBeenCalledTimes(1));
-    expect(add.mock.calls[0]![2]).toMatchObject({ docKind: "RECEIPT", vendor: "Gráfica Exemplo", issuedOn: "2025-03-21", amountCents: 50_000, stamped: false });
+    expect(add.mock.calls[0]![2]).toMatchObject({ docKind: "RECEIPT", vendor: "Gráfica Exemplo", issuedOn: "2025-03-21", amountCents: 50_000, stamped: true });
   });
 
   it("uma recusa da API vira texto, sem o codigo", async () => {
     vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: false, error: { kind: "problem", status: 422, code: "rule_violation" } });
-    const user = setup(month([line({ amount_cents: 1_000_000, memo: "CREDITO" })]));
-    await user.click(await screen.findByRole("button", { name: "Classificar" }));
+    const user = setup(month([credit({ memo: "CREDITO DIVERSOS" })]), year({ programs: [programBasico] }));
+    await user.click(await screen.findByRole("button", { name: "Escolher" }));
     const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("radio", { name: "Custeio" }));
 
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
@@ -135,26 +168,48 @@ describe("PddeArea", () => {
   });
 });
 
-describe("PddeArea: o formulario oficial", () => {
-  it("cada programa tem o link do formulario do FNDE e a entidade faltando e avisada", async () => {
-    setup(
+describe("PddeArea: entregar", () => {
+  it("mostra o que falta, os avisos curtos e um botao para cada formulario do FNDE", async () => {
+    const user = setup(
       month([line()]),
-      year({ accounts: [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }], programs: [{ program: "BASICO", program_label: null, received_cents: 100_000, yield_cents: 1234, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 0, balance_cents: 101_234 }] }),
+      year({
+        pending_count: 3,
+        accounts,
+        programs: [{ ...programBasico, yield_cents: 1234 }],
+        alerts: [
+          { code: "fee_on_pdde_account", count: 1, cents: 1200, program: null, economic_category: null, date: null },
+          { code: "spent_over_received", count: 0, cents: 5000, program: "BASICO", economic_category: "CAPITAL", date: null },
+          { code: "pending_lines", count: 3, cents: 0, program: null, economic_category: null, date: null },
+        ],
+      }),
     );
+    await user.click(await screen.findByRole("tab", { name: /3 · Entregar/ }));
 
-    const link = await screen.findByRole("link", { name: "Formulário do FNDE (PDF)" });
-    expect(link).toHaveAttribute("href", expect.stringContaining("/pdde/forms/demonstrativo.pdf?year="));
-    expect(link).toHaveAttribute("href", expect.stringContaining("program=BASICO"));
-    expect(screen.getByText(/rendimento R\$ 12,34/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Conciliação bancária: PDDE (PDF)" })).toHaveAttribute("href", expect.stringMatching(/\/pdde\/forms\/conciliacao\.pdf\?year=\d{4}&account_id=a1$/));
+    expect(await screen.findByText("Faltam 3 lançamentos")).toBeInTheDocument();
+    expect(screen.getByText(/1 tarifa bancária na conta do PDDE \(R\$ 12,00\)/)).toBeInTheDocument();
+    expect(screen.getByText(/PDDE Básico: R\$ 50,00 a mais em capital/)).toBeInTheDocument();
+    const demo = screen.getByRole("link", { name: "Demonstrativo (PDF)" });
+    expect(demo).toHaveAttribute("href", expect.stringContaining("/pdde/forms/demonstrativo.pdf?year="));
+    expect(demo).toHaveAttribute("href", expect.stringContaining("program=BASICO"));
     expect(screen.getByRole("link", { name: "Relação de bens (PDF)" })).toHaveAttribute("href", expect.stringContaining("/pdde/forms/bens.pdf?year="));
-    expect(await screen.findByText(/Dados da entidade para os formulários \(faltam\)/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conciliação bancária (PDF)" })).toHaveAttribute("href", expect.stringMatching(/\/pdde\/forms\/conciliacao\.pdf\?year=\d{4}&account_id=a1$/));
+    expect(screen.getByRole("list", { name: "Saldo por programa" })).toHaveTextContent("Saldo R$ 2.100,00");
+    expect(screen.getByText(/Dados da escola para os formulários \(faltam\)/)).toBeInTheDocument();
   });
 
-  it("salva os dados da entidade e manda o CNPJ como foi digitado (a API confere)", async () => {
+  it("sem pendencia, diz que esta tudo pronto; a relacao de bens so existe com gasto de capital", async () => {
+    const user = setup(month([line()]), year({ pending_count: 0, programs: [{ ...programBasico, spent_capital_cents: 0 }] }));
+    await user.click(await screen.findByRole("tab", { name: /3 · Entregar/ }));
+
+    expect(await screen.findByText("Tudo pronto para entregar")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Relação de bens (PDF)" })).toBeNull();
+  });
+
+  it("salva os dados da escola e manda o CNPJ como foi digitado (a API confere)", async () => {
     const save = vi.spyOn(api.pdde, "saveEntity").mockResolvedValue({ ok: true, data: { ok: true } });
     const user = setup(month([line()]), year());
-    await user.click(await screen.findByText(/Dados da entidade para os formulários/));
+    await user.click(await screen.findByRole("tab", { name: /3 · Entregar/ }));
+    await user.click(await screen.findByText(/Dados da escola para os formulários/));
 
     await user.type(screen.getByLabelText("Nome (como no cartão do CNPJ)"), "APM Exemplo");
     await user.type(screen.getByLabelText("CNPJ"), "11.222.333/0001-81");
@@ -164,12 +219,13 @@ describe("PddeArea: o formulario oficial", () => {
 
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0]![1]).toEqual({ legalName: "APM Exemplo", cnpj: "11.222.333/0001-81", address: "Rua das Flores, 100", city: "Jundiaí", state: "SP" });
-    expect(await screen.findByText("Dados da entidade salvos.")).toBeInTheDocument();
+    expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
   });
 
   it("digita o saldo do ano anterior por programa", async () => {
     const save = vi.spyOn(api.pdde, "saveCarryover").mockResolvedValue({ ok: true, data: { ok: true } });
     const user = setup(month([line()]), year());
+    await user.click(await screen.findByRole("tab", { name: /3 · Entregar/ }));
     await user.click(await screen.findByText(/Saldo que veio de/));
 
     await user.type(screen.getByLabelText("Saldo de custeio"), "30000");
@@ -177,21 +233,5 @@ describe("PddeArea: o formulario oficial", () => {
 
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0]).toMatchObject([SCHOOL_ID, expect.any(Number), { program: "BASICO", custeioCents: 30_000, capitalCents: 0 }]);
-  });
-
-  it("rendimento e devolucao exigem custeio ou capital, e o numero do pagamento vai junto", async () => {
-    const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
-    const user = setup(month([line({ amount_cents: 1234, memo: "RENDIMENTO" })]), year());
-    await user.click(await screen.findByRole("button", { name: "Classificar" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.selectOptions(within(dialog).getByLabelText("O que é este lançamento"), "YIELD");
-
-    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Escolha custeio ou capital");
-    await user.selectOptions(within(dialog).getByLabelText("Custeio ou capital"), "CUSTEIO");
-    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
-
-    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
-    expect(classify.mock.calls[0]![2]).toMatchObject({ kind: "YIELD", program: "BASICO", economicCategory: "CUSTEIO" });
   });
 });
