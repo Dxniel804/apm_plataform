@@ -102,8 +102,15 @@ export function parseReconciliation(body: unknown): Reconciliation | null {
     const reason = str(i.reason);
     return line && reason ? { line, reason } : null;
   });
-  if (!statement || !matchedRaw || !missingInSystem || !missingInBank || !divergences || !ignored) return null;
-  return { statement, matched: matchedRaw, missingInSystem, missingInBank, divergences, ignored };
+  const wrongAccount = parseList<Reconciliation["wrongAccount"][number]>(body.wrong_account ?? [], (w) => {
+    if (!isRecord(w)) return null;
+    const line = parseLine(w.line);
+    const entry = parseEntry(w.entry);
+    const belongsTo = w.belongs_to === "APM" || w.belongs_to === "PDDE" ? w.belongs_to : null;
+    return line && entry && belongsTo ? { line, entry, belongsTo } : null;
+  });
+  if (!statement || !matchedRaw || !missingInSystem || !missingInBank || !divergences || !ignored || !wrongAccount) return null;
+  return { statement, matched: matchedRaw, missingInSystem, missingInBank, divergences, ignored, wrongAccount };
 }
 
 const base = (schoolId: string) => `/api/v1/schools/${encodeURIComponent(schoolId)}/reconciliation`;

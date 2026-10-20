@@ -87,6 +87,7 @@ Funcionário abre um pedido (com fotos). Secretaria **assume** (em andamento) e 
 1. Cadastrar a conta (só os **últimos dígitos**; a finalidade é "geral" ou "PDDE"). → `/reconciliation/accounts`.
 2. **Importar o extrato** em OFX, CSV ou PDF de texto (PDF escaneado não é lido). → `/reconciliation/imports` (e `/imports/preview` para ver antes). CPF e CNPJ são **mascarados** antes de guardar. Linhas lidas de PDF exigem que a secretaria confirme que conferiu.
 3. **Comparar** o extrato com o livro: o que bate, o que só está no banco, o que só está no livro, o que diverge. → `GET /reconciliation/imports/{id}`.
+3b. **Cada conta compara com o dinheiro da sua carteira**: a conta **geral** com as despesas da APM, a conta do **PDDE** com as despesas decididas como PDDE. Uma saída que é dinheiro da outra carteira aparece como aviso ("saiu da conta errada"). As linhas da conta do PDDE não se registram no caixa da APM: são tratadas na tela do PDDE, onde a linha mostra a despesa que ela paga e sugere o item e custeio ou capital.
 4. Para cada linha só do banco: **registrar** (Pix direto, transferência, tarifa) ou **ignorar com motivo**. Cada linha é resolvida **uma só vez**. → `/reconciliation/lines/{id}/actions`.
 5. O saldo do extrato pode alimentar o fechamento. → `/reconciliation/closing-balance`.
 

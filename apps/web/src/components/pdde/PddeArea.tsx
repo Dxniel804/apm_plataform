@@ -127,10 +127,13 @@ function ClassifyModal({ schoolId, line, programs, onClose, onDone }: { schoolId
   const objectHint = !credit ? suggestObject(line.memo) : null;
 
   const [kind, setKind] = useState<PddeKind>(current?.kind ?? (credit ? (creditHint?.kind ?? "TRANSFER") : "EXPENSE"));
-  const [objectLabel, setObjectLabel] = useState(current?.kind === "EXPENSE" ? (current.object ?? "") : (objectHint?.label ?? ""));
+  const linked = line.expense;
+  // The expense that this line pays says what it was: its category is the first choice of the list.
+  const objects = linked ? [{ label: linked.categoryName, economic: linked.economicNature, words: [] as string[] }, ...PDDE_OBJECTS] : PDDE_OBJECTS;
+  const [objectLabel, setObjectLabel] = useState(current?.kind === "EXPENSE" ? (current.object ?? "") : (linked?.categoryName ?? objectHint?.label ?? ""));
   const [program, setProgram] = useState<PddeProgram>(current?.program ?? creditHint?.program ?? onlyProgram?.program ?? "BASICO");
   const [label, setLabel] = useState(current?.programLabel ?? onlyProgram?.programLabel ?? "");
-  const [category, setCategory] = useState<PddeEconomic | "">(current?.economicCategory ?? creditHint?.economic ?? objectHint?.economic ?? "");
+  const [category, setCategory] = useState<PddeEconomic | "">(current?.economicCategory ?? creditHint?.economic ?? (linked ? linked.economicNature : objectHint?.economic) ?? "");
   const [note, setNote] = useState(current?.note ?? "");
   const [paymentNumber, setPaymentNumber] = useState(current?.paymentNumber ?? "");
   const [busy, setBusy] = useState(false);
@@ -143,10 +146,10 @@ function ClassifyModal({ schoolId, line, programs, onClose, onDone }: { schoolId
   const choice = kind === "EXPENSE" ? `obj:${objectLabel}` : `kind:${kind}`;
   function choose(value: string) {
     if (value.startsWith("obj:")) {
-      const found = PDDE_OBJECTS.find((o) => o.label === value.slice(4));
+      const found = objects.find((o) => o.label === value.slice(4));
       setKind("EXPENSE");
       setObjectLabel(found?.label ?? "");
-      if (found) setCategory(found.economic);
+      if (found?.economic) setCategory(found.economic);
     } else {
       setKind(value.slice(5) as PddeKind);
       setObjectLabel("");
@@ -187,6 +190,11 @@ function ClassifyModal({ schoolId, line, programs, onClose, onDone }: { schoolId
         ) : (
           <SelectField id="pdde-what" label="Item" value={choice} onChange={(e) => choose(e.target.value)}>
             <option value="obj:">Escolha</option>
+            {linked && (
+              <optgroup label={`Da despesa ${reference(linked.referenceCode)}`}>
+                <option value={`obj:${linked.categoryName}`}>{linked.categoryName}</option>
+              </optgroup>
+            )}
             <optgroup label="Compra">
               {PDDE_OBJECTS.map((o) => (
                 <option key={o.label} value={`obj:${o.label}`}>
@@ -333,9 +341,31 @@ function LineItem({ schoolId, line, programs, onChanged }: { schoolId: string; l
   const hint = credit && !c ? suggestCredit(line.memo) : null;
   const onlyProgram = programs.length === 1 ? programs[0]!.program : null;
   const readyProgram = hint ? (hint.program ?? onlyProgram) : null;
-  const canConfirm = hint !== null && readyProgram !== null && hint.economic !== null;
+  const canConfirmCredit = hint !== null && readyProgram !== null && hint.economic !== null;
+  // A debit that pays an expense decided as PDDE: its category gives the item and custeio or capital.
+  const expense = line.expense;
+  const expenseProgram = programs.length === 1 ? programs[0]! : null;
+  const canConfirmExpense = !credit && !c && expense !== null && expense.economicNature !== null && expenseProgram !== null;
+  const canConfirm = canConfirmCredit || canConfirmExpense;
+
+  async function confirmExpense() {
+    if (!expense || !expense.economicNature || !expenseProgram) return;
+    setBusy(true);
+    setError(null);
+    const r = await api.pdde.classify(schoolId, line.lineId, {
+      kind: "EXPENSE",
+      program: expenseProgram.program,
+      ...(expenseProgram.program === "OUTRO" && expenseProgram.programLabel ? { programLabel: expenseProgram.programLabel } : {}),
+      economicCategory: expense.economicNature,
+      object: expense.categoryName.slice(0, 120),
+    });
+    setBusy(false);
+    if (!r.ok) return setError(describe(r.error));
+    onChanged();
+  }
 
   async function confirm() {
+    if (canConfirmExpense) return confirmExpense();
     if (!hint || !readyProgram || !hint.economic) return;
     setBusy(true);
     setError(null);
@@ -367,10 +397,17 @@ function LineItem({ schoolId, line, programs, onChanged }: { schoolId: string; l
           <p className="text-sub text-ink-2">
             {c
               ? [KIND_LABELS[c.kind], programName(c.program, c.programLabel), c.economicCategory ? ECONOMIC_LABELS[c.economicCategory] : "", c.object ?? ""].filter(Boolean).join(" · ")
-              : canConfirm
-                ? `Sugestão: ${[programName(readyProgram, null), ECONOMIC_LABELS[hint!.economic!]].join(" · ")}`
-                : ""}
+              : canConfirmExpense
+                ? `Sugestão: ${[expenseProgram ? programName(expenseProgram.program, expenseProgram.programLabel) : "", ECONOMIC_LABELS[expense!.economicNature!], expense!.categoryName].filter(Boolean).join(" · ")}`
+                : canConfirmCredit
+                  ? `Sugestão: ${[programName(readyProgram, null), ECONOMIC_LABELS[hint!.economic!]].join(" · ")}`
+                  : ""}
           </p>
+          {expense && (
+            <p className="text-sub text-ink-2">
+              Despesa {reference(expense.referenceCode)} · {expense.description}
+            </p>
+          )}
         </div>
         <p className={`text-[1.125rem] font-bold tabular-nums ${line.amountCents < 0 ? "text-bad" : "text-ok"}`}>{formatBRL(line.amountCents)}</p>
         <StatusPill tone={s.tone}>{s.label}</StatusPill>
@@ -438,6 +475,8 @@ function LineItem({ schoolId, line, programs, onChanged }: { schoolId: string; l
 }
 
 // --- the area ------------------------------------------------------------------------------------
+
+const reference = (code: number) => `APM-${String(code).padStart(6, "0")}`;
 
 const link = "inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sub font-semibold text-brand-800 hover:bg-bg";
 

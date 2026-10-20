@@ -151,7 +151,7 @@ export function ReconciliationArea({ schoolId, permissions }: { schoolId: string
                       {isOpen ? "Fechar" : "Ver comparação"}
                     </Button>
                   </div>
-                  {isOpen && <Comparison schoolId={schoolId} importId={item.id} />}
+                  {isOpen && <Comparison schoolId={schoolId} importId={item.id} pdde={account?.purpose === "PDDE"} />}
                 </li>
               );
             })}
@@ -426,7 +426,9 @@ function CsvMapping({ preview, busy, onCancel, onConfirm }: { preview: Statement
 
 type Tab = "matched" | "missingInSystem" | "missingInBank" | "divergences";
 
-function Comparison({ schoolId, importId }: { schoolId: string; importId: string }) {
+const reference = (code: number) => `APM-${String(code).padStart(6, "0")}`;
+
+function Comparison({ schoolId, importId, pdde }: { schoolId: string; importId: string; pdde: boolean }) {
   const [tab, setTab] = useState<Tab>("matched");
   const [version, setVersion] = useState(0);
   const [done, setDone] = useState<string | null>(null);
@@ -455,6 +457,15 @@ function Comparison({ schoolId, importId }: { schoolId: string; importId: string
   return (
     <div className="space-y-4 border-t border-line px-4 py-4">
       {done && <p role="status" className="rounded-[var(--r-md)] bg-ok-soft px-4 py-3 text-sub font-medium text-ok">{done}</p>}
+      {r.wrongAccount.length > 0 && (
+        <ul aria-label="Saiu da conta errada" className="space-y-2">
+          {r.wrongAccount.map((w) => (
+            <li key={w.line.lineId} role="alert" className="rounded-[var(--r-md)] bg-bad-soft px-4 py-3 text-sub font-medium text-bad">
+              A despesa {reference(w.entry.referenceCode)} ({formatBRL(w.line.amountCents)}) é {w.belongsTo === "PDDE" ? "do PDDE" : "da APM"}, mas saiu da conta {w.belongsTo === "PDDE" ? "da APM" : "do PDDE"} em {formatDayLong(w.line.postedOn)}.
+            </li>
+          ))}
+        </ul>
+      )}
       <div role="group" aria-label="Partes da comparação" className="flex flex-wrap gap-2.5">
         {tabs.map((t) => (
           <button key={t.id} type="button" aria-pressed={tab === t.id} onClick={() => setTab(t.id)} className={chipClass(tab === t.id)}>
@@ -466,12 +477,16 @@ function Comparison({ schoolId, importId }: { schoolId: string; importId: string
       {tab === "missingInSystem" && (
         <div className="space-y-4">
           <Rows
-            hint="O banco mostra, mas o caixa do sistema não tem. Para cada linha, escolha: registrar no caixa (uma entrada ou uma tarifa) ou ignorar, explicando o motivo."
+            hint={pdde ? "O dinheiro do PDDE não entra no caixa da APM. Essas linhas são tratadas no PDDE: escolher o que entrou e o que foi comprado." : "O banco mostra, mas o caixa do sistema não tem. Para cada linha, escolha: registrar no caixa (uma entrada ou uma tarifa) ou ignorar, explicando o motivo."}
             empty="Tudo o que está no extrato já está no caixa."
             items={r.missingInSystem.map((line) => ({
               key: line.lineId,
               line,
-              actions: (
+              actions: pdde ? (
+                <a className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sub font-semibold text-brand-800 hover:bg-bg" href="/painel/pdde">
+                  Abrir o PDDE
+                </a>
+              ) : (
                 <LineActions
                   schoolId={schoolId}
                   line={line}

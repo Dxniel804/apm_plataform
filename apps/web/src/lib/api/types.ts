@@ -539,6 +539,8 @@ export interface Reconciliation {
   divergences: Divergence[];
   /** Linhas que a gestao decidiu ignorar, com o motivo (migracao 0018). */
   ignored: Array<{ line: BankLine; reason: string }>;
+  /** Saidas do extrato que sao dinheiro da OUTRA carteira: `belongsTo` e a carteira da despesa (APM ou PDDE). */
+  wrongAccount: Array<{ line: BankLine; entry: LedgerEntry; belongsTo: "APM" | "PDDE" }>;
 }
 
 /** O que a gestao decide sobre uma linha que esta no banco e nao no caixa. Sempre confirmado por uma pessoa. */

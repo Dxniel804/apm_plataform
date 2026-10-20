@@ -189,4 +189,39 @@ describe("datas do extrato", () => {
     expect(formatDayLong("2026-01-01")).toBe("1 de janeiro de 2026");
     expect(formatDayLong("não é data")).toBe("não é data");
   });
+
+  it("uma saida que e dinheiro da outra carteira aparece como aviso, dita pela despesa", async () => {
+    const wrong = parseReconciliation({
+      statement: { id: "i1", bank_account_id: "a1", period_start: "2026-10-01", period_end: "2026-10-31", line_count: 1, new_line_count: 1, closing_balance_cents: null, created_at: "2026-10-14T20:00:00Z" },
+      matched: [], missing_in_system: [], missing_in_bank: [], divergences: [],
+      wrong_account: [{ line: line("l9", -4000, "PIX ENVIADO"), entry: entry("t9", 31, -4000), belongs_to: "PDDE" }],
+    })!;
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: wrong });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+
+    await user.click(await screen.findByRole("button", { name: /Ver a comparação do extrato/ }));
+
+    const alerts = await screen.findByRole("list", { name: "Saiu da conta errada" });
+    expect(alerts).toHaveTextContent("A despesa APM-000031");
+    expect(alerts).toHaveTextContent("é do PDDE, mas saiu da conta da APM");
+  });
+
+  it("numa conta do PDDE as linhas que faltam levam ao PDDE e nao ao caixa da APM", async () => {
+    vi.restoreAllMocks();
+    const pdde = { ...ACCOUNT, purpose: "PDDE" as const, nickname: "PDDE" };
+    vi.spyOn(api.reconciliation, "accounts").mockResolvedValue({ ok: true, data: [pdde] });
+    vi.spyOn(api.reconciliation, "imports").mockResolvedValue({ ok: true, data: [IMPORT] });
+    vi.spyOn(api.reconciliation, "compare").mockResolvedValue({ ok: true, data: REPORT });
+    const user = userEvent.setup();
+    render(<ReconciliationArea schoolId={SCHOOL_ID} permissions={MANAGER} />);
+    await user.click(await screen.findByRole("button", { name: /Ver a comparação do extrato/ }));
+
+    await user.click(await screen.findByRole("button", { name: "Faltam no sistema (1)" }));
+
+    expect(screen.getByText(/não entra no caixa da APM/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir o PDDE" })).toHaveAttribute("href", "/painel/pdde");
+    expect(screen.queryByRole("button", { name: /Registrar/ })).toBeNull();
+  });
 });
+

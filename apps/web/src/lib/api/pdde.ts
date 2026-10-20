@@ -45,6 +45,16 @@ export interface PddeClassification {
   paymentNumber: string | null;
 }
 
+/** A despesa (decidida como PDDE) que esta saida do extrato paga, achada por valor e data. A categoria diz o que foi e se e custeio ou capital. */
+export interface PddeExpenseLink {
+  expenseId: string;
+  referenceCode: number;
+  description: string;
+  categoryKey: string;
+  categoryName: string;
+  economicNature: PddeEconomic | null;
+}
+
 export interface PddeLine {
   lineId: string;
   accountId: string;
@@ -57,6 +67,8 @@ export interface PddeLine {
   documents: PddeDocument[];
   documentedCents: number;
   status: PddeStatus;
+  /** So na visao do mes. */
+  expense: PddeExpenseLink | null;
 }
 
 export interface PddeAccount {
@@ -149,6 +161,18 @@ function parseClassification(raw: unknown): PddeClassification | null | undefine
   return { kind, program, programLabel: str(raw.program_label), economicCategory, object: str(raw.object), note: str(raw.note), paymentNumber: str(raw.payment_number) };
 }
 
+function parseExpenseLink(raw: unknown): PddeExpenseLink | null | undefined {
+  if (raw === null || raw === undefined) return null;
+  if (!isRecord(raw)) return undefined;
+  const expenseId = str(raw.expense_id);
+  const referenceCode = int(raw.reference_code);
+  const categoryKey = str(raw.category_key);
+  const categoryName = str(raw.category_name);
+  const economicNature = nullable(raw.economic_nature, (v) => oneOf(["CUSTEIO", "CAPITAL"] as const, v));
+  if (!expenseId || referenceCode === null || !categoryKey || !categoryName || typeof raw.description !== "string" || economicNature === undefined) return undefined;
+  return { expenseId, referenceCode, description: raw.description, categoryKey, categoryName, economicNature };
+}
+
 function parseLine(raw: unknown): PddeLine | null {
   if (!isRecord(raw) || !Array.isArray(raw.documents)) return null;
   const lineId = str(raw.line_id);
@@ -168,7 +192,9 @@ function parseLine(raw: unknown): PddeLine | null {
     if (!parsed) return null;
     documents.push(parsed);
   }
-  return { lineId, accountId, accountNickname, postedOn, amountCents, memo, looksLikeFee: raw.looks_like_fee, classification, documents, documentedCents, status };
+  const expense = parseExpenseLink(raw.expense);
+  if (expense === undefined) return null;
+  return { lineId, accountId, accountNickname, postedOn, amountCents, memo, looksLikeFee: raw.looks_like_fee, classification, documents, documentedCents, status, expense };
 }
 
 function parseAccount(raw: unknown): PddeAccount | null {

@@ -235,3 +235,32 @@ describe("PddeArea: entregar", () => {
     expect(save.mock.calls[0]).toMatchObject([SCHOOL_ID, expect.any(Number), { program: "BASICO", custeioCents: 30_000, capitalCents: 0 }]);
   });
 });
+
+describe("PddeArea: a saida que paga uma despesa", () => {
+  const expenseLink = (over: Record<string, unknown> = {}) => ({ expense_id: "e1", reference_code: 24, description: "Ventilador de parede", category_key: "capital_equipment", category_name: "Compra de máquinas e equipamentos", economic_nature: "CAPITAL", ...over });
+  const basico = { program: "BASICO", program_label: null, received_cents: 360_000, yield_cents: 0, returned_cents: 0, spent_custeio_cents: 0, spent_capital_cents: 0, balance_cents: 360_000 };
+
+  it("mostra a despesa, sugere o item e a natureza, e confirma com um clique", async () => {
+    const classify = vi.spyOn(api.pdde, "classify").mockResolvedValue({ ok: true, data: { ok: true } });
+    const user = setup(month([line({ expense: expenseLink() })]), year({ programs: [basico] }));
+    await user.click(await screen.findByRole("tab", { name: /2 · Gastei/ }));
+
+    expect(screen.getByText("Despesa APM-000024 · Ventilador de parede")).toBeInTheDocument();
+    expect(screen.getByText("Sugestão: PDDE Básico · Capital · Compra de máquinas e equipamentos")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    expect(classify.mock.calls[0]![2]).toEqual({ kind: "EXPENSE", program: "BASICO", economicCategory: "CAPITAL", object: "Compra de máquinas e equipamentos" });
+  });
+
+  it("sem natureza na categoria, nao confirma sozinho: o modal traz o item da despesa", async () => {
+    const user = setup(month([line({ expense: expenseLink({ economic_nature: null, category_name: "Outras despesas autorizadas" }) })]), year({ programs: [basico] }));
+    await user.click(await screen.findByRole("tab", { name: /2 · Gastei/ }));
+
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "O que foi comprado?" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Item")).toHaveValue("obj:Outras despesas autorizadas");
+  });
+});
+
