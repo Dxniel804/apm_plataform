@@ -4,7 +4,7 @@ import { ArrowDownIcon, ArrowUpIcon, BankIcon, ClockIcon, ListIcon, TrendDownIco
 import type { StatementSummary } from "@/lib/api/types";
 import { formatBRL } from "@/lib/money";
 import { periodLabel } from "@/lib/statement-labels";
-import { BalanceChart } from "./BalanceChart";
+import { MonthMoney } from "./MonthMoney";
 import { OutflowSplit } from "./OutflowSplit";
 
 function Stat({ icon, label, value, note }: { icon: ReactNode; label: string; value: ReactNode; note: string }) {
@@ -108,7 +108,7 @@ export function StatementIndicators({ summary, pendings }: { summary: StatementS
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <BalanceChart summary={summary} />
+        <MonthMoney summary={summary} />
         <OutflowSplit summary={summary} />
       </div>
       {pendings}
