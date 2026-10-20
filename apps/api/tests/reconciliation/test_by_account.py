@@ -78,13 +78,16 @@ def test_each_account_is_compared_with_the_money_of_its_wallet(scene: Scene) -> 
     assert (
         len(apm_view["matched"]) == 1 and apm_view["matched"][0]["entry"]["amount_cents"] == -1_666
     )
-    assert apm_view["missing_in_bank"] == [] and apm_view["wrong_account"] == []
+    # (Other tests leave items in the same school: only the two of this test are looked at.)
+    assert -4_555 not in [e["amount_cents"] for e in apm_view["missing_in_bank"]]
+    assert -4_555 not in [w["line"]["amount_cents"] for w in apm_view["wrong_account"]]
     # And the PDDE extract pairs with the PDDE expense only.
     assert (
         len(pdde_view["matched"]) == 1
         and pdde_view["matched"][0]["entry"]["amount_cents"] == -4_555
     )
-    assert pdde_view["missing_in_bank"] == [] and pdde_view["wrong_account"] == []
+    assert -1_666 not in [e["amount_cents"] for e in pdde_view["missing_in_bank"]]
+    assert -1_666 not in [w["line"]["amount_cents"] for w in pdde_view["wrong_account"]]
 
 
 def test_a_pdde_expense_that_left_the_apm_account_is_told(scene: Scene) -> None:
