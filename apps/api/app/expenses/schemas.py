@@ -93,6 +93,13 @@ class CategoryRef(BaseModel):
     name: str
 
 
+class CategoryOption(CategoryRef):
+    """A category of the form: custeio or capital, and whether the PDDE may pay it."""
+
+    economic_nature: Literal["CUSTEIO", "CAPITAL"] | None
+    pdde_rule: Literal["SUGGESTED", "ALLOWED", "FORBIDDEN"]
+
+
 class AttachmentOut(BaseModel):
     id: uuid.UUID
     kind: AttachmentKind
@@ -150,4 +157,4 @@ class ExpensePage(BaseModel):
 
 
 class CategoryList(BaseModel):
-    items: list[CategoryRef]
+    items: list[CategoryOption]

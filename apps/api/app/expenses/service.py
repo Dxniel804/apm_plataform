@@ -26,11 +26,13 @@ from app.core.errors import ProblemError
 from app.expenses import repository
 from app.expenses.access import SchoolScope, not_found
 from app.expenses.attachment_types import HEAD_BYTES, sniff
+from app.expenses.category_rules import rule_for
 from app.expenses.db_errors import database_rules
 from app.expenses.schemas import (
     ApproveRequest,
     AttachmentOut,
     CategoryList,
+    CategoryOption,
     CategoryRef,
     ExpenseCreate,
     ExpenseDetail,
@@ -176,12 +178,11 @@ def _load_for_update(db: Session, scope: SchoolScope, expense_id: uuid.UUID) -> 
 
 
 def list_categories(db: Session, scope: SchoolScope) -> CategoryList:
-    return CategoryList(
-        items=[
-            CategoryRef.model_validate(dict(row))
-            for row in repository.categories_for_expenses(db, scope.school_id)
-        ]
-    )
+    items = []
+    for row in repository.categories_for_expenses(db, scope.school_id):
+        nature, rule = rule_for(str(row["key"]))
+        items.append(CategoryOption(**dict(row), economic_nature=nature, pdde_rule=rule))
+    return CategoryList(items=items)
 
 
 def get_expense(db: Session, scope: SchoolScope, expense_id: uuid.UUID) -> ExpenseDetail:

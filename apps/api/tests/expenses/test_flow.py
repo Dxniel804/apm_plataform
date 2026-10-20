@@ -136,7 +136,10 @@ def test_the_categories_for_the_form_are_the_money_out_ones_that_need_approval(
     assert {"school_supplies", "services", "other_authorized"} <= keys
     assert not keys & {"bank_fees", "parent_contribution", "donation", "refund"}
     first: dict[str, Any] = response.json()["items"][0]
-    assert set(first) == {"id", "key", "name"}
+    assert set(first) == {"id", "key", "name", "economic_nature", "pdde_rule"}
+    by_key = {item["key"]: item for item in response.json()["items"]}
+    assert by_key["capital_furniture"]["economic_nature"] == "CAPITAL"
+    assert by_key["cleaning_supplies"]["pdde_rule"] == "SUGGESTED"
 
 
 def test_creating_an_expense_validates_what_the_database_will_not(scene: Scene) -> None:
