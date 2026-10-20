@@ -36,7 +36,7 @@ describe("formularios nunca vazam dados na URL", () => {
     expect(form.method).toBe("post");
     expect(fireEvent.submit(form)).toBe(false);
     const inputs = [...container.querySelectorAll<HTMLInputElement>("input")];
-    expect(inputs).toHaveLength(5);
+    expect(inputs).toHaveLength(4); // a turma e escolhida em listas, nao digitada
     for (const input of inputs.filter((i) => i.name !== "contributorEmail" && i.name !== "contributorPhone")) {
       expect(input.getAttribute("spellcheck")).toBe("false");
       expect(input.getAttribute("autocorrect")).toBe("off");
@@ -45,7 +45,9 @@ describe("formularios nunca vazam dados na URL", () => {
     expect(container.querySelector("input[name=contributorEmail]")!.getAttribute("autocomplete")).toBe("email");
     // aluno e turma: sem autopreenchimento; responsavel: so o token padrao 'name'
     expect(container.querySelector("input[name=studentName]")!.getAttribute("autocomplete")).toBe("off");
-    expect(container.querySelector("input[name=classroom]")!.getAttribute("autocomplete")).toBe("off");
+    // a turma nao e digitada: e uma lista (ano e turma), entao nao ha o que autopreencher nem errar
+    expect(container.querySelector("input[name=classroom]")).toBeNull();
+    expect(container.querySelector("select[name=classroom]")).not.toBeNull();
     expect(container.querySelector("input[name=guardianName]")!.getAttribute("autocomplete")).toBe("name");
   });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { ClassroomField } from "@/components/portal/ClassroomField";
 import { FormButtons, FormWindow } from "@/components/ui/FormModal";
 import { SelectField, TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
@@ -120,7 +121,20 @@ export function CashContributionForm({ schoolId, onRecorded, onClose }: { school
           </SelectField>
         </div>
 
-        {FIELDS.map((field) => (
+        {FIELDS.map((field) =>
+          field === "classroom" ? (
+            <ClassroomField
+              key={field}
+              name={field}
+              optional
+              value={values[field] ?? ""}
+              onChange={(v) => {
+                setValues((prev) => ({ ...prev, [field]: v }));
+                setErrors((prev) => ({ ...prev, [field]: undefined }));
+              }}
+              error={errors[field]}
+            />
+          ) : (
           <TextField
             key={field}
             name={field}
@@ -138,7 +152,8 @@ export function CashContributionForm({ schoolId, onRecorded, onClose }: { school
             }}
             error={errors[field]}
           />
-        ))}
+          ),
+        )}
 
         <div aria-live="polite">
           {error && (

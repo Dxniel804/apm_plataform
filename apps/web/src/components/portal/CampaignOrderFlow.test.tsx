@@ -55,12 +55,13 @@ describe("aluno e turma", () => {
     await add(user, "Cachorro-quente");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.type(await screen.findByLabelText(/Nome do aluno/), "Ana Souza");
-    await user.type(screen.getByLabelText(/Turma/), "3A");
+    await user.selectOptions(screen.getByLabelText(/Ano do aluno/), "3º ano");
+    await user.selectOptions(screen.getByLabelText(/^Turma/), "A");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(await screen.findByRole("button", { name: /Gerar Pix de/ }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
-    expect(create.mock.calls[0]![2]).toMatchObject({ identification: { studentName: "Ana Souza", classroom: "3A" } });
+    expect(create.mock.calls[0]![2]).toMatchObject({ identification: { studentName: "Ana Souza", classroom: "3º ano A" } });
   });
 
   it("campanha que nao pede: o aluno e a turma ficam escondidos quando a escola tambem nao pede", async () => {

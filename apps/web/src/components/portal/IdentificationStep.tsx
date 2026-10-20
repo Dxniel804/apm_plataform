@@ -13,6 +13,7 @@ import {
   type IdentificationField,
   type IdentificationValues,
 } from "@/lib/validation";
+import { ClassroomField } from "./ClassroomField";
 import { StickyActions } from "./FlowChrome";
 
 const AUTOCOMPLETE: Record<IdentificationField, string> = {
@@ -69,7 +70,7 @@ export function IdentificationStep({
 
   const focusField = (field: IdentificationField) => {
     const element = formRef.current?.elements.namedItem(field);
-    if (element instanceof HTMLInputElement) element.focus();
+    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) element.focus();
   };
 
   return (
@@ -91,7 +92,10 @@ export function IdentificationStep({
       </p>
 
       <div className="mt-6 space-y-[1.125rem]">
-        {fields.map((field) => (
+        {fields.map((field) =>
+          field === "classroom" ? (
+            <ClassroomField key={field} name={field} optional={school.identification[field] === "OPTIONAL"} value={values[field] ?? ""} onChange={(v) => onChange(field, v)} error={errors[field]} />
+          ) : (
           <TextField
             key={field}
             name={field}
@@ -112,7 +116,8 @@ export function IdentificationStep({
             onChange={(e) => onChange(field, e.target.value)}
             error={errors[field]}
           />
-        ))}
+          ),
+        )}
       </div>
 
       <StickyActions>
