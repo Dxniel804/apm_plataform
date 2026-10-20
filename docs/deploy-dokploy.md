@@ -60,7 +60,7 @@ Crie uma aplicação do tipo **Compose**: repositório do APM, branch `main`, ca
 | `PIX_LIVE_ENABLED` | não | **`false`** (padrão): contribuições respondem "pagamentos pausados" até o gateway ser escolhido |
 | `FORKLIN_CORE_ENABLED` | não | `false` até o passo 5; depois `true` |
 | `API_CENTRAL_URL` | com a Forklin | URL **interna** da Central, só o nome do serviço na rede do Dokploy (como a do App: `http://<servico>:8000`, sem pontos no nome), ou a pública `https://`. Qualquer outro `http://` é recusado em produção |
-| `FORKLIN_APP_URL` | com a Forklin | `https://` do App Forklin |
+| `FORKLIN_APP_URL` | com a Forklin | `https://` do App Forklin. A API e o **site** a leem (o site, para o botão "Voltar para o painel"; sem ela o botão não aparece) |
 | `FORKLIN_PRODUCT_SLUG` | não | `apm-digital` (padrão) |
 | `FORKLIN_PRODUCT_SECRET` | com a Forklin | o segredo que a Central mostrou **uma vez** no passo 5 |
 | `TRUSTED_PROXY_IPS` | não | `*` (padrão): a API só é alcançada pelo Traefik |

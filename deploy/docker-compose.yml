@@ -107,6 +107,9 @@ services:
       API_PROXY_URL: http://api:8000
       PUBLIC_BASE_URL: https://${APM_DOMAIN}
       FORKLIN_CORE_ENABLED: ${FORKLIN_CORE_ENABLED:-false}
+      # O botao "Voltar para o painel" e lido NO SERVIDOR DO SITE: sem esta variavel aqui ele nunca aparece,
+      # mesmo com FORKLIN_APP_URL preenchida para a API (so aparece com a Forklin ligada e uma URL http(s)).
+      FORKLIN_APP_URL: ${FORKLIN_APP_URL:-}
     expose:
       - "3000"
     healthcheck:
