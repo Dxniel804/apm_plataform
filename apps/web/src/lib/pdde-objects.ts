@@ -1,5 +1,17 @@
 import type { PddeEconomic, PddeProgram } from "@/lib/api/pdde";
 
+export const PROGRAM_LABELS: Record<PddeProgram, string> = {
+  BASICO: "PDDE Básico",
+  EQUIDADE: "PDDE Equidade",
+  QUALIDADE: "PDDE Qualidade",
+  CONECTADO: "Educação Conectada",
+  OUTRO: "Outro programa",
+};
+
+/** O nome de um programa; "Outro programa" usa o nome que a escola deu. */
+export const programName = (program: PddeProgram | null, label: string | null): string =>
+  program === null ? "" : program === "OUTRO" ? (label ?? PROGRAM_LABELS.OUTRO) : PROGRAM_LABELS[program];
+
 /**
  * O que foi comprado, em palavras comuns, e se isso e capital (bem que dura) ou custeio (consumo, servico).
  * Quem classifica escolhe o item; o site deduz custeio ou capital. A lista e uma proposta: os usos vem do art. 4

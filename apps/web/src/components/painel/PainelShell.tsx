@@ -16,12 +16,13 @@ import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import type { Session } from "@/lib/api/types";
 import { describeAuthError, isSessionLost } from "@/lib/auth-messages";
-import { sectionHref, type CampaignTab, type PainelSection } from "@/lib/painel-section";
+import { sectionHref, walletHref, type CampaignTab, type PainelSection, type Wallet } from "@/lib/painel-section";
 import { areasFor, type PainelArea } from "@/lib/permissions";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
 import { ContextChooser } from "./ContextChooser";
 import { KIND_META } from "./kinds";
 import { navFor } from "./nav";
+import { DashboardWallets } from "./DashboardWallets";
 import { PainelData } from "./PainelData";
 import { Sidebar } from "./Sidebar";
 import { TenantSwitcher } from "./TenantSwitcher";
@@ -38,6 +39,8 @@ interface PainelShellProps {
   tab?: "minhas" | "fila";
   /** YYYY-MM da URL (?mes=); sem ele a API usa o mes corrente no fuso da escola. */
   period?: string;
+  /** Qual dinheiro o resumo mostra (?carteira=pdde); so quem cuida das contas escolhe. */
+  wallet?: Wallet;
   /** Na area das campanhas: a campanha aberta (/painel/campanhas/{id}) e a aba escolhida (?aba=). */
   campaignId?: string;
   campaignTab?: CampaignTab;
@@ -68,7 +71,7 @@ const writeCollapsed = (value: boolean) => {
   collapsedListeners.forEach((listener) => listener());
 };
 
-export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, campaignId, campaignTab = "resumo", forklinUrl = null }: PainelShellProps) {
+export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, wallet = "apm", campaignId, campaignTab = "resumo", forklinUrl = null }: PainelShellProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -219,6 +222,16 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <SettingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
           ) : shownArea === "fechamento" ? (
             <ClosingsArea key={schoolId} schoolId={schoolId} permissions={active.permissions} />
+          ) : section === "resumo" && active.permissions.includes("reconciliation:manage") ? (
+            <DashboardWallets
+              key={schoolId}
+              schoolId={schoolId}
+              permissions={active.permissions}
+              period={period}
+              wallet={wallet}
+              onPeriodChange={(next) => router.replace(walletHref(wallet, next))}
+              onWalletChange={(next) => router.replace(walletHref(next, period))}
+            />
           ) : (
             <PainelData
               // Trocar de vinculo troca de escola: o estado dos numeros recomeca do zero.

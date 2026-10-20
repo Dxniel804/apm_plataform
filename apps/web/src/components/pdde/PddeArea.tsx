@@ -23,18 +23,11 @@ import {
   type PddeProgramBalance,
   type PddeYear,
 } from "@/lib/api/pdde";
-import { PDDE_OBJECTS, suggestCredit, suggestObject } from "@/lib/pdde-objects";
+import { PDDE_OBJECTS, PROGRAM_LABELS, programName, suggestCredit, suggestObject } from "@/lib/pdde-objects";
 import { formatDayLong } from "@/lib/format";
 import { centsFromDigits, formatBRL, formatBRLNumber } from "@/lib/money";
 import { currentLocalPeriod, periodLabel, recentPeriods } from "@/lib/statement-labels";
 
-const PROGRAM_LABELS: Record<PddeProgram, string> = {
-  BASICO: "PDDE Básico",
-  EQUIDADE: "PDDE Equidade",
-  QUALIDADE: "PDDE Qualidade",
-  CONECTADO: "Educação Conectada",
-  OUTRO: "Outro programa",
-};
 const KIND_LABELS: Record<PddeKind, string> = {
   TRANSFER: "Repasse do FNDE",
   YIELD: "Rendimento",
@@ -47,7 +40,6 @@ const KIND_LABELS: Record<PddeKind, string> = {
 const DOC_LABELS: Record<PddeDocKind, string> = { NFE: "Nota fiscal eletrônica (NF-e)", INVOICE: "Fatura", RECEIPT: "Recibo", OTHER: "Outro documento" };
 const ECONOMIC_LABELS: Record<PddeEconomic, string> = { CUSTEIO: "Custeio", CAPITAL: "Capital" };
 
-const programName = (program: PddeProgram | null, label: string | null) => (program === null ? "" : program === "OUTRO" ? (label ?? PROGRAM_LABELS.OUTRO) : PROGRAM_LABELS[program]);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function describe(error: ApiError): string {

@@ -3,13 +3,14 @@ import { PainelShell } from "@/components/painel/PainelShell";
 import { SessionUnavailable } from "@/components/painel/SessionUnavailable";
 import { getServerSession } from "@/lib/api/server";
 import { forklinPanelUrl, withoutStaffRegistration } from "@/lib/forklin";
-import { parseCampaignTab, parsePeriod, parseSection } from "@/lib/painel-section";
+import { parseCampaignTab, parsePeriod, parseSection, parseWallet } from "@/lib/painel-section";
 import { areaHref, areasFor, homeArea, type PainelArea } from "@/lib/permissions";
 
 interface Props {
   area: PainelArea;
   tipo?: string | string[];
   mes?: string | string[];
+  carteira?: string | string[];
   aba?: string | string[];
   /** A campanha aberta (/painel/campanhas/{id}); sem ela a area mostra a lista. */
   campaignId?: string;
@@ -20,7 +21,7 @@ interface Props {
  * pode ver a area para a sua (funcionario: Minhas despesas) e entrega ao cliente so a sessao. Os numeros vem da
  * API, no navegador, para a escola do vinculo ativo.
  */
-export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
+export async function PainelPage({ area, tipo, mes, carteira, aba, campaignId }: Props) {
   const auth = await getServerSession();
   if (auth.state === "anonymous") redirect("/login");
   if (auth.state === "unavailable") return <SessionUnavailable />;
@@ -54,6 +55,6 @@ export async function PainelPage({ area, tipo, mes, aba, campaignId }: Props) {
   const tab = (Array.isArray(aba) ? aba[0] : aba) === "minhas" ? "minhas" : "fila";
   const campaignTab = parseCampaignTab(Array.isArray(aba) ? aba[0] : aba);
   return (
-    <PainelShell session={session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} campaignId={campaignId} campaignTab={campaignTab} forklinUrl={forklinPanelUrl()} />
+    <PainelShell session={session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} wallet={parseWallet(carteira)} campaignId={campaignId} campaignTab={campaignTab} forklinUrl={forklinPanelUrl()} />
   );
 }

@@ -37,6 +37,22 @@ export function sectionHref(section: PainelSection, period?: string): string {
   return params.length > 0 ? `/painel?${params.join("&")}` : "/painel";
 }
 
+/** Qual dinheiro a dashboard mostra: o caixa da APM (padrao) ou o PDDE (`?carteira=pdde`). */
+export type Wallet = "apm" | "pdde";
+
+export function parseWallet(raw: string | string[] | undefined): Wallet {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === "pdde" ? "pdde" : "apm";
+}
+
+/** O endereco do resumo de uma carteira, no mes dado (a APM e a pagina de sempre). */
+export function walletHref(wallet: Wallet, period?: string): string {
+  const params: string[] = [];
+  if (wallet === "pdde") params.push("carteira=pdde");
+  if (period && PERIOD.test(period)) params.push(`mes=${period}`);
+  return params.length > 0 ? `/painel?${params.join("&")}` : "/painel";
+}
+
 /** As abas da pagina de uma campanha (`?aba=`): o resumo, os pedidos e os produtos (o editor). */
 export type CampaignTab = "resumo" | "pedidos" | "produtos";
 export const CAMPAIGN_TABS: readonly CampaignTab[] = ["resumo", "pedidos", "produtos"];
