@@ -8,7 +8,7 @@ import { CashCoinIcon, ImageIcon } from "@/components/ui/icons";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
 import { api } from "@/lib/api";
-import type { ApiResult, ExpenseCategory, ExpenseDetail } from "@/lib/api/types";
+import type { ApiResult, ExpenseCategory, ExpenseDetail, Fund } from "@/lib/api/types";
 import { saveBlob } from "@/lib/download";
 import {
   ATTACHMENT_KIND_LABELS, PAID_BY_LABELS, PAYMENT_METHOD_LABELS, amountSummary, describeExpenseError, expenseStatusView, formatFileSize,
@@ -56,12 +56,16 @@ function ReasonForm({ title, intro, label, submit, busy, error, onSubmit, onCanc
   );
 }
 
-function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: ExpenseDetail; busy: boolean; error: string | null; onSubmit: (input: { approvedAmountCents?: number; reason?: string }) => void; onCancel: () => void }) {
+function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: ExpenseDetail; busy: boolean; error: string | null; onSubmit: (input: { approvedAmountCents?: number; reason?: string; fund?: Fund }) => void; onCancel: () => void }) {
   const canPartial = expense.paidBy === "COLLABORATOR"; // regra da API: valor menor so quando um colaborador pagou
   const [partial, setPartial] = useState(false);
   const [cents, setCents] = useState(0);
   const [reason, setReason] = useState("");
   const [local, setLocal] = useState<Record<string, string>>({});
+  // The category suggests which money pays it; the secretaria can change it. Only a change is sent: otherwise the API takes the suggestion.
+  const [fund, setFund] = useState<Fund>(expense.suggestedFund);
+  const forbidden = expense.pddeRule === "FORBIDDEN";
+  const chosen = fund !== expense.suggestedFund ? { fund } : {};
   return (
     <FormModal title="Aprovar despesa" intro="Confira o valor antes de aprovar. Depois de aprovada, a despesa segue para o pagamento ou o reembolso." onClose={onCancel} busy={busy}>
     <form
@@ -69,15 +73,31 @@ function ApproveForm({ expense, busy, error, onSubmit, onCancel }: { expense: Ex
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        if (!partial) return onSubmit({});
+        if (!partial) return onSubmit({ ...chosen });
         const problems: Record<string, string> = {};
         if (cents <= 0 || cents >= expense.amountCents) problems.amount = `Informe um valor menor que ${formatBRL(expense.amountCents)}.`;
         if (reason.trim().length < 3 || reason.trim().length > 500) problems.reason = "Explique a diferença (de 3 a 500 caracteres).";
         setLocal(problems);
-        if (Object.keys(problems).length === 0) onSubmit({ approvedAmountCents: cents, reason: reason.trim() });
+        if (Object.keys(problems).length === 0) onSubmit({ approvedAmountCents: cents, reason: reason.trim(), ...chosen });
       }}
       className="space-y-5"
     >
+      <fieldset>
+        <legend className="mb-2 text-sub font-semibold text-ink">Paga com</legend>
+        <div className="flex gap-2">
+          {(["APM", "PDDE"] as const).map((f) => {
+            const off = f === "PDDE" && forbidden;
+            return (
+              <label key={f} className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sub font-semibold ${off ? "cursor-not-allowed border-line text-ink-2 opacity-50" : "cursor-pointer"} ${fund === f ? "border-brand-800 bg-brand-800 text-white" : "border-line-strong bg-white text-brand-800"}`}>
+                <input type="radio" name="approve-fund" value={f} checked={fund === f} disabled={off} onChange={() => setFund(f)} className="sr-only" />
+                {f}
+              </label>
+            );
+          })}
+        </div>
+        {forbidden && <p className="mt-2 text-sub text-ink-2">O PDDE não paga este tipo de despesa.</p>}
+        {!forbidden && fund === "PDDE" && expense.economicNature && <p className="mt-2 text-sub text-ink-2">Conta como {expense.economicNature === "CAPITAL" ? "capital" : "custeio"}.</p>}
+      </fieldset>
       <fieldset>
         <legend className="mb-1 text-sub font-semibold text-ink">Valor a aprovar</legend>
         <label className="flex min-h-11 items-center gap-2 text-body text-ink">
@@ -271,6 +291,7 @@ export function ExpenseDetailPanel({ schoolId, expenseId, userId, permissions, c
           <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
             {d.paymentMethod && fact("Forma", PAYMENT_METHOD_LABELS[d.paymentMethod])}
             {fact("Categoria", d.category.name)}
+            {d.fund && fact("Paga com", d.fund)}
             {d.vendor && fact("Fornecedor", d.vendor)}
             {d.purchaseReason && fact("Motivo da compra", d.purchaseReason)}
             {own && fact("Enviada por", "você")}

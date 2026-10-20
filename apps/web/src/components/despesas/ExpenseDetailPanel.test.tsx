@@ -118,6 +118,28 @@ describe("gestao", () => {
     for (const name of ["Aprovar", "Pedir correção", "Recusar"]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
   });
 
+  it("a categoria ja marca com qual dinheiro paga; trocar manda a escolha, nao trocar manda nada", async () => {
+    const approve = vi.spyOn(api.expenses, "approve").mockResolvedValue(ok(detail({ status: "APPROVED" })));
+    const { user } = setup(detail({ status: "SUBMITTED", suggestedFund: "PDDE", economicNature: "CAPITAL" }), MANAGER_ID, TREASURER);
+    await user.click(await screen.findByRole("button", { name: "Aprovar" }));
+
+    expect(screen.getByRole("radio", { name: "PDDE" })).toBeChecked();
+    expect(screen.getByText("Conta como capital.")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "APM" }));
+    await user.click(inDialog("Aprovar"));
+
+    expect(approve).toHaveBeenCalledWith(SCHOOL_ID, expect.any(String), { fund: "APM" });
+  });
+
+  it("o que o PDDE nao paga vem com APM e o PDDE desligado", async () => {
+    const { user } = setup(detail({ status: "SUBMITTED", suggestedFund: "APM", economicNature: null, pddeRule: "FORBIDDEN" }), MANAGER_ID, TREASURER);
+    await user.click(await screen.findByRole("button", { name: "Aprovar" }));
+
+    expect(screen.getByRole("radio", { name: "APM" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "PDDE" })).toBeDisabled();
+    expect(screen.getByText("O PDDE não paga este tipo de despesa.")).toBeInTheDocument();
+  });
+
   it("aprova pelo valor pedido (sem corpo)", async () => {
     const approve = vi.spyOn(api.expenses, "approve").mockResolvedValue(ok(detail({ status: "APPROVED" })));
     const { user, onChanged } = setup(detail({ status: "SUBMITTED" }), MANAGER_ID, TREASURER);

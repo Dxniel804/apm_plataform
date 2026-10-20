@@ -296,6 +296,10 @@ export interface CashContributionResult {
 
 export type ExpenseStatus = "DRAFT" | "SUBMITTED" | "CORRECTION_REQUESTED" | "APPROVED" | "REJECTED" | "PAID" | "CANCELLED";
 export type PaidBy = "APM" | "COLLABORATOR";
+/** Qual dinheiro paga a despesa: o da APM ou o do PDDE. */
+export type Fund = "APM" | "PDDE";
+/** O que o PDDE pode pagar: SUGGESTED (costuma pagar), ALLOWED (pode) ou FORBIDDEN (a resolucao proibe). */
+export type PddeRule = "SUGGESTED" | "ALLOWED" | "FORBIDDEN";
 export type PaymentMethod = "PIX" | "CARD" | "CASH" | "OTHER";
 export type AttachmentKind = "INVOICE" | "PAYMENT_PROOF" | "OTHER";
 
@@ -317,6 +321,13 @@ export interface ExpenseSummary {
   description: string;
   vendor: string | null;
   paidBy: PaidBy;
+  /** Decidido na aprovacao (null antes dela e numa despesa recusada). */
+  fund: Fund | null;
+  /** O que a categoria sugere para a secretaria: PDDE so quando ele costuma pagar. */
+  suggestedFund: Fund;
+  /** O que a categoria e para o PDDE: custeio ou capital (null quando nao diz). */
+  economicNature: "CUSTEIO" | "CAPITAL" | null;
+  pddeRule: PddeRule;
   /** A API devolve so o id de quem enviou (nao o nome): o site compara com o usuario da sessao. */
   submittedByUserId: string;
   attachmentsCount: number;

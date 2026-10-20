@@ -9,7 +9,9 @@ import type {
   ExpenseStatus,
   ExpenseSummary,
   ExpenseUpdate,
+  Fund,
   OcrSuggestion,
+  PddeRule,
   Page,
   PaidBy,
   PaymentMethod,
@@ -34,6 +36,9 @@ const optInt = (v: unknown): number | null | undefined => (v === null || v === u
 
 export const EXPENSE_STATUSES: readonly ExpenseStatus[] = ["DRAFT", "SUBMITTED", "CORRECTION_REQUESTED", "APPROVED", "REJECTED", "PAID", "CANCELLED"];
 const PAID_BY: readonly PaidBy[] = ["APM", "COLLABORATOR"];
+const FUNDS: readonly Fund[] = ["APM", "PDDE"];
+const NATURES = ["CUSTEIO", "CAPITAL"] as const;
+const PDDE_RULES: readonly PddeRule[] = ["SUGGESTED", "ALLOWED", "FORBIDDEN"];
 const METHODS: readonly PaymentMethod[] = ["PIX", "CARD", "CASH", "OTHER"];
 const KINDS: readonly AttachmentKind[] = ["INVOICE", "PAYMENT_PROOF", "OTHER"];
 const oneOf = <T extends string>(list: readonly T[], v: unknown): T | null => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : null);
@@ -58,19 +63,23 @@ function parseSummary(v: unknown): ExpenseSummary | null {
   const description = typeof v.description === "string" ? v.description : null;
   const vendor = optStr(v.vendor);
   const paidBy = oneOf(PAID_BY, v.paid_by);
+  const fund = v.fund === null || v.fund === undefined ? null : oneOf(FUNDS, v.fund);
+  const suggestedFund = oneOf(FUNDS, v.suggested_fund) ?? "APM";
+  const economicNature = oneOf(NATURES, v.economic_nature);
+  const pddeRule = oneOf(PDDE_RULES, v.pdde_rule) ?? "ALLOWED";
   const submittedByUserId = str(v.submitted_by_user_id);
   const attachmentsCount = int(v.attachments_count);
   const createdAt = str(v.created_at);
   const updatedAt = str(v.updated_at);
   if (
-    !id || referenceCode === null || !status || amountCents === null || approved === undefined || !category || !occurredAt ||
+    !id || referenceCode === null || !status || amountCents === null || approved === undefined || !category || !occurredAt || (v.fund != null && fund === null) ||
     description === null || vendor === undefined || !paidBy || !submittedByUserId || attachmentsCount === null || !createdAt || !updatedAt
   ) {
     return null;
   }
   return {
     id, referenceCode, status, amountCents, approvedAmountCents: approved, category, occurredAt, description, vendor, paidBy,
-    submittedByUserId, attachmentsCount, createdAt, updatedAt,
+    fund, suggestedFund, economicNature, pddeRule, submittedByUserId, attachmentsCount, createdAt, updatedAt,
   };
 }
 
@@ -254,10 +263,11 @@ export const payExpense = (schoolId: string, expenseId: string, options?: SendOp
 export function approveExpense(
   schoolId: string,
   expenseId: string,
-  input: { approvedAmountCents?: number; reason?: string } = {},
+  input: { approvedAmountCents?: number; reason?: string; fund?: Fund } = {},
   options?: SendOptions,
 ): Promise<ApiResult<ExpenseDetail>> {
   const body: Record<string, string | number> = {};
+  if (input.fund) body.fund = input.fund;
   if (input.approvedAmountCents !== undefined) body.approved_amount_cents = input.approvedAmountCents;
   if (input.reason) body.reason = input.reason;
   return action(schoolId, expenseId, "approve", Object.keys(body).length > 0 ? body : undefined, options);
