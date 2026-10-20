@@ -72,3 +72,48 @@ def test_the_fund_is_written_once(scene: Scene) -> None:
 
     assert again.status_code == 409, again.text
     assert treasurer.get(f"/expenses/{expense['id']}").json()["fund"] == "PDDE"
+
+
+def _paid(scene: Scene, key: str, fund: str, paid_by: str, cents: int) -> None:
+    teacher = scene.person("staff", label="teacher")
+    treasurer = scene.person("secretaria", label="secretaria")
+    expense = scene.submitted(
+        teacher,
+        category_id=scene.category(teacher.school, key),
+        paid_by=paid_by,
+        amount_cents=cents,
+    )
+    assert treasurer.post(f"/expenses/{expense['id']}/approve", {"fund": fund}).status_code == 200
+    if paid_by == "APM":
+        assert treasurer.post(f"/expenses/{expense['id']}/pay").status_code == 200
+    else:
+        reimbursed = treasurer.post(
+            f"/expenses/{expense['id']}/reimburse", {"payment_reference": "PIX-1"}
+        )
+        assert reimbursed.status_code == 200, reimbursed.text
+
+
+def _cash(scene: Scene) -> tuple[int, int]:
+    treasurer = scene.person("secretaria", label="secretaria")
+    summary = treasurer.get("/statement/summary").json()
+    return summary["total_out_cents"], summary["closing_balance_cents"]
+
+
+def test_what_the_pdde_pays_does_not_leave_the_cash_of_the_apm(scene: Scene) -> None:
+    out, balance = _cash(scene)
+
+    _paid(scene, "capital_equipment", "PDDE", "APM", 4_000)
+    assert _cash(scene) == (out, balance)  # paid with the PDDE: the APM cash did not move
+
+    _paid(scene, "capital_equipment", "APM", "APM", 1_500)
+    assert _cash(scene) == (out + 1_500, balance - 1_500)  # the same expense with the APM money
+
+
+def test_the_reimbursement_of_a_pdde_expense_is_not_the_apms_cash_either(scene: Scene) -> None:
+    out, balance = _cash(scene)
+
+    _paid(scene, "capital_furniture", "PDDE", "COLLABORATOR", 2_000)
+    assert _cash(scene) == (out, balance)
+
+    _paid(scene, "capital_furniture", "APM", "COLLABORATOR", 700)
+    assert _cash(scene) == (out + 700, balance - 700)

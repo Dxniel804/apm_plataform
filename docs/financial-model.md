@@ -472,3 +472,9 @@ Other functions: `statement_entries`, `statement_summary`, `statement_pending`, 
 | `test_models.py`, `test_seed_financial.py`, `test_docs.py` | the models match the database; the seed; this page matches the catalog |
 
 The 100-thousand-row test and the concurrency tests take a few seconds; run a file with `docker compose run --rm tools pytest tests/financial/test_x.py`. `test_docs.py` needs this page, which is not inside the API image: it is skipped (with a message) when `docs/` is not mounted.
+
+## Which money pays an expense (0031, 0032)
+
+`expenses.fund` is `APM` or `PDDE`, written once with the approval (NULL before it, for a rejected expense and for the bank fees). The category suggests it (`app/expenses/category_rules.py`); the secretaria can change it, and the API refuses `PDDE` for what Res. CD/FNDE 15/2021 art. 4, par. 2 forbids (`pdde_not_allowed`).
+
+An expense decided as `PDDE` is paid from the PDDE bank account, so **neither it nor the reimbursement of it is cash of the APM**: `statement_entries`, `statement_summary` and `statement_pending` leave it out (0032), and with them the dashboard, the Livro Caixa, the closing and the balancete. A NULL fund counts as the APM's, as before, and a month already closed does not change.
