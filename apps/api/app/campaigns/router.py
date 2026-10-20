@@ -19,6 +19,7 @@ from app.auth.permissions import Permission
 from app.auth.responses import problem_responses
 from app.campaigns import orders, service
 from app.campaigns.schemas import (
+    BuyerList,
     CampaignCreate,
     CampaignDashboard,
     CampaignDetail,
@@ -395,6 +396,18 @@ def campaign_orders(
         db, scope, campaign_id,
         payment=payment, delivery=delivery, search=search, limit=limit, offset=offset,
     )  # fmt: skip
+
+
+@router.get(
+    "/campaigns/{campaign_id}/buyers",
+    operation_id="campaigns_buyers",
+    summary="Who bought what: the paid orders grouped by guardian and student",
+    response_model=BuyerList,
+    responses=_errors(401, 403, 409),
+    openapi_extra=_PERMISSION,
+)
+def campaign_buyers(campaign_id: UUID, scope: Manage, db: TenantDb) -> BuyerList:
+    return orders.buyers(db, scope, campaign_id)
 
 
 @router.post(

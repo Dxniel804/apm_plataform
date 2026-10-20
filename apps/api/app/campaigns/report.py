@@ -10,7 +10,7 @@ from datetime import datetime
 
 from reportlab.platypus import Flowable, Paragraph, Spacer
 
-from app.campaigns.schemas import CampaignDashboard, OrderOut
+from app.campaigns.schemas import BuyerOut, CampaignDashboard, OrderOut
 from app.reports.format import brl, local_datetime, reference
 from app.reports.layout import (
     STYLES,
@@ -45,6 +45,7 @@ def render_campaign_report(
     generated_at: datetime,
     dashboard: CampaignDashboard,
     orders: list[OrderOut],
+    buyers: list[BuyerOut],
 ) -> bytes:
     story: list[Flowable] = [
         para("Relatório da campanha", "title"),
@@ -104,6 +105,37 @@ def render_campaign_report(
             ],
         )
     )
+
+    story.append(Paragraph(f"Quem comprou ({len(buyers)})", STYLES["h2"]))
+    if not buyers:
+        story.append(para("Nenhum pedido aprovado nesta campanha.", "body"))
+    else:
+        story.append(
+            data_table(
+                [
+                    Column("Responsável", 3.2),
+                    Column("Aluno · turma", 3.2),
+                    Column("Comprou", 5.4),
+                    Column("Unid.", 1.2, right=True),
+                    Column("Valor", 1.8, right=True),
+                ],
+                [
+                    [
+                        buyer.guardian_name or "—",
+                        " · ".join(p for p in (buyer.student_name, buyer.class_name) if p) or "—",
+                        "; ".join(f"{line.quantity} × {line.item_name}" for line in buyer.lines),
+                        buyer.units,
+                        brl(buyer.amount_cents),
+                    ]
+                    for buyer in buyers
+                ],
+            )
+        )
+        story.append(
+            para(
+                "Só os pedidos aprovados. O mesmo responsável com o mesmo aluno é somado.", "small"
+            )
+        )
 
     story.append(Paragraph(f"Pedidos ({len(orders)})", STYLES["h2"]))
     if not orders:

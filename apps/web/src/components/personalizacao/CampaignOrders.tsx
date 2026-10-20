@@ -5,6 +5,7 @@ import { Button, chipClass } from "@/components/ui/Button";
 import { CheckboxField } from "@/components/ui/CheckboxField";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { TextField } from "@/components/ui/TextField";
+import { CampaignBuyers } from "./CampaignBuyers";
 import { api } from "@/lib/api";
 import type { ApiResult, CampaignOrder, CampaignOrderPage, OrderDeliveryStatus, OrderPaymentStatus } from "@/lib/api/types";
 import { deliveryStatusView, describeCampaignError, paymentStatusView } from "@/lib/campaign-labels";
@@ -38,7 +39,27 @@ interface Props {
  * Os pedidos de uma campanha: quem comprou, o que, o pagamento (Pendente, Aprovado, Cancelado) e a entrega. A gestao
  * marca a entrega, um a um ou em lote, so de pedido aprovado, e pode desfazer. Quem decide e a API.
  */
-export function CampaignOrders({ schoolId, campaignId, onChanged }: Props) {
+export function CampaignOrders(props: Props) {
+  const [view, setView] = useState<"orders" | "buyers">("orders");
+  const views = [
+    { id: "orders", label: "Pedidos" },
+    { id: "buyers", label: "Quem comprou" },
+  ] as const;
+  return (
+    <div className="space-y-5">
+      <div role="tablist" aria-label="O que ver" className="flex flex-wrap gap-2.5">
+        {views.map((v) => (
+          <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} className={chipClass(view === v.id)}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {view === "orders" ? <OrdersList {...props} /> : <CampaignBuyers schoolId={props.schoolId} campaignId={props.campaignId} />}
+    </div>
+  );
+}
+
+function OrdersList({ schoolId, campaignId, onChanged }: Props) {
   const [payment, setPayment] = useState<OrderPaymentStatus | undefined>(undefined);
   const [delivery, setDelivery] = useState<OrderDeliveryStatus | undefined>(undefined);
   const [search, setSearch] = useState("");

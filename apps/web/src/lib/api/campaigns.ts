@@ -1,6 +1,8 @@
 import { apiBlob, apiGet, apiSend, apiUpload, type BlobPayload, type RequestOptions, type SendOptions } from "./client";
 import type {
   ApiResult,
+  CampaignBuyer,
+  CampaignBuyerList,
   CampaignDashboard,
   CampaignDetail,
   CampaignInput,
@@ -261,6 +263,42 @@ function parseOrderPage(v: unknown): CampaignOrderPage | null {
     items.push(order);
   }
   return { items, total, limit, offset };
+}
+
+function parseBuyer(v: unknown): CampaignBuyer | null {
+  if (!isRecord(v) || !Array.isArray(v.lines)) return null;
+  const guardianName = optStr(v.guardian_name);
+  const studentName = optStr(v.student_name);
+  const className = optStr(v.class_name);
+  const orders = int(v.orders);
+  const units = int(v.units);
+  const amountCents = int(v.amount_cents);
+  if (guardianName === undefined || studentName === undefined || className === undefined || orders === null || units === null || amountCents === null) return null;
+  const lines = [];
+  for (const raw of v.lines) {
+    if (!isRecord(raw)) return null;
+    const itemName = str(raw.item_name);
+    const quantity = int(raw.quantity);
+    if (!itemName || quantity === null) return null;
+    lines.push({ itemName, quantity });
+  }
+  return { guardianName, studentName, className, orders, units, amountCents, lines };
+}
+
+export function parseBuyers(v: unknown): CampaignBuyerList | null {
+  if (!isRecord(v) || !Array.isArray(v.items) || typeof v.complete !== "boolean") return null;
+  const items: CampaignBuyer[] = [];
+  for (const raw of v.items) {
+    const buyer = parseBuyer(raw);
+    if (!buyer) return null;
+    items.push(buyer);
+  }
+  return { items, complete: v.complete };
+}
+
+/** GET .../campaigns/{id}/buyers: quem comprou, por responsavel e aluno, com a quantidade de cada produto. */
+export function listCampaignBuyers(schoolId: string, campaignId: string, options?: RequestOptions): Promise<ApiResult<CampaignBuyerList>> {
+  return apiGet(`${base(schoolId)}/${enc(campaignId)}/buyers`, (body, status) => (status === 200 ? parseBuyers(body) : null), options);
 }
 
 /** GET .../campaigns/{id}/dashboard: arrecadado, custos, lucro (so com todos os custos), vendidos e entregas. */

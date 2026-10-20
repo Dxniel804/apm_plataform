@@ -181,6 +181,30 @@ class OrderOut(BaseModel):
     lines: list[OrderLine]
 
 
+class BuyerLine(BaseModel):
+    item_name: str
+    quantity: int
+
+
+class BuyerOut(BaseModel):
+    """What one guardian bought for one student in the campaign (the paid orders only): the same
+    person with the name written in another way is the same buyer."""
+
+    guardian_name: str | None
+    student_name: str | None
+    class_name: str | None
+    orders: int
+    units: int
+    amount_cents: int
+    lines: list[BuyerLine]
+
+
+class BuyerList(BaseModel):
+    items: list[BuyerOut]
+    # False when the campaign has more paid orders than the ones counted (the most recent 5000).
+    complete: bool
+
+
 class OrderList(BaseModel):
     items: list[OrderOut]
     total: int

@@ -34,7 +34,7 @@ import {
 } from "./school-settings";
 import {
   activateCampaign, addCampaignItem, changeCampaignDelivery, clearCampaignImage, createCampaign, downloadCampaignImage, downloadCampaignReport,
-  endCampaign, getCampaign, getCampaignDashboard, listCampaignOrders, listCampaigns, setCampaignImage, updateCampaign, updateCampaignItem,
+  endCampaign, getCampaign, getCampaignDashboard, listCampaignBuyers, listCampaignOrders, listCampaigns, setCampaignImage, updateCampaign, updateCampaignItem,
 } from "./campaigns";
 import {
   createContribution, createOrder, getContribution, getPublicCampaign, getPublicCampaigns, getPublicSchool, getReceipt, renewCharge, sandboxPay,
@@ -94,6 +94,7 @@ export const api: {
     image: typeof downloadCampaignImage;
     dashboard: typeof getCampaignDashboard;
     orders: typeof listCampaignOrders;
+    buyers: typeof listCampaignBuyers;
     changeDelivery: typeof changeCampaignDelivery;
     report: typeof downloadCampaignReport;
   };
@@ -220,6 +221,7 @@ export const api: {
     image: downloadCampaignImage,
     dashboard: getCampaignDashboard,
     orders: listCampaignOrders,
+    buyers: listCampaignBuyers,
     changeDelivery: changeCampaignDelivery,
     report: downloadCampaignReport,
   },

@@ -7,6 +7,7 @@ this campaign (the database refuses anything else), the change is reversible, an
 audited.
 """
 
+import unicodedata
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -17,6 +18,9 @@ from sqlalchemy.orm import Session
 from app.campaigns import repository
 from app.campaigns.report import MAX_ORDERS_IN_PDF, render_campaign_report
 from app.campaigns.schemas import (
+    BuyerLine,
+    BuyerList,
+    BuyerOut,
     CampaignDashboard,
     DeliveryChange,
     DeliveryResult,
@@ -161,6 +165,59 @@ def _page(
     )
 
 
+def _same(text: str | None) -> str:
+    """A name to compare: lower case, no accents, single spaces ("Ana  SOUZA" is "ana souza")."""
+    folded = unicodedata.normalize("NFKD", text or "")
+    return " ".join("".join(c for c in folded if not unicodedata.combining(c)).casefold().split())
+
+
+def group_buyers(paid: list[OrderOut]) -> list[BuyerOut]:
+    """One row per guardian and student, with what they bought of each product. The paid orders are
+    given newest first, so the name kept for a buyer is the latest way it was written."""
+    groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for order in paid:
+        key = (_same(order.guardian_name), _same(order.student_name), _same(order.class_name))
+        group = groups.setdefault(
+            key,
+            {
+                "guardian_name": order.guardian_name,
+                "student_name": order.student_name,
+                "class_name": order.class_name,
+                "orders": 0,
+                "amount_cents": 0,
+                "quantities": defaultdict(int),
+            },
+        )
+        group["orders"] += 1
+        group["amount_cents"] += order.amount_cents
+        for line in order.lines:
+            group["quantities"][line.item_name] += line.quantity
+    rows = [
+        BuyerOut(
+            guardian_name=g["guardian_name"],
+            student_name=g["student_name"],
+            class_name=g["class_name"],
+            orders=g["orders"],
+            units=sum(g["quantities"].values()),
+            amount_cents=g["amount_cents"],
+            lines=[BuyerLine(item_name=n, quantity=q) for n, q in sorted(g["quantities"].items())],
+        )
+        for g in groups.values()
+    ]
+    rows.sort(key=lambda r: (_same(r.guardian_name) or "\uffff", _same(r.student_name)))
+    return rows
+
+
+def buyers(db: Session, scope: SchoolScope, campaign_id: uuid.UUID) -> BuyerList:
+    """Who bought what: the paid orders of the campaign grouped by guardian and student."""
+    _campaign(db, scope, campaign_id)
+    page = _page(
+        db, scope, campaign_id,
+        payment="PAID", delivery=None, search=None, limit=MAX_ORDERS_IN_PDF, offset=0,
+    )  # fmt: skip
+    return BuyerList(items=group_buyers(page.items), complete=page.total <= len(page.items))
+
+
 def change_delivery(
     db: Session, scope: SchoolScope, campaign_id: uuid.UUID, body: DeliveryChange
 ) -> DeliveryResult:
@@ -218,6 +275,7 @@ def report_pdf(db: Session, scope: SchoolScope, campaign_id: uuid.UUID) -> bytes
         payment=None, delivery=None, search=None, limit=MAX_ORDERS_IN_PDF, offset=0,
     )  # fmt: skip
     organization_name, school_name = names(db, scope.school_id)
+    who_bought = buyers(db, scope, campaign_id).items
     return render_campaign_report(
         organization_name=organization_name,
         school_name=school_name,
@@ -225,4 +283,5 @@ def report_pdf(db: Session, scope: SchoolScope, campaign_id: uuid.UUID) -> bytes
         generated_at=datetime.now(UTC),
         dashboard=figures,
         orders=everything.items,
+        buyers=who_bought,
     )

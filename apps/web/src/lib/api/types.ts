@@ -717,6 +717,23 @@ export interface CampaignOrder {
   lines: OrderLineView[];
 }
 
+/** O que um responsavel comprou para um aluno na campanha (so pedidos aprovados), somado por produto. */
+export interface CampaignBuyer {
+  guardianName: string | null;
+  studentName: string | null;
+  className: string | null;
+  orders: number;
+  units: number;
+  amountCents: Cents;
+  lines: Array<{ itemName: string; quantity: number }>;
+}
+
+export interface CampaignBuyerList {
+  items: CampaignBuyer[];
+  /** false: ha mais pedidos aprovados do que os contados (os 5000 mais recentes). */
+  complete: boolean;
+}
+
 export interface CampaignOrderPage {
   items: CampaignOrder[];
   total: number;
