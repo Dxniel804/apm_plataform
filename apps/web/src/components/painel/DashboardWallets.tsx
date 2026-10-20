@@ -36,18 +36,20 @@ export function DashboardWallets({ schoolId, permissions, period, wallet, onPeri
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([api.statement.summary(schoolId, period), api.pdde.year(schoolId, year)]).then(([apm, pdde]) => {
+    void Promise.all([api.statement.summary(schoolId, period), api.pdde.month(schoolId, month), api.pdde.year(schoolId, year)]).then(([apm, pddeMonth, pddeYear]) => {
       if (cancelled) return;
+      // The PDDE balance is the bank's (latest statement); without a statement, what was classified.
+      const bank = pddeMonth.ok ? pddeMonth.data.bankBalances.filter((b) => b.balanceCents !== null) : [];
       setBalances({
         key,
         apm: apm.ok ? apm.data.closingBalanceCents : null,
-        pdde: pdde.ok ? pdde.data.programs.reduce((sum, p) => sum + p.balanceCents, 0) : null,
+        pdde: bank.length > 0 ? bank.reduce((sum, b) => sum + (b.balanceCents ?? 0), 0) : pddeYear.ok ? pddeYear.data.programs.reduce((sum, p) => sum + p.balanceCents, 0) : null,
       });
     });
     return () => {
       cancelled = true;
     };
-  }, [schoolId, period, year, key]);
+  }, [schoolId, period, month, year, key]);
 
   const known = balances?.key === key ? balances : null;
   const other = wallet === "apm" ? { title: "PDDE", cents: known?.pdde ?? null } : { title: "Caixa da APM", cents: known?.apm ?? null };

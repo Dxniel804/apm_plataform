@@ -28,6 +28,28 @@ def accounts(db: Session, school_id: uuid.UUID) -> Sequence[Row]:
     )
 
 
+def bank_balances(db: Session, school_id: uuid.UUID, end: dt.date) -> Sequence[Row]:
+    """For each PDDE account, the closing balance of its latest statement that ends by `end` (a
+    statement with a balance: the CSV has none). The balance is what the bank says, whatever the
+    classification of the lines."""
+    return (
+        db.execute(
+            text(
+                "SELECT a.id, a.nickname, i.closing_balance_cents, i.period_end "
+                "FROM bank_accounts a LEFT JOIN LATERAL (SELECT x.closing_balance_cents, x.period_end "
+                "  FROM bank_statement_imports x WHERE x.bank_account_id = a.id AND x.school_id = a.school_id "
+                "  AND x.closing_balance_cents IS NOT NULL AND x.period_end <= :end "
+                "  ORDER BY x.period_end DESC, x.created_at DESC LIMIT 1) i ON true "
+                "WHERE a.school_id = :school_id AND a.purpose = 'PDDE' AND a.is_active "
+                "ORDER BY a.nickname"
+            ),
+            {"school_id": school_id, "end": end},
+        )
+        .mappings()
+        .all()
+    )
+
+
 def lines(db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date) -> Sequence[Row]:
     """The lines of the PDDE accounts in the window, each with the latest classification."""
     return (

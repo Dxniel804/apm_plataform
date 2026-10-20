@@ -75,9 +75,18 @@ export interface PddeAlert {
   date: string | null;
 }
 
+/** O que o banco diz que a conta do PDDE guarda, pelo ultimo extrato ate o fim do mes (null: nenhum extrato com saldo). */
+export interface PddeBankBalance {
+  accountId: string;
+  accountNickname: string;
+  balanceCents: number | null;
+  asOf: string | null;
+}
+
 export interface PddeMonth {
   period: string;
   accounts: PddeAccount[];
+  bankBalances: PddeBankBalance[];
   lines: PddeLine[];
   pendingCount: number;
   alerts: PddeAlert[];
@@ -193,14 +202,24 @@ function list<T>(value: unknown, parse: (raw: unknown) => T | null): T[] | null 
   return out;
 }
 
+function parseBankBalance(raw: unknown): PddeBankBalance | null {
+  if (!isRecord(raw)) return null;
+  const accountId = str(raw.account_id);
+  const accountNickname = str(raw.account_nickname);
+  const balanceCents = raw.balance_cents === null || raw.balance_cents === undefined ? null : int(raw.balance_cents);
+  if (!accountId || !accountNickname || (raw.balance_cents != null && balanceCents === null)) return null;
+  return { accountId, accountNickname, balanceCents, asOf: str(raw.as_of) };
+}
+
 export function parseMonth(body: unknown): PddeMonth | null {
   if (!isRecord(body)) return null;
   const accounts = list(body.accounts, parseAccount);
+  const bankBalances = body.bank_balances === undefined ? [] : list(body.bank_balances, parseBankBalance);
   const lines = list(body.lines, parseLine);
   const alerts = list(body.alerts, parseAlert);
   const pendingCount = int(body.pending_count);
-  if (typeof body.period !== "string" || !accounts || !lines || !alerts || pendingCount === null) return null;
-  return { period: body.period, accounts, lines, pendingCount, alerts };
+  if (typeof body.period !== "string" || !accounts || !bankBalances || !lines || !alerts || pendingCount === null) return null;
+  return { period: body.period, accounts, bankBalances, lines, pendingCount, alerts };
 }
 
 function parseBalance(raw: unknown): PddeProgramBalance | null {

@@ -402,3 +402,30 @@ def test_another_school_sees_nothing_of_the_pdde(
 
     assert month["lines"] == [] and month["accounts"] == []
     assert classify.status_code == 404
+
+
+def test_the_month_carries_the_balance_the_bank_says_not_the_one_the_classification_leaves(
+    apis: ApiFactory, school: PublicSchool, admin_engine: Engine
+) -> None:
+    gestao, _ = _setup(apis, school, admin_engine)
+
+    month = gestao.get("/pdde/lines?period=2025-03").json()
+
+    balances = month["bank_balances"]
+    assert len(balances) == 1  # the general account is not a PDDE account
+    assert balances[0]["account_nickname"] == "PDDE"
+    assert balances[0]["balance_cents"] == 848_800 and balances[0]["as_of"] == "2025-03-31"
+    # Nothing is classified yet and the bank balance is there all the same.
+    assert gestao.get("/pdde/summary?year=2025").json()["programs"] == []
+
+
+def test_a_month_before_any_statement_has_no_bank_balance_and_a_later_one_keeps_the_last(
+    apis: ApiFactory, school: PublicSchool, admin_engine: Engine
+) -> None:
+    gestao, _ = _setup(apis, school, admin_engine)
+
+    before = gestao.get("/pdde/lines?period=2025-02").json()["bank_balances"][0]
+    assert before["balance_cents"] is None and before["as_of"] is None
+
+    later = gestao.get("/pdde/lines?period=2025-06").json()["bank_balances"][0]
+    assert later["balance_cents"] == 848_800 and later["as_of"] == "2025-03-31"

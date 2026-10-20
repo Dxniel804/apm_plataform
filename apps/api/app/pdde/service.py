@@ -21,6 +21,7 @@ from app.pdde import forms, forms_more, repository
 from app.pdde.schemas import (
     AccountOut,
     AlertOut,
+    BankBalance,
     CarryoverIn,
     CarryoverOut,
     ClassificationIn,
@@ -142,6 +143,15 @@ def month_view(db: Session, scope: SchoolScope, period: str) -> MonthOut:
     return MonthOut(
         period=period,
         accounts=_accounts(db, scope.school_id),
+        bank_balances=[
+            BankBalance(
+                account_id=b["id"],
+                account_nickname=b["nickname"],
+                balance_cents=b["closing_balance_cents"],
+                as_of=b["period_end"],
+            )
+            for b in repository.bank_balances(db, scope.school_id, end)
+        ],
         lines=lines,
         pending_count=sum(1 for ln in lines if ln.status != "DONE"),
         alerts=_line_alerts(lines),

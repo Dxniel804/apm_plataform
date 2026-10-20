@@ -15,8 +15,9 @@ const line = (over: Record<string, unknown> = {}) => ({
   line_id: "l1", account_id: "a1", account_nickname: "PDDE", posted_on: "2026-10-06", amount_cents: 360_000, memo: "CREDITO FNDE PDDE BASICO CAPITAL",
   looks_like_fee: false, classification: null, documents: [], documented_cents: 0, status: "PENDING", ...over,
 });
-const month = (lines: unknown[], accounts = [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }]) =>
-  parseMonth({ period: "2026-10", accounts, lines, pending_count: lines.length, alerts: [] }) as PddeMonth;
+const month = (lines: unknown[], accounts = [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }], bank_balances: unknown[] = []) =>
+  parseMonth({ period: "2026-10", accounts, bank_balances, lines, pending_count: lines.length, alerts: [] }) as PddeMonth;
+const bank = (balance_cents: number | null, as_of: string | null = "2026-10-15") => [{ account_id: "a1", account_nickname: "PDDE", balance_cents, as_of }];
 const year = (over: Record<string, unknown> = {}) =>
   parseYear({ year: 2026, accounts: [], programs: [programBasico], pending_count: 2, year_end: [], alerts: [], ...over }) as PddeYear;
 
@@ -95,5 +96,42 @@ describe("DashboardWallets", () => {
     await user.selectOptions(screen.getByLabelText("Mês"), "2026-09");
 
     await waitFor(() => expect(onPeriodChange).toHaveBeenCalledWith("2026-09"));
+  });
+
+  it("o saldo principal e o do banco, com a data do extrato; o que a classificacao nao cobre e dito", async () => {
+    setup("pdde", month([line()], undefined, bank(500_000)));
+
+    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
+    expect(balance).toHaveTextContent("Saldo na conta em 15 de outubro de 2026");
+    expect(balance).toHaveTextContent("R$ 5.000,00");
+    // The classification leaves R$ 1.900,00: the other R$ 3.100,00 is money that came and was not classified yet.
+    expect(balance).toHaveTextContent("R$ 3.100,00 do saldo ainda não está classificado.");
+    // The other wallet's hint uses the bank balance too.
+    expect(await screen.findByText("Caixa da APM: saldo")).toBeInTheDocument();
+  });
+
+  it("se a classificacao mostra mais que o banco, pede para conferir", async () => {
+    setup("pdde", month([line()], undefined, bank(100_000)));
+
+    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
+    expect(balance).toHaveTextContent("R$ 1.000,00");
+    expect(balance).toHaveTextContent("A classificação mostra");
+    expect(balance).toHaveTextContent("R$ 900,00");
+    expect(balance).toHaveTextContent("a mais que o banco. Confira.");
+  });
+
+  it("sem extrato com saldo, mostra o classificado e pede o extrato", async () => {
+    setup("pdde", month([line()], undefined, bank(null, null)));
+
+    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
+    expect(balance).toHaveTextContent("Saldo pelo que foi classificado");
+    expect(balance).toHaveTextContent("R$ 1.900,00");
+    expect(balance).toHaveTextContent("Importe o extrato (PDF ou OFX) para ver o saldo do banco.");
+  });
+
+  it("o saldo do PDDE ao lado da APM tambem e o do banco", async () => {
+    setup("apm", month([line()], undefined, bank(500_000)));
+
+    expect((await screen.findByText("PDDE: saldo")).parentElement).toHaveTextContent("R$ 5.000,00");
   });
 });

@@ -164,9 +164,19 @@ class AlertOut(BaseModel):
     date: dt.date | None = None
 
 
+class BankBalance(BaseModel):
+    """What the bank says a PDDE account holds, from its latest statement up to the end of the month."""
+
+    account_id: uuid.UUID
+    account_nickname: str
+    balance_cents: int | None  # None: no statement with a balance was imported yet
+    as_of: dt.date | None  # the last day of that statement
+
+
 class MonthOut(BaseModel):
     period: str
     accounts: list[AccountOut]
+    bank_balances: list[BankBalance]
     lines: list[LineOut]
     pending_count: int
     alerts: list[AlertOut]

@@ -78,16 +78,32 @@ export function PddeDashboard({ schoolId, period }: Props) {
 
   const inCents = m.lines.filter((l) => l.amountCents > 0).reduce((sum, l) => sum + l.amountCents, 0);
   const outCents = m.lines.filter((l) => l.amountCents < 0).reduce((sum, l) => sum - l.amountCents, 0);
-  const balance = y.programs.reduce((sum, p) => sum + p.balanceCents, 0);
+  // The balance is what the bank says (the latest statement up to the month); what was classified is only a split of it.
+  const classified = y.programs.reduce((sum, p) => sum + p.balanceCents, 0);
+  const known = m.bankBalances.filter((b) => b.balanceCents !== null);
+  const bank = known.length > 0 ? known.reduce((sum, b) => sum + (b.balanceCents ?? 0), 0) : null;
+  const asOf = known.map((b) => b.asOf).filter((d): d is string => d !== null).sort().at(-1) ?? null;
+  const gap = bank === null ? 0 : bank - classified;
   const todo = m.lines.filter((l) => lineState(l).label !== "Pronto");
 
   return (
     <div className="space-y-8">
       <section aria-label="Saldo do PDDE" className={card}>
-        <p className="text-foot text-ink-2">Saldo do PDDE</p>
+        <p className="text-foot text-ink-2">{bank !== null ? `Saldo na conta${asOf ? ` em ${formatDayLong(asOf)}` : ""}` : "Saldo pelo que foi classificado"}</p>
         <p className="mt-1 text-[2.25rem] font-semibold leading-none tabular-nums text-brand-800">
-          <Amount cents={balance} />
+          <Amount cents={bank ?? classified} />
         </p>
+        {bank === null && <p className="mt-2 text-sub text-ink-2">Importe o extrato (PDF ou OFX) para ver o saldo do banco.</p>}
+        {bank !== null && gap > 0 && (
+          <p className="mt-2 text-sub text-warn">
+            <Amount cents={gap} /> do saldo ainda não está classificado.
+          </p>
+        )}
+        {bank !== null && gap < 0 && (
+          <p className="mt-2 text-sub text-warn">
+            A classificação mostra <Amount cents={-gap} /> a mais que o banco. Confira.
+          </p>
+        )}
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-foot text-ink-2">Entrou em {periodLabel(month)}</dt>
@@ -105,6 +121,8 @@ export function PddeDashboard({ schoolId, period }: Props) {
       </section>
 
       {y.programs.length > 0 && (
+        <div>
+        <h3 className="mb-3 text-[1rem] font-medium text-ink">Por programa</h3>
         <ul aria-label="Saldo por programa" className="grid gap-3 sm:grid-cols-2">
           {y.programs.map((p) => (
             <li key={`${p.program}-${p.programLabel ?? ""}`} className={card}>
@@ -118,6 +136,7 @@ export function PddeDashboard({ schoolId, period }: Props) {
             </li>
           ))}
         </ul>
+        </div>
       )}
 
       <section aria-label="Pendências do PDDE" className={card}>
