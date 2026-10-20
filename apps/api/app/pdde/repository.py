@@ -28,6 +28,29 @@ def accounts(db: Session, school_id: uuid.UUID) -> Sequence[Row]:
     )
 
 
+def expense_infos(
+    db: Session, school_id: uuid.UUID, transaction_ids: list[uuid.UUID]
+) -> Sequence[Row]:
+    """For ledger entries (an expense, or the reimbursement of one), the expense they belong to."""
+    return (
+        db.execute(
+            text(
+                "SELECT f.id AS transaction_id, x.id AS expense_id, x.reference_code, e.description, "
+                "c.key AS category_key, c.name AS category_name "
+                "FROM financial_transactions f "
+                "JOIN financial_transactions x ON x.id = CASE WHEN f.kind = 'REIMBURSEMENT' "
+                "THEN f.parent_transaction_id ELSE f.id END AND x.school_id = f.school_id "
+                "JOIN expenses e ON e.transaction_id = x.id AND e.school_id = x.school_id "
+                "JOIN categories c ON c.id = x.category_id AND c.school_id = x.school_id "
+                "WHERE f.school_id = :school_id AND f.id = ANY(:ids)"
+            ),
+            {"school_id": school_id, "ids": transaction_ids},
+        )
+        .mappings()
+        .all()
+    )
+
+
 def bank_balances(db: Session, school_id: uuid.UUID, end: dt.date) -> Sequence[Row]:
     """For each PDDE account, the closing balance of its latest statement that ends by `end` (a
     statement with a balance: the CSV has none). The balance is what the bank says, whatever the

@@ -125,6 +125,18 @@ class ClassificationOut(BaseModel):
     payment_number: str | None = None
 
 
+class ExpenseLinkOut(BaseModel):
+    """The expense (decided as PDDE) that this bank line pays, found by amount and date. The category
+    says what it was and whether it is custeio or capital."""
+
+    expense_id: uuid.UUID
+    reference_code: int
+    description: str
+    category_key: str
+    category_name: str
+    economic_nature: Literal["CUSTEIO", "CAPITAL"] | None
+
+
 class LineOut(BaseModel):
     line_id: uuid.UUID
     account_id: uuid.UUID
@@ -137,6 +149,7 @@ class LineOut(BaseModel):
     documents: list[DocumentOut]
     documented_cents: int
     status: Status
+    expense: ExpenseLinkOut | None = None  # only in the month view
 
 
 class AccountOut(BaseModel):

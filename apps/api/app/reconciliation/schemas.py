@@ -89,6 +89,16 @@ class DivergenceOut(BaseModel):
     reason: Literal["ambiguous", "amount_differs"]
 
 
+class WrongAccountOut(BaseModel):
+    """A bank line that is the money of the OTHER wallet: an expense decided as PDDE that left the
+    APM account, or one decided as APM that left the PDDE account. `belongs_to` is the wallet of the
+    expense."""
+
+    line: BankLineOut
+    entry: LedgerEntryOut
+    belongs_to: Literal["APM", "PDDE"]
+
+
 class ResolvedOut(BaseModel):
     """A line the management ignored, and why."""
 
@@ -106,6 +116,7 @@ class ReconciliationOut(BaseModel):
     missing_in_bank: list[LedgerEntryOut]
     divergences: list[DivergenceOut]
     ignored: list[ResolvedOut] = []
+    wrong_account: list[WrongAccountOut] = []
 
 
 Reason = Annotated[

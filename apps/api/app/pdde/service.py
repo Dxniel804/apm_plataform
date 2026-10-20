@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ProblemError
 from app.expenses.access import SchoolScope, not_found
+from app.expenses.category_rules import rule_for
 from app.expenses.db_errors import database_rules
 from app.pdde import forms, forms_more, repository
 from app.pdde.schemas import (
@@ -30,6 +31,7 @@ from app.pdde.schemas import (
     DocumentOut,
     EntityIn,
     EntityOut,
+    ExpenseLinkOut,
     LineOut,
     MonthOut,
     Program,
@@ -37,6 +39,8 @@ from app.pdde.schemas import (
     YearEndBalance,
     YearOut,
 )
+from app.reconciliation import repository as reconciliation
+from app.reconciliation.matcher import BankLine, LedgerItem, pair
 from app.statement.periods import month_bounds
 
 Row = RowMapping
@@ -137,9 +141,58 @@ def _line_alerts(lines: list[LineOut]) -> list[AlertOut]:
     return alerts
 
 
+def _link_expenses(
+    db: Session, school_id: uuid.UUID, lines: list[LineOut], start: dt.date, end: dt.date
+) -> None:
+    """Pair the outflows of the month with the expenses decided as PDDE (by amount and date, the same
+    cautious rule of the reconciliation) and say on each line which expense it pays."""
+    outflows = [ln for ln in lines if ln.amount_cents < 0]
+    if not outflows:
+        return
+    near = dt.timedelta(days=3)
+    items = [
+        LedgerItem(
+            transaction_id=r["transaction_id"],
+            reference_code=int(r["reference_code"]),
+            kind=r["kind"],
+            day=r["day"],
+            gross_cents=-int(r["amount_cents"])
+            if r["direction"] == "OUT"
+            else int(r["amount_cents"]),
+            net_cents=None,
+            end_to_end_id=None,
+        )
+        for r in reconciliation.ledger_items(db, school_id, start - near, end + near, "PDDE")
+    ]
+    if not items:
+        return
+    bank = [BankLine(ln.line_id, ln.posted_on, ln.amount_cents, None) for ln in outflows]
+    matched = pair(bank, items).matched
+    infos = {
+        i["transaction_id"]: i
+        for i in repository.expense_infos(
+            db, school_id, [item.transaction_id for _, item in matched]
+        )
+    }
+    by_line = {ln.line_id: ln for ln in outflows}
+    for line, item in matched:
+        info = infos.get(item.transaction_id)
+        if info is None:
+            continue
+        by_line[line.line_id].expense = ExpenseLinkOut(
+            expense_id=info["expense_id"],
+            reference_code=int(info["reference_code"]),
+            description=info["description"],
+            category_key=info["category_key"],
+            category_name=info["category_name"],
+            economic_nature=rule_for(str(info["category_key"]))[0],
+        )
+
+
 def month_view(db: Session, scope: SchoolScope, period: str) -> MonthOut:
     start, end = month_bounds(period)
     lines = _lines_out(db, scope.school_id, repository.lines(db, scope.school_id, start, end))
+    _link_expenses(db, scope.school_id, lines, start, end)
     return MonthOut(
         period=period,
         accounts=_accounts(db, scope.school_id),

@@ -44,6 +44,7 @@ from app.reconciliation.schemas import (
     MatchedOut,
     ReconciliationOut,
     ResolvedOut,
+    WrongAccountOut,
 )
 
 UPLOAD_MAX_BYTES = 5 * 1024 * 1024  # a PDF may be larger; OFX and CSV stay at MAX_BYTES
@@ -263,6 +264,27 @@ def _entry_out(item: LedgerItem) -> LedgerEntryOut:
     )  # fmt: skip
 
 
+def _ledger(
+    db: Session, scope: SchoolScope, statement: repository.Row, wallet: Literal["APM", "PDDE"]
+) -> list[LedgerItem]:
+    return [
+        LedgerItem(
+            transaction_id=r["transaction_id"],
+            reference_code=int(r["reference_code"]),
+            kind=r["kind"],
+            day=r["day"],
+            gross_cents=int(r["amount_cents"])
+            if r["direction"] == "IN"
+            else -int(r["amount_cents"]),
+            net_cents=None if r["net_cents"] is None else int(r["net_cents"]),
+            end_to_end_id=r["end_to_end_id"],
+        )  # fmt: skip
+        for r in repository.ledger_items(
+            db, scope.school_id, statement["period_start"], statement["period_end"], wallet
+        )
+    ]
+
+
 def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> ReconciliationOut:
     found = repository.imports(db, scope.school_id, import_id)
     if not found:
@@ -282,27 +304,23 @@ def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> Reconcilia
         BankLine(r["line_id"], r["posted_on"], int(r["amount_cents"]), r["end_to_end_id"])
         for r in rows
     ]
-    items = [
-        LedgerItem(
-            transaction_id=r["transaction_id"],
-            reference_code=int(r["reference_code"]),
-            kind=r["kind"],
-            day=r["day"],
-            gross_cents=int(r["amount_cents"])
-            if r["direction"] == "IN"
-            else -int(r["amount_cents"]),
-            net_cents=None if r["net_cents"] is None else int(r["net_cents"]),
-            end_to_end_id=r["end_to_end_id"],
-        )  # fmt: skip
-        for r in repository.ledger_items(
-            db, scope.school_id, statement["period_start"], statement["period_end"]
-        )
-    ]
+    # The ledger items of the wallet the account belongs to (a PDDE account: what was paid with the
+    # PDDE money; any other: the APM's). The other wallet's outflows are kept apart to find the line
+    # that left the wrong account.
+    wallet: Literal["APM", "PDDE"] = (
+        "PDDE" if _account(db, scope, statement["bank_account_id"]).purpose == "PDDE" else "APM"
+    )
+    other: Literal["APM", "PDDE"] = "APM" if wallet == "PDDE" else "PDDE"
+    items = _ledger(db, scope, statement, wallet)
+    foreign = [i for i in _ledger(db, scope, statement, other) if i.gross_cents < 0]
     result = pair(lines, items)
     decided = {
         r["line_id"]: r
         for r in repository.resolutions(db, scope.school_id, [ln.line_id for ln in lines])
     }
+    left = [ln for ln in result.missing_in_system if ln.line_id not in decided]
+    wrong = pair(left, foreign).matched if foreign else []
+    wrong_ids = {ln.line_id for ln, _ in wrong}
 
     def divergence(d: Divergence) -> DivergenceOut:
         return DivergenceOut(
@@ -315,8 +333,10 @@ def compare(db: Session, scope: SchoolScope, import_id: uuid.UUID) -> Reconcilia
         matched=[
             MatchedOut(line=_line_out(ln, memos), entry=_entry_out(it)) for ln, it in result.matched
         ],
-        missing_in_system=[
-            _line_out(ln, memos) for ln in result.missing_in_system if ln.line_id not in decided
+        missing_in_system=[_line_out(ln, memos) for ln in left if ln.line_id not in wrong_ids],
+        wrong_account=[
+            WrongAccountOut(line=_line_out(ln, memos), entry=_entry_out(it), belongs_to=other)
+            for ln, it in wrong
         ],
         missing_in_bank=[_entry_out(i) for i in result.missing_in_bank],
         divergences=[divergence(d) for d in result.divergences],
@@ -356,6 +376,9 @@ def _act_on_line(
             raise not_found()
         if line["resolution"] is not None:
             raise ProblemError(409, "already_resolved", "This line was already resolved")
+        if line["purpose"] == "PDDE" and body.action != "IGNORE":
+            # The PDDE money is not the APM's cash: its lines are handled in the PDDE screen.
+            raise _invalid("action", "pdde_account_line")
         amount = int(line["amount_cents"])
         if body.action != "IGNORE" and line["needs_review"] and not body.reviewed:
             raise _invalid("reviewed", "review_required")

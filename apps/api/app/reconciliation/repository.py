@@ -181,9 +181,13 @@ def bank_lines(
     )
 
 
-def ledger_items(db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date) -> Sequence[Row]:
+def ledger_items(
+    db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date, wallet: str = "APM"
+) -> Sequence[Row]:
     """What the ledger booked as cash in the period and that passes through a bank: not cash in hand
-    and not an expense somebody paid from their own pocket (it never touched the account)."""
+    and not an expense somebody paid from their own pocket (it never touched the account). Only the
+    items of the wallet (`APM` or `PDDE`): an expense decided as PDDE, and the reimbursement of it, is
+    paid from the PDDE account; everything else is the APM's."""
     return (
         db.execute(
             text(
@@ -197,13 +201,17 @@ def ledger_items(db: Session, school_id: uuid.UUID, start: dt.date, end: dt.date
                 "AND pc.status = 'PAID' "
                 "LEFT JOIN contribution_fees cf ON cf.transaction_id = f.id AND cf.school_id = f.school_id "
                 "LEFT JOIN expenses e ON e.transaction_id = f.id AND e.school_id = f.school_id "
+                "LEFT JOIN expenses pe ON pe.transaction_id = f.parent_transaction_id "
+                "AND pe.school_id = f.school_id "
                 "WHERE f.school_id = :school_id AND f.settled_at IS NOT NULL "
                 "AND (f.settled_at AT TIME ZONE st.timezone)::date BETWEEN :start AND :end "
                 "AND (f.kind <> 'EXPENSE' OR e.paid_by = 'APM') "
                 "AND (c.method IS NULL OR c.method <> 'CASH') "
+                "AND (CASE WHEN f.kind = 'EXPENSE' THEN coalesce(e.fund, 'APM') "
+                "WHEN f.kind = 'REIMBURSEMENT' THEN coalesce(pe.fund, 'APM') ELSE 'APM' END) = :wallet "
                 "ORDER BY f.settled_at, f.reference_code"
             ),
-            {"school_id": school_id, "start": start, "end": end},
+            {"school_id": school_id, "start": start, "end": end, "wallet": wallet},
         )
         .mappings()
         .all()
@@ -220,6 +228,8 @@ def line_by_id(db: Session, school_id: uuid.UUID, line_id: uuid.UUID) -> Row | N
         db.execute(
             text(
                 "SELECT l.id, l.posted_on, l.amount_cents, l.memo, l.end_to_end_id, l.needs_review, "
+                "(SELECT a.purpose FROM bank_accounts a WHERE a.id = l.bank_account_id "
+                "AND a.school_id = l.school_id) AS purpose, "
                 "(SELECT r.action FROM bank_line_resolutions r WHERE r.school_id = l.school_id "
                 "AND r.line_id = l.id) AS resolution "
                 "FROM bank_statement_lines l WHERE l.id = :id AND l.school_id = :school_id"
