@@ -458,6 +458,6 @@ def render_pdf(d: Demonstrativo, *, generated_at: datetime, place: str) -> bytes
         title=f"Demonstrativo {d.program_label} {d.year}",
         header=printable(f"{d.program_label} · exercício {d.year}"),
         footer_code=f"demonstrativo pdde {d.year}",
-        footer_note="Gerado pelo APM Digital; a prestação oficial é feita no sistema do banco e junto à prefeitura.",
+        footer_note="Gerado pelo APM Digital para entrega à Secretaria de Educação, que presta contas no sistema do FNDE.",
         landscape_page=True,
     )

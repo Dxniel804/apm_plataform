@@ -188,7 +188,7 @@ def render_goods(g: Goods, *, generated_at: datetime, place: str) -> bytes:
         title=f"Relação de bens {g.program_label} {g.year}",
         header=printable(f"{g.program_label} · exercício {g.year}"),
         footer_code=f"relação de bens pdde {g.year}",
-        footer_note="Gerado pelo APM Digital; a prestação oficial é feita no sistema do banco e junto à prefeitura.",
+        footer_note="Gerado pelo APM Digital para entrega à Secretaria de Educação, que presta contas no sistema do FNDE.",
     )
 
 
@@ -358,7 +358,7 @@ def render_reconciliation(r: Reconciliation, *, generated_at: datetime, place: s
         title=f"Conciliação bancária {r.year}",
         header=printable(f"PDDE · conciliação bancária · exercício {r.year}"),
         footer_code=f"conciliação bancária pdde {r.year}",
-        footer_note="Gerado pelo APM Digital; a prestação oficial é feita no sistema do banco e junto à prefeitura.",
+        footer_note="Gerado pelo APM Digital para entrega à Secretaria de Educação, que presta contas no sistema do FNDE.",
     )
 
 

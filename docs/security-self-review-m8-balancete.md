@@ -33,7 +33,7 @@ as rotas de `/balancete` e `/pdde`, os relatórios (PDF e planilha) e o leitor d
 | 4 | **O livro caixa parte de zero.** O saldo de quando a escola começou a usar o sistema entra no balancete (tabela nova), mas **não** no resumo nem no fechamento: a "diferença do banco" do fechamento (banco menos caixa) vai mostrar esse valor até o fechamento aprender sobre ele | Funcional, alta para escola com saldo | **Em aberto, decisão de produto**: o caminho limpo é um lançamento de abertura no razão (muda o esquema protegido e exige revisão) |
 | 5 | O objeto da despesa do PDDE é texto livre: as categorias oficiais do BB Gestão Ágil estão em portarias que pedem login | Funcional | **Em aberto**: com as portarias vira lista |
 | 6 | Leitura de PDF roda no processo da API (um PDF montado de má-fé gasta CPU); só quem tem permissão de conciliação envia | Baixa a média | **Em aberto** (já estava no M4-M7, item 5) |
-| 7 | O relatório do PDDE é um espelho: **não envia nada** ao banco nem ao governo | Informativo | A prestação oficial é feita no BB Gestão Ágil e pela prefeitura |
+| 7 | O relatório do PDDE é um espelho: **não envia nada** ao banco nem ao governo | Informativo | A escola entrega o papel à Secretaria de Educação, que presta contas no sistema do FNDE |
 | 8 | Uma despesa do PDDE estornada: o tipo "estorno ou devolução" só marca a linha, não abate o programa | Funcional | **Em aberto** |
 
 ## O que NÃO foi testado

@@ -103,7 +103,7 @@ A lei pede que a escola prove **cada linha do extrato da conta do PDDE**. O sist
    - **Conciliação bancária** (uma conta): `.../pdde/forms/conciliacao.pdf`
    - Mais um relatório do ano em PDF e planilha, na ordem do extrato: `.../pdde/report.pdf` e `.csv`.
 
-A prestação **oficial** continua sendo feita no BB Gestão Ágil e pela prefeitura; o sistema entrega tudo mastigado para copiar e assinar.
+**Quem presta contas no sistema do governo é a Secretaria de Educação, não a escola.** A escola monta a documentação nos formulários oficiais do FNDE (é isso que o sistema gera), assina e entrega o papel, com os documentos, à Secretaria, que lança no sistema. Esse fluxo é da lei e não muda.
 
 ### H. Impostos retidos
 1. A secretaria escreve as **regras** (alíquota, teto, código da guia ou como pagar, vencimento) **lendo a lei e os sites do governo**. O sistema **não traz nenhuma regra como verdade**. Marcar "conferi" **exige o endereço da fonte oficial**. → `/schools/{s}/tax/rules`.
@@ -213,7 +213,7 @@ Nome e endereço do link (mudar o endereço tem limite: duas trocas livres, depo
 - **Formulários listam o que falta** em vez de esconder.
 
 ## 7. O que o sistema NÃO faz
-- Não envia nada ao governo, ao BB Gestão Ágil nem à Receita; não emite guia (DARF) nem paga imposto.
+- Não envia nada ao governo, à Secretaria de Educação nem à Receita; não emite guia (DARF) nem paga imposto.
 - Não movimenta dinheiro; não cobra Pix real enquanto o gateway não for ligado.
 - Não lê PDF escaneado (imagem); não calcula feriado no vencimento do imposto.
 - Não tem Rol de Materiais, Consolidação de Pesquisa de Preços nem Termo de Doação do FNDE.

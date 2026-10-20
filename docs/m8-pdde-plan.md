@@ -1,3 +1,5 @@
+> **CORREÇÃO (19/10/2026, dono do produto):** a prestação é feita **pela escola na documentação oficial do FNDE (papel)**; quem presta contas **no sistema** é a **Secretaria de Educação**, que recebe o papel. Onde este plano disser que a escola classifica no BB Gestão Ágil ou no SiGPC, vale esta nota. O produto prepara os formulários para imprimir, assinar e entregar; não envia nada.
+
 # M8. PDDE: plano detalhado (rascunho para revisão)
 
 Escrito em 2026-10-15. **Sem código.** Marcado como **[CONFIRMADO]** o que está nos documentos oficiais lidos, **[SUPOSIÇÃO]** o que eu deduzi e **[ABERTO]** o que só as respostas da APM resolvem.

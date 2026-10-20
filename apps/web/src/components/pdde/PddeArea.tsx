@@ -83,9 +83,9 @@ function alertText(a: PddeAlert): string {
     case "year_end_reconciliation":
       return `Falta o extrato de dezembro (até 31/12) em ${plural(a.count, "conta", "contas")}: a prestação pede a conciliação bancária do saldo de 31/12.`;
     case "deadline":
-      return `A prefeitura recebe a prestação até ${a.date ? formatDayLong(a.date) : "30/04"} e ainda há ${plural(a.count, "pendência", "pendências")}. Confirme com ela o prazo da sua escola.`;
+      return `A Secretaria de Educação recebe a prestação até ${a.date ? formatDayLong(a.date) : "30/04"} e ainda há ${plural(a.count, "pendência", "pendências")}. Confirme com ela o prazo da sua escola.`;
     case "deadline_passed":
-      return `O prazo de ${a.date ? formatDayLong(a.date) : "30/04"} já passou e ainda há ${plural(a.count, "pendência", "pendências")}. Procure a prefeitura.`;
+      return `O prazo de ${a.date ? formatDayLong(a.date) : "30/04"} já passou e ainda há ${plural(a.count, "pendência", "pendências")}. Procure a Secretaria de Educação.`;
   }
 }
 
@@ -399,7 +399,7 @@ export function PddeArea({ schoolId }: Props) {
       <section aria-label="PDDE do ano" className="mb-8 rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-7">
         <h2 className="text-heading">PDDE: {year}</h2>
         <p className="mt-1 max-w-[62ch] text-sub text-ink-2">
-          Classifique cada lançamento da conta do PDDE e comprove as despesas com documentos, como na prestação de contas do BB Gestão Ágil. Aqui fica o espelho que a escola guarda; o envio oficial é feito no sistema do banco e pela prefeitura.
+          Classifique cada lançamento da conta do PDDE e comprove as despesas com documentos. Imprima os formulários do FNDE, assine e entregue com os documentos à Secretaria de Educação, que presta contas no sistema.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <div className="min-w-0 basis-56">

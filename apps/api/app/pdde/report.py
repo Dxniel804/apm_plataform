@@ -1,8 +1,8 @@
 # ruff: noqa: E501  (long lines of a PDF)
-"""The PDDE accountability of a year as a "mirror" of the screen of the BB Gestão Ágil: for every line of
-the PDDE account, in the order of the bank, the date, the amount, the program, custeio or capital, the
-object and the documents. It is what the school keeps and sends to the prefeitura; the classification
-itself is made in the bank's system (there is no public interface to do it from here)."""
+"""The PDDE accountability of a year as a list of the lines of the PDDE account: in the order of the bank, the
+date, the amount, the program, custeio or capital, the object and the documents. The school delivers it, with the
+FNDE forms and the paper documents, to the Secretaria de Educação, which makes the accountability in the FNDE system
+(the school does not submit anything from here)."""
 
 import csv
 from datetime import datetime
@@ -126,7 +126,7 @@ def render_pdf(
         rows.append([c[0][:5], c[1], c[3], c[4], c[5][:1], c[6], c[7], c[8]])
     story: list[Flowable] = [
         para(f"PDDE: prestação de contas de {year}", "title"),
-        para("Espelho da classificação feita no BB Gestão Ágil", "subtitle"),
+        para("Relação das linhas do extrato, para entrega à Secretaria de Educação", "subtitle"),
         Spacer(1, 6),
         identification_table(
             [
@@ -161,10 +161,10 @@ def render_pdf(
         [
             Spacer(1, 10),
             para(
-                "Cópias dos documentos enviadas à prefeitura levam a expressão \"Confere com o original\", assinada por um dirigente da UEx "
+                "Cópias dos documentos entregues à Secretaria de Educação levam a expressão \"Confere com o original\", assinada por um dirigente da UEx "
                 "(Res. CD/FNDE 15/2021, art. 33, § 1º, II). Notas, faturas e recibos de despesas de cada programa levam a expressão "
                 "\"Pagos com recursos do\" seguida do nome do programa. Guarde os originais por cinco anos, após a aprovação da prestação (art. 28). "
-                "O prazo de envio à prefeitura é definido por ela, até 30 de abril do ano seguinte (art. 32).",
+                "O prazo de entrega à Secretaria de Educação é definido por ela, até 30 de abril do ano seguinte (art. 32).",
                 "small",
             ),
             Spacer(1, 22),
@@ -177,5 +177,5 @@ def render_pdf(
         title=f"PDDE {year}",
         header=printable(f"{organization_name} - {school_name}"),
         footer_code=f"pdde {year}",
-        footer_note="Espelho gerado pelo APM Digital; a prestação oficial é feita no BB Gestão Ágil.",
+        footer_note="Gerado pelo APM Digital para entrega à Secretaria de Educação, que presta contas no sistema do FNDE.",
     )
