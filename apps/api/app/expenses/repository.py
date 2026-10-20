@@ -163,7 +163,7 @@ def search(
                 "c.id AS category_id, c.key AS category_key, c.name AS category_name, "
                 "e.description, e.vendor, e.purchase_reason, e.payment_method, e.paid_by, "
                 "e.submitted_by_user_id, e.approved_by_user_id, e.approved_at, "
-                "e.approved_amount_cents, e.decision_reason, e.correction_reason, "
+                "e.approved_amount_cents, e.decision_reason, e.correction_reason, e.fund, "
                 "(SELECT count(*) FROM expense_attachments a "
                 " WHERE a.transaction_id = ft.id AND a.school_id = ft.school_id) "
                 "AS attachments_count "
@@ -356,18 +356,22 @@ def record_decision(
     decided_by: uuid.UUID,
     approved_amount_cents: int | None,
     reason: str | None,
+    fund: str | None = None,
 ) -> None:
-    """Who decided, the approved amount (none for a rejection) and why. Written once."""
+    """Who decided, the approved amount (none for a rejection), why and which money pays it (none
+    for a rejection). Written once."""
     db.execute(
         text(
             "UPDATE expenses SET approved_by_user_id = :decided_by, "
-            "approved_amount_cents = :approved, decision_reason = :reason, updated_at = now() "
+            "approved_amount_cents = :approved, decision_reason = :reason, fund = :fund, "
+            "updated_at = now() "
             "WHERE transaction_id = :id AND school_id = :school_id"
         ),
         {
             "decided_by": decided_by,
             "approved": approved_amount_cents,
             "reason": reason,
+            "fund": fund,
             "id": expense_id,
             "school_id": school_id,
         },

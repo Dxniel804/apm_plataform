@@ -14,6 +14,7 @@ ExpenseStatus = Literal[
 ]
 PaymentMethod = Literal["PIX", "CARD", "CASH", "OTHER"]
 PaidBy = Literal["APM", "COLLABORATOR"]
+Fund = Literal["APM", "PDDE"]
 AttachmentKind = Literal["INVOICE", "PAYMENT_PROOF", "OTHER"]
 
 # What the database accepts (`ck_financial_transactions_amount_range`).
@@ -76,6 +77,8 @@ class ApproveRequest(Strict):
     # Omitted = the amount requested. Lower is allowed only for an expense paid by a collaborator.
     approved_amount_cents: Cents | None = None
     reason: Reason | None = None
+    # Which money pays it. Omitted = what the category suggests (PDDE only when it usually pays it).
+    fund: Fund | None = None
 
 
 class ReasonRequest(Strict):
@@ -133,6 +136,12 @@ class ExpenseSummary(BaseModel):
     description: str
     vendor: str | None
     paid_by: PaidBy
+    # Decided with the approval (NULL before it, and for a rejected one). `suggested_fund` is what
+    # the category suggests; the nature and the rule are what the category is for the PDDE.
+    fund: Fund | None
+    suggested_fund: Fund
+    economic_nature: Literal["CUSTEIO", "CAPITAL"] | None
+    pdde_rule: Literal["SUGGESTED", "ALLOWED", "FORBIDDEN"]
     submitted_by_user_id: uuid.UUID
     attachments_count: int
     created_at: dt.datetime

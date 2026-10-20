@@ -45,3 +45,8 @@ CATEGORY_RULES: dict[str, tuple[Nature | None, PddeRule]] = {
 
 def rule_for(key: str) -> tuple[Nature | None, PddeRule]:
     return CATEGORY_RULES.get(key, (None, "ALLOWED"))
+
+
+def suggested_fund(rule: PddeRule) -> Literal["APM", "PDDE"]:
+    """The money an expense starts with for the secretaria: the PDDE only if it usually pays it."""
+    return "PDDE" if rule == "SUGGESTED" else "APM"

@@ -188,6 +188,7 @@ CASES: list[tuple[str, str, str, str]] = [
     (EXPENSES, "expense_tx", "purchase_reason = 'ab'", "ck_expenses_purchase_reason_length"),
     (EXPENSES, "expense_tx", "payment_method = 'BARTER'", "ck_expenses_payment_method_valid"),
     (EXPENSES, "expense_tx", "paid_by = 'NOBODY'", "ck_expenses_paid_by_valid"),
+    (EXPENSES, "expense_tx", "fund = 'NOBODY'", "ck_expenses_fund_valid"),
     (
         EXPENSES,
         "expense_tx",

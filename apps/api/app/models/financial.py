@@ -350,6 +350,7 @@ class Expense(ScopeMixin, TimestampMixin, Base):
             name="payment_method_valid",
         ),
         CheckConstraint("paid_by IN ('APM', 'COLLABORATOR')", name="paid_by_valid"),
+        CheckConstraint("fund IS NULL OR fund IN ('APM', 'PDDE')", name="fund_valid"),
         # Separation of duties, in the database: nobody decides their own expense.
         CheckConstraint(
             "approved_by_user_id IS NULL OR approved_by_user_id <> submitted_by_user_id",
@@ -394,6 +395,8 @@ class Expense(ScopeMixin, TimestampMixin, Base):
     approved_amount_cents: Mapped[int | None] = mapped_column(BigInteger)
     decision_reason: Mapped[str | None] = mapped_column(Text)
     correction_reason: Mapped[str | None] = mapped_column(Text)
+    # Which money pays it (APM or PDDE): written once with the decision; NULL until then.
+    fund: Mapped[str | None] = mapped_column(Text)
 
 
 class Reimbursement(ScopeMixin, TimestampMixin, Base):

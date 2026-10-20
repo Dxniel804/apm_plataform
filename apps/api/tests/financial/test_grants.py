@@ -179,6 +179,7 @@ UPDATABLE: dict[str, set[str]] = {
         "approved_amount_cents",
         "decision_reason",
         "correction_reason",
+        "fund",  # which money pays it (0031), written once with the decision
         "updated_at",
     },
     "reimbursements": {"payment_reference", "paid_by_user_id", "updated_at"},

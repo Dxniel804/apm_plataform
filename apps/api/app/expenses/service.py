@@ -26,7 +26,7 @@ from app.core.errors import ProblemError
 from app.expenses import repository
 from app.expenses.access import SchoolScope, not_found
 from app.expenses.attachment_types import HEAD_BYTES, sniff
-from app.expenses.category_rules import rule_for
+from app.expenses.category_rules import rule_for, suggested_fund
 from app.expenses.db_errors import database_rules
 from app.expenses.schemas import (
     ApproveRequest,
@@ -79,6 +79,7 @@ SUMMARY_FIELDS = (
     "description",
     "vendor",
     "paid_by",
+    "fund",
     "submitted_by_user_id",
     "attachments_count",
     "created_at",
@@ -126,6 +127,10 @@ def _summary_data(row: Row) -> dict[str, Any]:
     data["category"] = CategoryRef(
         id=row["category_id"], key=row["category_key"], name=row["category_name"]
     )
+    nature, rule = rule_for(row["category_key"])
+    data["economic_nature"] = nature
+    data["pdde_rule"] = rule
+    data["suggested_fund"] = suggested_fund(rule)
     return data
 
 
@@ -511,6 +516,15 @@ def approve(
                 "Only an expense paid by a collaborator can be approved for less",
                 errors=[{"field": "approved_amount_cents", "code": "paid_by_apm"}],
             )
+        _, rule = rule_for(row["category_key"])
+        fund = body.fund or suggested_fund(rule)
+        if fund == "PDDE" and rule == "FORBIDDEN":
+            raise ProblemError(
+                422,
+                "pdde_not_allowed",
+                "The PDDE money does not pay this kind of expense",
+                errors=[{"field": "fund", "code": "pdde_forbidden"}],
+            )
         repository.record_decision(
             db,
             scope.school_id,
@@ -518,6 +532,7 @@ def approve(
             decided_by=scope.user_id,
             approved_amount_cents=approved,
             reason=body.reason,
+            fund=fund,
         )
         _move(db, scope, row, "APPROVED")
         _audit(
