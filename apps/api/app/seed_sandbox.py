@@ -181,6 +181,56 @@ class Sandbox:
 
     # --- the school and its people -----------------------------------------------------------------
 
+    def use_school(self, slug: str) -> None:
+        """Fill a school that already exists (the one the Central created for an organization): the same
+        data, no new organization. The two people are created with no password (they enter through the
+        Central, which links them by e-mail on the first sign-in)."""
+        found = self.c.execute(
+            text("SELECT s.id, s.organization_id FROM schools s WHERE s.slug = :s"), {"s": slug}
+        ).first()
+        if found is None:
+            raise SystemExit(f"no school with the slug '{slug}'")
+        self.school, self.org = found[0], found[1]
+        people = {
+            "secretaria": (
+                os.environ.get("SANDBOX_SECRETARIA_EMAIL", SECRETARIA[0]),
+                SECRETARIA[1],
+            ),
+            "staff": (os.environ.get("SANDBOX_FUNCIONARIA_EMAIL", FUNCIONARIA[0]), FUNCIONARIA[1]),
+        }
+        ids: dict[str, Any] = {}
+        for role, (email, name) in people.items():
+            row = self.c.execute(
+                text("SELECT id FROM users WHERE lower(email) = lower(:e)"), {"e": email}
+            ).first()
+            ids[role] = (
+                row[0]
+                if row is not None
+                else self.one(
+                    text(
+                        "INSERT INTO users (email, full_name, password_hash) VALUES (:e, :n, :h) RETURNING id"
+                    ),
+                    e=email,
+                    n=name,
+                    h=hash_password(secrets.token_urlsafe(24)),
+                )
+            )
+            if (
+                self.c.execute(
+                    text("SELECT 1 FROM memberships WHERE user_id = :u AND school_id = :s"),
+                    {"u": ids[role], "s": self.school},
+                ).first()
+                is None
+            ):
+                self.c.execute(
+                    text(
+                        "INSERT INTO memberships (user_id, organization_id, school_id, role, status) VALUES (:u, :o, :s, :r, 'active')"
+                    ),
+                    {"u": ids[role], "o": self.org, "s": self.school, "r": role},
+                )
+        self.treasurer, self.submitter = ids["secretaria"], ids["staff"]
+        self.finish_school()
+
     def create_school(self) -> None:
         self.org = self.one(
             text(
@@ -213,6 +263,9 @@ class Sandbox:
                 {"u": users[email], "o": self.org, "s": self.school, "r": role},
             )
         self.treasurer, self.submitter = users[SECRETARIA[0]], users[FUNCIONARIA[0]]
+        self.finish_school()
+
+    def finish_school(self) -> None:
         # The categories and the settings come from the trigger of the school; the goals are the school's own.
         self.c.execute(
             text(
@@ -1016,11 +1069,30 @@ class Sandbox:
 
 def build(connection: Connection, password: str) -> str:
     connection.execute(text("SELECT set_config('app.actor_type', 'SYSTEM', true)"))
-    exists = connection.execute(text("SELECT 1 FROM schools WHERE slug = :s"), {"s": SLUG}).first()
-    if exists is not None:
+    # SANDBOX_FILL_SCHOOL: fill the school the Central created, instead of making a new one.
+    fill = os.environ.get("SANDBOX_FILL_SCHOOL")
+    target = fill or SLUG
+    exists = connection.execute(
+        text("SELECT 1 FROM schools WHERE slug = :s"), {"s": target}
+    ).first()
+    if fill is None and exists is not None:
         return "the sandbox school already exists: nothing to do (to start over: docker compose down -v)"
+    if fill is not None:
+        if exists is None:
+            return f"no school with the slug '{fill}': nothing to fill"
+        filled = connection.execute(
+            text(
+                "SELECT 1 FROM financial_transactions t JOIN schools s ON s.id = t.school_id WHERE s.slug = :s LIMIT 1"
+            ),
+            {"s": fill},
+        ).first()
+        if filled is not None:
+            return f"the school '{fill}' already has data: nothing to do"
     box = Sandbox(connection, password)
-    box.create_school()
+    if fill is None:
+        box.create_school()
+    else:
+        box.use_school(fill)
     box.ledger()
     box.banks()
     box.taxes()
@@ -1032,7 +1104,7 @@ def build(connection: Connection, password: str) -> str:
         {"s": box.school},
     ).scalar_one()
     box.close_september(int(sept_bank))
-    return f"created the sandbox school '{SLUG}' (September closed, October open until the 18th)"
+    return f"created the sandbox school '{target}' (September closed, October open until the 18th)"
 
 
 def main() -> int:
@@ -1069,7 +1141,7 @@ def main() -> int:
     finally:
         engine.dispose()
     print(message)
-    if message.startswith("created"):
+    if message.startswith("created") and os.environ.get("SANDBOX_FILL_SCHOOL") is None:
         print(f"login: {SECRETARIA[0]} (secretaria) and {FUNCIONARIA[0]} (funcionária)")
         print(f"SANDBOX_PASSWORD={password}")
     return 0
