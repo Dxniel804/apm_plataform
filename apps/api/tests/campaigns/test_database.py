@@ -6,8 +6,9 @@ product that is on sale, that its amount is the sum of its items, and that nothi
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import Connection, Engine, text
@@ -489,6 +490,13 @@ def test_a_product_that_is_not_on_sale_cannot_be_copied(world: tuple[Connection,
         line(conn, f, tx, campaign_id, items[0], "Cachorro-quente", 800, 1)
 
 
+def school_today() -> date:
+    """Today as the DATABASE sees it for these schools (America/Sao_Paulo, the default time zone): a
+    campaign is on sale by the date of the school, not by the clock of the machine that runs the test.
+    With `date.today()` (UTC in the CI) the test failed every day from 21:00 to midnight in Brasília."""
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+
+
 @pytest.mark.parametrize(
     ("starts", "ends"),
     [(1, None), (None, -1), (2, 3), (-5, -2)],  # days from today: not yet, already over
@@ -497,7 +505,7 @@ def test_a_campaign_outside_its_dates_cannot_be_ordered(
     world: tuple[Connection, Fresh], starts: int | None, ends: int | None
 ) -> None:
     conn, f = world
-    today = date.today()
+    today = school_today()
     campaign_id, items = campaign(
         conn, f,
         starts_on=None if starts is None else today + timedelta(days=starts),
@@ -510,7 +518,7 @@ def test_a_campaign_outside_its_dates_cannot_be_ordered(
 
 def test_a_campaign_inside_its_dates_can_be_ordered(world: tuple[Connection, Fresh]) -> None:
     conn, f = world
-    today = date.today()
+    today = school_today()
     campaign_id, items = campaign(
         conn, f, starts_on=today - timedelta(days=1), ends_on=today + timedelta(days=1)
     )
