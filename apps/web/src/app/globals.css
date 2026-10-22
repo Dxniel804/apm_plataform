@@ -191,6 +191,30 @@
   ::selection {
     background: color-mix(in srgb, var(--color-brand-500) 30%, transparent);
   }
+
+  /* Barra de rolagem fina e limpa (pagina, sidebar, modais, tabelas): so o polegar, sem trilho nem setas. */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ink-3) 30%, transparent);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+  }
+  /* Firefox (e navegadores sem ::-webkit-scrollbar). No Chrome, scrollbar-width anularia a barra acima. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in srgb, var(--ink-3) 30%, transparent) transparent;
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ componentes */

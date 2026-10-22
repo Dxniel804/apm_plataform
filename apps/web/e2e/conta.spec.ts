@@ -31,5 +31,5 @@ test("alterar senha: valida no cliente e mostra o erro da API para a senha atual
   await janela.getByRole("button", { name: "Cancelar" }).click();
   await expect(janela).toBeHidden();
   await page.goto("/painel");
-  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^saldo em caixa$/i })).toBeVisible();
 });

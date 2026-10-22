@@ -13,15 +13,15 @@ type Size = "md" | "lg";
 
 const base =
   "inline-flex select-none items-center justify-center gap-2 px-5 font-semibold tracking-[-0.003em] " +
-  "transition-[transform,background-color,opacity,filter] duration-150 ease-out " +
+  "transition-[transform,background-color,border-color,box-shadow,opacity] duration-150 ease-out " +
   "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45";
 
 const variants: Record<Variant, string> = {
-  primary: "rounded-ctl bg-brand-800 text-white hover:brightness-[1.12]",
-  solid: "rounded-ctl bg-brand-800 text-white hover:brightness-[1.12]",
-  secondary: "rounded-ctl border-[1.5px] border-line-strong bg-white text-brand-800 hover:bg-info-soft",
-  chip: "rounded-full bg-brand-800 text-white hover:brightness-[1.12]",
-  plain: "rounded-ctl text-brand-800 hover:bg-info-soft",
+  primary: "rounded-ctl bg-brand-800 text-white hover:bg-brand-700 hover:shadow-md",
+  solid: "rounded-ctl bg-brand-800 text-white hover:bg-brand-700 hover:shadow-md",
+  secondary: "rounded-ctl border-[1.5px] border-line-strong bg-white text-brand-800 hover:border-pill-line hover:bg-pill",
+  chip: "rounded-full bg-brand-800 text-white hover:bg-brand-700 hover:shadow-md",
+  plain: "rounded-ctl text-brand-800 hover:bg-pill",
 };
 
 const sizes: Record<Size, string> = {
@@ -39,7 +39,7 @@ export function chipClass(active: boolean, extra = ""): string {
     "inline-flex min-h-10 select-none items-center justify-center gap-2 rounded-full border px-4 text-sub transition-colors " +
     (active
       ? "border-pill-line bg-pill font-semibold text-brand-800 "
-      : "border-line-strong bg-white font-normal text-ink-2 hover:bg-info-soft ") +
+      : "border-line-strong bg-white font-normal text-ink-2 hover:border-pill-line hover:bg-pill hover:text-brand-800 ") +
     extra
   ).trim();
 }

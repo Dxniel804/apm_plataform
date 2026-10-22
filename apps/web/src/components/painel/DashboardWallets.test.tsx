@@ -15,6 +15,7 @@ const line = (over: Record<string, unknown> = {}) => ({
   line_id: "l1", account_id: "a1", account_nickname: "PDDE", posted_on: "2026-10-06", amount_cents: 360_000, memo: "CREDITO FNDE PDDE BASICO CAPITAL",
   looks_like_fee: false, classification: null, documents: [], documented_cents: 0, status: "PENDING", ...over,
 });
+const done = (kind: string) => ({ kind, program: "BASICO", program_label: null, economic_category: null, object: null, note: null, payment_number: null });
 const month = (lines: unknown[], accounts = [{ id: "a1", nickname: "PDDE", bank_name: "Banco do Brasil", account_last4: null }], bank_balances: unknown[] = []) =>
   parseMonth({ period: "2026-10", accounts, bank_balances, lines, pending_count: lines.length, alerts: [] }) as PddeMonth;
 const bank = (balance_cents: number | null, as_of: string | null = "2026-10-15") => [{ account_id: "a1", account_nickname: "PDDE", balance_cents, as_of }];
@@ -37,16 +38,35 @@ function setup(wallet: "apm" | "pdde", m: PddeMonth = month([line()]), y: PddeYe
 }
 
 describe("DashboardWallets", () => {
-  it("abre no caixa da APM, diz isso no titulo e mostra ao lado o saldo do PDDE, sem somar", async () => {
+  it("abre no caixa da APM, com as abas, o mes e os botoes na mesma linha, e nao mostra o saldo da outra carteira", async () => {
     setup("apm");
 
     expect(screen.getByRole("heading", { name: "Caixa da APM" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "APM" })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByText("PDDE: saldo")).toBeInTheDocument();
-    expect(screen.getByText("PDDE: saldo").parentElement).toHaveTextContent("R$ 1.900,00");
+    const tab = screen.getByRole("tab", { name: "APM" });
+    expect(tab).toHaveAttribute("aria-selected", "true");
+    // One toolbar row: the tabs, the month and the buttons share the same parent.
+    const month = await screen.findByLabelText("Mês");
+    expect(tab.closest("div[role=tablist]")!.parentElement).toBe(month.closest("div.relative")!.parentElement);
+    expect((await screen.findByRole("link", { name: /Baixar PDF/ })).parentElement).toBe(tab.closest("div[role=tablist]")!.parentElement);
+    expect(screen.queryByText(/PDDE: saldo|Caixa da APM: saldo/)).not.toBeInTheDocument();
     // The balance of the APM (the usual dashboard) is the APM's alone.
-    expect(await screen.findByRole("heading", { name: /saldo em caixa em outubro de 2026/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^saldo em caixa$/i })).toBeInTheDocument();
     expect(screen.getByText("R$ 684,10")).toBeInTheDocument();
+  });
+
+  it("cada carteira busca so o que e dela: a APM nao pede o PDDE e o PDDE nao pede o caixa da APM", async () => {
+    setup("apm");
+    await screen.findByRole("heading", { name: /^saldo em caixa$/i });
+    expect(api.statement.summary).toHaveBeenCalledTimes(1);
+    expect(api.pdde.month).not.toHaveBeenCalled();
+    expect(api.pdde.year).not.toHaveBeenCalled();
+  });
+
+  it("na carteira PDDE as abas e o mes tambem ficam na mesma linha e o caixa da APM nao e pedido", async () => {
+    setup("pdde");
+    const month = await screen.findByLabelText("Mês");
+    expect(screen.getByRole("tab", { name: "PDDE" }).closest("div[role=tablist]")!.parentElement).toBe(month.parentElement!.parentElement);
+    expect(api.statement.summary).not.toHaveBeenCalled();
   });
 
   it("clicar em PDDE pede a troca de carteira", async () => {
@@ -57,29 +77,38 @@ describe("DashboardWallets", () => {
     expect(onWalletChange).toHaveBeenCalledWith("pdde");
   });
 
-  it("a carteira PDDE tem o titulo, o saldo, o que entrou e saiu, o saldo de cada programa e os lancamentos", async () => {
-    setup("pdde", month([line(), line({ line_id: "l2", memo: "PAGAMENTO VENTILADOR", amount_cents: -150_000, status: "PENDING" })]));
+  it("a carteira PDDE tem o titulo, tres numeros, a execucao dos programas e a situacao dos lancamentos", async () => {
+    setup("pdde", month([line(), line({ line_id: "l2", memo: "PAGAMENTO VENTILADOR", amount_cents: -150_000, classification: done("EXPENSE"), status: "PENDING" }), line({ line_id: "l3", memo: "JA RESOLVIDO", amount_cents: -1_000, classification: done("RETURN_TO_FNDE"), status: "DONE" })]));
 
     expect(screen.getByRole("heading", { name: "PDDE" })).toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: "Saldo do PDDE" })).toHaveTextContent("R$ 1.900,00");
-    expect(screen.getByText(/Entrou em outubro de 2026/).parentElement).toHaveTextContent("R$ 3.600,00");
-    expect(screen.getByText(/Saiu em outubro de 2026/).parentElement).toHaveTextContent("R$ 1.500,00");
-    expect(screen.getByRole("list", { name: "Saldo por programa" })).toHaveTextContent("PDDE Básico");
-    const rows = within(screen.getByRole("region", { name: "Lançamentos do PDDE no mês" })).getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("CREDITO FNDE PDDE BASICO CAPITAL");
-    expect(rows[0]).toHaveTextContent("Classificar");
-    expect(rows[1]).toHaveTextContent("PAGAMENTO VENTILADOR");
-    // The other wallet is told by its balance and nothing is added to it.
-    expect(await screen.findByText("Caixa da APM: saldo")).toBeInTheDocument();
-    expect(screen.getByText("Caixa da APM: saldo").parentElement).toHaveTextContent("R$ 684,10");
+    const numbers = await screen.findByRole("region", { name: "Números do PDDE" });
+    expect(within(numbers).getByRole("heading", { name: "Saldo classificado" }).parentElement).toHaveTextContent("R$ 1.900,00");
+    expect(within(numbers).getByRole("heading", { name: "Entrou" }).parentElement).toHaveTextContent("R$ 3.600,00");
+    expect(within(numbers).getByRole("heading", { name: "Saiu" }).parentElement).toHaveTextContent("R$ 1.510,00");
+    // The old "by program" cards and the list of every line are gone: two bars say it.
+    expect(screen.queryByRole("list", { name: "Saldo por programa" })).not.toBeInTheDocument();
+    expect(screen.queryByText("CREDITO FNDE PDDE BASICO CAPITAL")).not.toBeInTheDocument();
+    const execution = screen.getByRole("region", { name: "Execução por programa" });
+    expect(within(execution).getByRole("img", { name: /Custeio gasto 6%, Capital gasto 42%, Saldo 53%/ })).toBeInTheDocument();
+    const lines = screen.getByRole("region", { name: "Lançamentos do mês" });
+    expect(within(lines).getByRole("img", { name: /Prontos 33%, Falta nota 33%, Falta classificar 33%/ })).toBeInTheDocument();
+    expect(lines).toHaveTextContent("1 lançamento");
+    expect(within(lines).getByRole("link", { name: "Abrir o PDDE" })).toHaveAttribute("href", "/painel/pdde");
   });
 
-  it("mostra quantos lancamentos faltam e leva ao PDDE", async () => {
-    setup("pdde");
+  it("lancamentos de outros meses pendentes sao ditos em uma linha", async () => {
+    setup("pdde", month([line()]), year({ pending_count: 4 }));
 
-    const pendings = await screen.findByRole("region", { name: "Pendências do PDDE" });
-    expect(pendings).toHaveTextContent("2 lançamentos sem classificar ou sem nota");
-    expect(within(pendings).getByRole("link", { name: "Abrir o PDDE" })).toHaveAttribute("href", "/painel/pdde");
+    const lines = await screen.findByRole("region", { name: "Lançamentos do mês" });
+    expect(lines).toHaveTextContent("3 em outros meses do ano.");
+  });
+
+  it("mes sem lancamentos: diz isso em vez de uma barra vazia", async () => {
+    setup("pdde", month([]), year({ pending_count: 0 }));
+
+    const lines = await screen.findByRole("region", { name: "Lançamentos do mês" });
+    expect(lines).toHaveTextContent("Nenhum lançamento em outubro de 2026.");
+    expect(within(lines).queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("sem conta do PDDE, diz onde cadastrar", async () => {
@@ -91,7 +120,7 @@ describe("DashboardWallets", () => {
 
   it("trocar o mes na carteira PDDE avisa a tela", async () => {
     const { user, onPeriodChange } = setup("pdde");
-    await screen.findByRole("region", { name: "Saldo do PDDE" });
+    await screen.findByRole("region", { name: "Números do PDDE" });
 
     await user.selectOptions(screen.getByLabelText("Mês"), "2026-09");
 
@@ -101,37 +130,28 @@ describe("DashboardWallets", () => {
   it("o saldo principal e o do banco, com a data do extrato; o que a classificacao nao cobre e dito", async () => {
     setup("pdde", month([line()], undefined, bank(500_000)));
 
-    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
-    expect(balance).toHaveTextContent("Saldo na conta em 15 de outubro de 2026");
+    const balance = await screen.findByRole("region", { name: "Números do PDDE" });
+    expect(balance).toHaveTextContent("Saldo na conta");
+    expect(balance).toHaveTextContent("Extrato de 15 out");
     expect(balance).toHaveTextContent("R$ 5.000,00");
     // The classification leaves R$ 1.900,00: the other R$ 3.100,00 is money that came and was not classified yet.
-    expect(balance).toHaveTextContent("R$ 3.100,00 do saldo ainda não está classificado.");
-    // The other wallet's hint uses the bank balance too.
-    expect(await screen.findByText("Caixa da APM: saldo")).toBeInTheDocument();
+    expect(balance).toHaveTextContent("R$ 3.100,00 ainda sem classificar");
   });
 
   it("se a classificacao mostra mais que o banco, pede para conferir", async () => {
     setup("pdde", month([line()], undefined, bank(100_000)));
 
-    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
+    const balance = await screen.findByRole("region", { name: "Números do PDDE" });
     expect(balance).toHaveTextContent("R$ 1.000,00");
-    expect(balance).toHaveTextContent("A classificação mostra");
-    expect(balance).toHaveTextContent("R$ 900,00");
-    expect(balance).toHaveTextContent("a mais que o banco. Confira.");
+    expect(balance).toHaveTextContent(/Classificação.*R\$\s900,00.*acima do banco/);
   });
 
   it("sem extrato com saldo, mostra o classificado e pede o extrato", async () => {
     setup("pdde", month([line()], undefined, bank(null, null)));
 
-    const balance = await screen.findByRole("region", { name: "Saldo do PDDE" });
-    expect(balance).toHaveTextContent("Saldo pelo que foi classificado");
+    const balance = await screen.findByRole("region", { name: "Números do PDDE" });
+    expect(balance).toHaveTextContent("Saldo classificado");
     expect(balance).toHaveTextContent("R$ 1.900,00");
-    expect(balance).toHaveTextContent("Importe o extrato (PDF ou OFX) para ver o saldo do banco.");
-  });
-
-  it("o saldo do PDDE ao lado da APM tambem e o do banco", async () => {
-    setup("apm", month([line()], undefined, bank(500_000)));
-
-    expect((await screen.findByText("PDDE: saldo")).parentElement).toHaveTextContent("R$ 5.000,00");
+    expect(balance).toHaveTextContent("Sem extrato importado");
   });
 });

@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Amount } from "@/components/ui/Amount";
-import { api } from "@/lib/api";
+import { useState } from "react";
 import { CalendarIcon, ChevronDownThinIcon } from "@/components/ui/icons";
 import { currentLocalPeriod, periodLabel, recentPeriods } from "@/lib/statement-labels";
 import type { Wallet } from "@/lib/painel-section";
@@ -24,65 +22,42 @@ const WALLETS: { id: Wallet; title: string }[] = [
 ];
 
 /**
- * A dashboard com um seletor APM | PDDE: o titulo diz de qual dinheiro e a tela e, ao lado, o saldo da OUTRA
- * carteira (nada e somado). A APM e a dashboard de sempre; o PDDE tem os mesmos blocos, do dinheiro federal.
+ * A dashboard com um seletor APM | PDDE. As abas ficam na MESMA linha do mes e dos botoes (uma linha so, para ganhar
+ * espaco); o titulo diz de qual dinheiro e a tela, mas so para leitor de tela (a aba marcada ja diz isso a quem ve).
+ * A APM e a dashboard de sempre; o PDDE tem os mesmos blocos, do dinheiro federal. Nada e somado entre as duas.
  */
 export function DashboardWallets({ schoolId, permissions, period, wallet, onPeriodChange, onWalletChange }: Props) {
   const [latest] = useState(() => currentLocalPeriod());
   const month = period ?? latest;
-  const year = Number(month.slice(0, 4));
-  const [balances, setBalances] = useState<{ key: string; apm: number | null; pdde: number | null } | null>(null);
-  const key = `${schoolId}|${month}`;
 
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([api.statement.summary(schoolId, period), api.pdde.month(schoolId, month), api.pdde.year(schoolId, year)]).then(([apm, pddeMonth, pddeYear]) => {
-      if (cancelled) return;
-      // The PDDE balance is the bank's (latest statement); without a statement, what was classified.
-      const bank = pddeMonth.ok ? pddeMonth.data.bankBalances.filter((b) => b.balanceCents !== null) : [];
-      setBalances({
-        key,
-        apm: apm.ok ? apm.data.closingBalanceCents : null,
-        pdde: bank.length > 0 ? bank.reduce((sum, b) => sum + (b.balanceCents ?? 0), 0) : pddeYear.ok ? pddeYear.data.programs.reduce((sum, p) => sum + p.balanceCents, 0) : null,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [schoolId, period, month, year, key]);
-
-  const known = balances?.key === key ? balances : null;
-  const other = wallet === "apm" ? { title: "PDDE", cents: known?.pdde ?? null } : { title: "Caixa da APM", cents: known?.apm ?? null };
+  const tabs = (
+    <div role="tablist" aria-label="Qual dinheiro ver" className="inline-flex self-start rounded-full border border-line-strong bg-white p-1">
+      {WALLETS.map((w) => (
+        <button
+          key={w.id}
+          type="button"
+          role="tab"
+          aria-selected={wallet === w.id}
+          onClick={() => wallet !== w.id && onWalletChange(w.id)}
+          className={`min-h-10 rounded-full px-5 text-sub font-semibold transition-colors ${wallet === w.id ? "bg-brand-800 text-white" : "text-brand-800 hover:bg-pill"}`}
+        >
+          {w.id === "apm" ? "APM" : "PDDE"}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <h2 className="text-heading">{WALLETS.find((w) => w.id === wallet)!.title}</h2>
-        <div role="tablist" aria-label="Qual dinheiro ver" className="inline-flex rounded-full border border-line-strong bg-white p-1">
-          {WALLETS.map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              role="tab"
-              aria-selected={wallet === w.id}
-              onClick={() => wallet !== w.id && onWalletChange(w.id)}
-              className={`min-h-10 rounded-full px-5 text-sub font-semibold ${wallet === w.id ? "bg-brand-800 text-white" : "text-brand-800 hover:bg-info-soft"}`}
-            >
-              {w.id === "apm" ? "APM" : "PDDE"}
-            </button>
-          ))}
-        </div>
-        {other.cents !== null && (
-          <p className="text-sub text-ink-2">
-            {other.title}: saldo <Amount cents={other.cents} />
-          </p>
-        )}
-      </div>
+      <h2 className="sr-only">{WALLETS.find((w) => w.id === wallet)!.title}</h2>
       {wallet === "apm" ? (
-        <PainelData schoolId={schoolId} section="resumo" period={period} permissions={permissions} onPeriodChange={onPeriodChange} />
+        <PainelData schoolId={schoolId} section="resumo" period={period} permissions={permissions} onPeriodChange={onPeriodChange} leading={tabs} />
       ) : (
         <>
-          <PeriodPicker month={month} latest={latest} onChange={onPeriodChange} />
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            {tabs}
+            <PeriodPicker month={month} latest={latest} onChange={onPeriodChange} />
+          </div>
           <PddeDashboard schoolId={schoolId} period={period} />
         </>
       )}
@@ -93,7 +68,7 @@ export function DashboardWallets({ schoolId, permissions, period, wallet, onPeri
 function PeriodPicker({ month, latest, onChange }: { month: string; latest: string; onChange: (period: string) => void }) {
   const periods = Array.from(new Set([...recentPeriods(latest, 12), month])).sort().reverse();
   return (
-    <div className="relative mb-6 inline-block">
+    <div className="relative">
       <label htmlFor="pdde-dashboard-period" className="sr-only">
         Mês
       </label>
@@ -102,7 +77,7 @@ function PeriodPicker({ month, latest, onChange }: { month: string; latest: stri
         id="pdde-dashboard-period"
         value={month}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-10 cursor-pointer appearance-none rounded-full border border-pill-line bg-pill pl-10 pr-10 text-sub font-semibold text-brand-800"
+        className="min-h-10 w-full cursor-pointer appearance-none rounded-full border border-pill-line bg-pill pl-10 pr-10 text-sub font-semibold text-brand-800 transition-colors hover:border-brand-300 hover:bg-[#d3e4ff] sm:w-auto"
       >
         {periods.map((p) => (
           <option key={p} value={p} className="bg-white text-ink">

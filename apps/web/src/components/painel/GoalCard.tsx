@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { GoalAdhesion } from "@/lib/api/types";
 import { formatBRL } from "@/lib/money";
-import { periodLabel } from "@/lib/statement-labels";
 
 function Meter({ label, value, text }: { label: string; value: number; text: string }) {
   const percent = Math.max(0, Math.min(100, Math.round(value)));
@@ -27,9 +26,9 @@ function Meter({ label, value, text }: { label: string; value: number; text: str
 export function GoalCard({ goal, canConfigure }: { goal: GoalAdhesion; canConfigure: boolean }) {
   const hasGoal = goal.goalCents !== null || goal.expectedContributions !== null;
   return (
-    <section aria-labelledby="goal-title" className="rounded-[var(--r-lg)] border border-line p-6">
+    <section aria-labelledby="goal-title" className="flex h-full flex-col rounded-[var(--r-lg)] border border-line p-6">
       <h2 id="goal-title" className="text-[1rem] font-medium text-ink">
-        Meta e adesão em {periodLabel(goal.period)}
+        Meta do mês
       </h2>
       {!hasGoal ? (
         <p className="mt-3 text-body text-ink-2">
@@ -41,7 +40,7 @@ export function GoalCard({ goal, canConfigure }: { goal: GoalAdhesion; canConfig
           )}
         </p>
       ) : (
-        <div className="mt-4 grid gap-6 sm:grid-cols-2">
+        <div className="mt-4 flex flex-1 flex-col justify-evenly gap-6">
           {goal.goalCents !== null && goal.goalCents > 0 && (
             <Meter label="Arrecadado" value={(goal.collectedCents / goal.goalCents) * 100} text={`${formatBRL(goal.collectedCents)} de ${formatBRL(goal.goalCents)}`} />
           )}
@@ -54,7 +53,6 @@ export function GoalCard({ goal, canConfigure }: { goal: GoalAdhesion; canConfig
           )}
         </div>
       )}
-      <p className="mt-4 text-foot text-ink-2">Só entram as contribuições das famílias. As vendas das campanhas têm a página delas.</p>
     </section>
   );
 }

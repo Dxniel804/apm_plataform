@@ -24,20 +24,22 @@ describe("PainelData: resumo real", () => {
     const summary = vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     const pend = vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([pending(), pending({ transactionId: "p2", referenceCode: 7, kind: "CONTRIBUTION", direction: "IN", status: "REVIEW_REQUIRED", section: "REVIEW", amountCents: 4000 })])));
     setup();
-    expect(await screen.findByRole("heading", { name: /saldo em caixa em outubro de 2026/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^saldo em caixa$/i })).toBeInTheDocument();
     expect(summary).toHaveBeenCalledWith(SCHOOL_ID, undefined);
     expect(pend).toHaveBeenCalledWith(SCHOOL_ID, { limit: 100 });
-    // principal (grande) e secundario (rotulado)
+    // so tres numeros (caixa, entradas, saidas); o saldo apos reembolsos e a nota do saldo em caixa
     expect(screen.getByText("R$ 684,10")).toBeInTheDocument();
-    expect(screen.getByText("Após reembolsos pendentes").parentElement).toHaveTextContent("R$ 639,10");
-    // pendencias fora do saldo: quatro cartoes-resumo; os itens so aparecem ao abrir o cartao
-    expect(await screen.findByRole("heading", { name: "Pendências (fora do saldo)" })).toBeInTheDocument();
+    expect(screen.getByText(/livres após reembolsos/).parentElement).toHaveTextContent("R$ 639,10");
+    expect(screen.queryByText("Saldo inicial")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lançamentos")).not.toBeInTheDocument();
+    // pendencias fora do saldo: so as linhas com item; os itens so aparecem ao abrir a linha
+    expect(await screen.findByRole("heading", { name: "Pendências" })).toBeInTheDocument();
     expect(screen.queryByText("Reembolso nº 16")).not.toBeInTheDocument();
     const payable = screen.getByRole("button", { name: /A pagar/ });
     expect(payable).toHaveTextContent("R$ 45,00");
     expect(payable).toHaveTextContent("1 item");
     expect(screen.getByRole("button", { name: /Pagamento em análise/ })).toHaveTextContent("R$ 40,00");
-    expect(screen.getByRole("button", { name: /Aguardando correção/ })).toBeDisabled(); // sem itens: nada a abrir
+    expect(screen.queryByRole("button", { name: /Aguardando correção/ })).not.toBeInTheDocument(); // sem itens: sem linha
 
     await userEvent.setup().click(payable);
     const dialog = screen.getByRole("dialog", { name: "A pagar" });
@@ -57,7 +59,7 @@ describe("PainelData: resumo real", () => {
     const summary = vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     const { onPeriodChange } = setup({ period: "2026-09" });
-    await screen.findByRole("heading", { name: /saldo em caixa em/i });
+    await screen.findByRole("heading", { name: /^saldo em caixa$/i });
     expect(summary).toHaveBeenCalledWith(SCHOOL_ID, "2026-09");
     await userEvent.setup().selectOptions(screen.getByLabelText("Mês"), "2026-08");
     expect(onPeriodChange).toHaveBeenCalledWith("2026-08");
@@ -69,7 +71,7 @@ describe("PainelData: resumo real", () => {
     const pend = vi.spyOn(api.statement, "pending");
     const entries = vi.spyOn(api.statement, "entries");
     setup({ permissions: VIEWER });
-    expect(await screen.findByRole("heading", { name: /saldo em caixa em/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^saldo em caixa$/i })).toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent("vê só os totais do mês");
     expect(pend).not.toHaveBeenCalled();
     expect(entries).not.toHaveBeenCalled();
@@ -81,7 +83,7 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(fail(403, "permission_denied"));
     setup();
-    expect(await screen.findByRole("heading", { name: /saldo em caixa em/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^saldo em caixa$/i })).toBeInTheDocument();
     expect(await screen.findByText(/não vê as pendências/)).toBeInTheDocument();
   });
 
@@ -108,7 +110,7 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "summary").mockResolvedValue(ok(SUMMARY));
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     setup({ permissions: ["statement:read", "reports:read"] });
-    await screen.findByRole("heading", { name: /saldo em caixa em/i });
+    await screen.findByRole("heading", { name: /^saldo em caixa$/i });
     expect(screen.queryByRole("button", { name: /Contribuição em dinheiro/ })).not.toBeInTheDocument();
   });
 
@@ -117,7 +119,7 @@ describe("PainelData: resumo real", () => {
     vi.spyOn(api.statement, "pending").mockResolvedValue(ok(page([])));
     vi.spyOn(api.statement, "recordCash").mockResolvedValue(ok({ id: "i", referenceCode: "APM-000042", status: "PAID", amountCents: 5000, method: "CASH" }));
     setup();
-    await screen.findByRole("heading", { name: /saldo em caixa em/i });
+    await screen.findByRole("heading", { name: /^saldo em caixa$/i });
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Contribuição em dinheiro" }));
     await user.type(screen.getByLabelText("Valor"), "5000");

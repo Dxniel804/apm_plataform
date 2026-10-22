@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Amount } from "@/components/ui/Amount";
-import { StatusPill } from "@/components/ui/StatusPill";
+import { ArrowDownIcon, ArrowUpIcon, BankIcon, ListIcon } from "@/components/ui/icons";
+import { ButtonLink } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import type { PddeMonth, PddeYear } from "@/lib/api/pdde";
 import type { ApiResult } from "@/lib/api/types";
-import { formatDayLong } from "@/lib/format";
 import { currentLocalPeriod, periodLabel } from "@/lib/statement-labels";
-import { programName } from "@/lib/pdde-objects";
+import { KpiCards } from "./KpiCards";
+import { PddeExecution } from "./PddeExecution";
+import { BLUES, SegmentBar } from "./SegmentBar";
 
 interface Props {
   schoolId: string;
@@ -17,19 +19,26 @@ interface Props {
   period: string | undefined;
 }
 
-function lineState(line: PddeMonth["lines"][number]): { tone: "warning" | "info" | "success"; label: string } {
+function lineState(line: PddeMonth["lines"][number]): { label: "Classificar" | "Falta nota" | "Pronto" } {
   const c = line.classification;
-  if (!c) return { tone: "warning", label: "Classificar" };
-  if (c.kind === "EXPENSE" && line.status !== "DONE") return { tone: line.status === "PARTIAL" ? "info" : "warning", label: "Falta nota" };
-  return { tone: "success", label: "Pronto" };
+  if (!c) return { label: "Classificar" };
+  if (c.kind === "EXPENSE" && line.status !== "DONE") return { label: "Falta nota" };
+  return { label: "Pronto" };
 }
 
-const card = "rounded-[var(--r-lg)] border border-line bg-white p-5 sm:p-6";
-const open = "inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sub font-semibold text-brand-800 hover:bg-bg";
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+/** "2026-10-06" -> "6 out" (um DIA, nao um instante: nao passa por fuso). */
+const shortDay = (day: string) => {
+  const m = /^\d{4}-(\d{2})-(\d{2})/.exec(day);
+  return m ? `${Number(m[2])} ${MONTHS_SHORT[Number(m[1]) - 1]}` : day;
+};
+
+
 
 /**
- * O PDDE na dashboard: os mesmos blocos do caixa da APM (entrou, saiu, saldo, lancamentos do mes), do dinheiro
- * federal. Nada e somado ao caixa da APM. Os numeros vem das mesmas rotas da tela do PDDE.
+ * O PDDE na dashboard: os mesmos tres numeros do caixa da APM (saldo, entrou, saiu), a execucao de cada programa e so os
+ * lancamentos que pedem acao; a lista inteira do extrato fica na tela do PDDE. Nada e somado ao caixa da APM. Os numeros
+ * vem das mesmas rotas da tela do PDDE.
  */
 export function PddeDashboard({ schoolId, period }: Props) {
   const [latest] = useState(() => currentLocalPeriod());
@@ -84,107 +93,74 @@ export function PddeDashboard({ schoolId, period }: Props) {
   const bank = known.length > 0 ? known.reduce((sum, b) => sum + (b.balanceCents ?? 0), 0) : null;
   const asOf = known.map((b) => b.asOf).filter((d): d is string => d !== null).sort().at(-1) ?? null;
   const gap = bank === null ? 0 : bank - classified;
-  const todo = m.lines.filter((l) => lineState(l).label !== "Pronto");
+  const count = (label: "Pronto" | "Falta nota" | "Classificar") => m.lines.filter((l) => lineState(l).label === label).length;
+  const plural = (n: number) => `${n} ${n === 1 ? "lançamento" : "lançamentos"}`;
+  const [ready, noReceipt, toClassify] = [count("Pronto"), count("Falta nota"), count("Classificar")];
+  // The year's count also has what is in other months; only said when it is more than what this month lists.
+  const elsewhere = Math.max(y.pendingCount - noReceipt - toClassify, 0);
 
   return (
-    <div className="space-y-8">
-      <section aria-label="Saldo do PDDE" className={card}>
-        <p className="text-foot text-ink-2">{bank !== null ? `Saldo na conta${asOf ? ` em ${formatDayLong(asOf)}` : ""}` : "Saldo pelo que foi classificado"}</p>
-        <p className="mt-1 text-[2.25rem] font-semibold leading-none tabular-nums text-brand-800">
-          <Amount cents={bank ?? classified} />
-        </p>
-        {bank === null && <p className="mt-2 text-sub text-ink-2">Importe o extrato (PDF ou OFX) para ver o saldo do banco.</p>}
-        {bank !== null && gap > 0 && (
-          <p className="mt-2 text-sub text-warn">
-            <Amount cents={gap} /> do saldo ainda não está classificado.
-          </p>
-        )}
-        {bank !== null && gap < 0 && (
-          <p className="mt-2 text-sub text-warn">
-            A classificação mostra <Amount cents={-gap} /> a mais que o banco. Confira.
-          </p>
-        )}
-        <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-foot text-ink-2">Entrou em {periodLabel(month)}</dt>
-            <dd className="text-[1.25rem] font-semibold tabular-nums text-ok">
-              <Amount cents={inCents} />
-            </dd>
+    <div className="space-y-6">
+      <KpiCards
+        label="Números do PDDE"
+        items={[
+          {
+            key: "balance",
+            icon: <BankIcon size={20} />,
+            label: bank !== null ? "Saldo na conta" : "Saldo classificado",
+            value: <Amount cents={bank ?? classified} centsClassName="text-[0.5em] font-medium" />,
+            note: (
+              <>
+                {bank !== null && asOf && <p>Extrato de {shortDay(asOf)}</p>}
+                {bank === null && <p>Sem extrato importado</p>}
+                {bank !== null && gap > 0 && (
+                  <p className="font-medium text-brand-800">
+                    <Amount cents={gap} /> ainda sem classificar
+                  </p>
+                )}
+                {bank !== null && gap < 0 && (
+                  <p className="font-medium text-brand-800">
+                    Classificação <Amount cents={-gap} /> acima do banco
+                  </p>
+                )}
+              </>
+            ),
+          },
+          { key: "in", icon: <ArrowDownIcon size={20} />, label: "Entrou", value: <Amount cents={inCents} centsClassName="text-[0.5em] font-medium" /> },
+          { key: "out", icon: <ArrowUpIcon size={20} />, label: "Saiu", value: <Amount cents={outCents} centsClassName="text-[0.5em] font-medium" /> },
+        ]}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PddeExecution programs={y.programs} alerts={y.alerts} />
+
+        <section aria-labelledby="pdde-lines-title" className="h-full rounded-[var(--r-lg)] border border-line p-6">
+          <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
+            <h2 id="pdde-lines-title" className="flex items-center gap-2.5 text-[1rem] font-medium text-ink">
+              <ListIcon size={20} className="text-ink-2" aria-hidden="true" />
+              Lançamentos do mês
+            </h2>
+            <ButtonLink href="/painel/pdde" variant="secondary" size="md" className="rounded-full">
+              Abrir o PDDE
+            </ButtonLink>
           </div>
-          <div>
-            <dt className="text-foot text-ink-2">Saiu em {periodLabel(month)}</dt>
-            <dd className="text-[1.25rem] font-semibold tabular-nums text-bad">
-              <Amount cents={outCents} />
-            </dd>
+          <div className="mt-6">
+            {m.lines.length === 0 ? (
+              <p className="text-body text-ink-2">Nenhum lançamento em {periodLabel(month)}.</p>
+            ) : (
+              <SegmentBar
+                label="Situação dos lançamentos"
+                segments={[
+                  { key: "ready", label: "Prontos", weight: ready, value: plural(ready), color: BLUES[0] },
+                  { key: "noreceipt", label: "Falta nota", weight: noReceipt, value: plural(noReceipt), color: BLUES[1] },
+                  { key: "classify", label: "Falta classificar", weight: toClassify, value: plural(toClassify), color: BLUES[2] },
+                ]}
+              />
+            )}
           </div>
-        </dl>
-      </section>
-
-      {y.programs.length > 0 && (
-        <div>
-        <h3 className="mb-3 text-[1rem] font-medium text-ink">Por programa</h3>
-        <ul aria-label="Saldo por programa" className="grid gap-3 sm:grid-cols-2">
-          {y.programs.map((p) => (
-            <li key={`${p.program}-${p.programLabel ?? ""}`} className={card}>
-              <p className="font-semibold">{programName(p.program, p.programLabel)}</p>
-              <p className="mt-1 text-sub text-ink-2">
-                Entrou <Amount cents={p.receivedCents} /> · gastou <Amount cents={p.spentCusteioCents + p.spentCapitalCents} />
-              </p>
-              <p className="text-[1.125rem] font-bold tabular-nums text-brand-800">
-                Saldo <Amount cents={p.balanceCents} />
-              </p>
-            </li>
-          ))}
-        </ul>
-        </div>
-      )}
-
-      <section aria-label="Pendências do PDDE" className={card}>
-        {y.pendingCount > 0 ? (
-          <p className="text-body">
-            <strong className="font-semibold">{y.pendingCount === 1 ? "1 lançamento" : `${y.pendingCount} lançamentos`}</strong> sem classificar ou sem nota.
-          </p>
-        ) : (
-          <p className="text-body text-ink-2">Nenhuma pendência no PDDE.</p>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link className={open} href="/painel/pdde">
-            Abrir o PDDE
-          </Link>
-        </div>
-      </section>
-
-      <section aria-label="Lançamentos do PDDE no mês" className={card}>
-        <h2 className="text-[1rem] font-medium text-ink">Lançamentos de {periodLabel(month)}</h2>
-        {m.lines.length === 0 ? (
-          <p className="mt-2 text-body text-ink-2">Nenhum lançamento neste mês. Importe o extrato da conta do PDDE em Conciliação.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-line">
-            {m.lines.slice(0, 10).map((line) => {
-              const s = lineState(line);
-              return (
-                <li key={line.lineId} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3">
-                  <span className="w-24 shrink-0 text-foot text-ink-2">{formatDayLong(line.postedOn)}</span>
-                  <span className="min-w-0 flex-1 basis-48 text-sub [overflow-wrap:anywhere]">{line.memo}</span>
-                  <span className={`shrink-0 text-[0.9375rem] font-semibold tabular-nums ${line.amountCents < 0 ? "text-bad" : "text-ok"}`}>
-                    <Amount cents={line.amountCents} />
-                  </span>
-                  <StatusPill tone={s.tone}>{s.label}</StatusPill>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {m.lines.length > 10 && (
-          <p className="mt-3 text-foot text-ink-2">
-            Mostrando 10 de {m.lines.length}. {todo.length > 0 ? `${todo.length} pedem ação.` : ""} O resto está em{" "}
-            <Link className="font-semibold underline" href="/painel/pdde">
-              PDDE
-            </Link>
-            .
-          </p>
-        )}
-      </section>
+          {elsewhere > 0 && <p className="mt-3 text-sub text-ink-2">{elsewhere === 1 ? "1 em outro mês" : `${elsewhere} em outros meses`} do ano.</p>}
+        </section>
+      </div>
     </div>
   );
 }

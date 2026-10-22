@@ -8,13 +8,12 @@ import { CARLA, ELISA, apiAcceptsThisOrigin, demoPassword, loginAs } from "./aut
  */
 test.skip(!demoPassword() || !apiAcceptsThisOrigin(), "precisa da senha de demonstracao e de E2E_BASE_URL=http://127.0.0.1:3102");
 
-test("gestao: resumo com os dois saldos, pendencias fora do saldo e PDF do mes", async ({ page }) => {
+test("gestao: resumo com saldo, entradas e saidas, pendencias fora do saldo e PDF do mes", async ({ page }) => {
   await loginAs(page, CARLA.email);
   // a escola fica na barra lateral (desktop) ou na linha de contexto do topo do painel (celular)
   await expect(page.getByText(CARLA.school).locator("visible=true").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
-  await expect(page.getByText("Após reembolsos pendentes")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Pendências (fora do saldo)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^saldo em caixa$/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pendências" })).toBeVisible();
   // as pendencias sao cartoes-resumo; os itens abrem numa janela
   await page.getByRole("button", { name: /A pagar/ }).click();
   await expect(page.getByRole("dialog", { name: "A pagar" }).getByRole("heading", { name: "A pagar" })).toBeVisible();
@@ -57,7 +56,7 @@ test("gestao: lancamentos por tipo, mes anterior e dinheiro em caixa", async ({ 
 
 test("viewer: so o resumo do mes, sem lancamentos e sem botao de dinheiro, e a tela nao quebra", async ({ page }) => {
   await loginAs(page, ELISA.email);
-  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^saldo em caixa$/i })).toBeVisible();
   await expect(page.getByText(/vê só os totais do mês/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Contribuições", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Contribuição em dinheiro" })).toHaveCount(0);

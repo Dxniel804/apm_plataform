@@ -165,7 +165,7 @@ test("o autor nao decide a propria despesa: o diretor ve o aviso e nenhum botao 
 
 test("viewer: sem despesas, sem botoes de escrita", async ({ page }) => {
   await loginAs(page, ELISA.email);
-  await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^saldo em caixa$/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "Despesas" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Minhas despesas" })).toHaveCount(0);
   await page.goto("/painel/despesas");

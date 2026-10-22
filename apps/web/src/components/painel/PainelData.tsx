@@ -2,21 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Amount } from "@/components/ui/Amount";
 import { Button, buttonClass } from "@/components/ui/Button";
-import { CalendarIcon, CashCoinIcon, ChevronDownThinIcon, DownloadIcon, XLgIcon } from "@/components/ui/icons";
+import { CalendarIcon, CashCoinIcon, ChevronDownThinIcon, ClockIcon, DownloadIcon, XLgIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { api } from "@/lib/api";
 import { contributionsPdfHref } from "@/lib/api/statement";
 import type { ApiError, ApiResult, GoalAdhesion, Page, PendingEntry, SeriesPoint, StatementEntry, StatementSummary } from "@/lib/api/types";
 import { describeAuthError } from "@/lib/auth-messages";
+import { formatBRL } from "@/lib/money";
 import { sectionHref, type PainelSection } from "@/lib/painel-section";
 import { KIND_LABELS, type MovementKind } from "@/lib/status";
 import { PENDING_SECTIONS, periodLabel, pendingSectionTitle, recentPeriods, currentLocalPeriod } from "@/lib/statement-labels";
 import { CashContributionForm } from "./CashContributionForm";
-import { EvolutionChart } from "./EvolutionChart";
+import { BalanceTrend } from "./BalanceTrend";
 import { GoalCard } from "./GoalCard";
 import { KIND_META } from "./kinds";
+import { BLUES, SegmentBar } from "./SegmentBar";
 import { PendingRows, StatementList } from "./StatementList";
 import { StatementIndicators } from "./StatementIndicators";
 
@@ -76,6 +77,8 @@ interface PainelDataProps {
   period: string | undefined;
   permissions: string[];
   onPeriodChange: (period: string) => void;
+  /** O que abre a barra de ferramentas, na mesma linha do mes e dos botoes (na dashboard: as abas APM | PDDE). */
+  leading?: React.ReactNode;
 }
 
 /**
@@ -83,7 +86,7 @@ interface PainelDataProps {
  * (com "carregar mais"), pendencias fora do saldo e as acoes da gestao. Cada rota que responder 403
  * (perfil `viewer` so le o resumo) vira um aviso: a tela nao quebra.
  */
-export function PainelData({ schoolId, section, period, permissions, onPeriodChange }: PainelDataProps) {
+export function PainelData({ schoolId, section, period, permissions, onPeriodChange, leading }: PainelDataProps) {
   const canReadStatement = permissions.includes("statement:read");
   const canRecordCash = permissions.includes("contributions:record_cash");
   const canReadReports = permissions.includes("reports:read") || permissions.includes("reports:read_aggregate");
@@ -173,7 +176,8 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
   const periods = effectivePeriod ? Array.from(new Set([...recentPeriods(latest, 12), effectivePeriod])).sort().reverse() : [];
 
   const toolbar = (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      {leading}
       {effectivePeriod && (
         <div className="relative">
           <label htmlFor="period-select" className="sr-only">
@@ -184,7 +188,7 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
             id="period-select"
             value={effectivePeriod}
             onChange={(e) => onPeriodChange(e.target.value)}
-            className="min-h-10 w-full cursor-pointer appearance-none rounded-full border border-pill-line bg-pill pl-10 pr-10 text-sub font-semibold text-brand-800 sm:w-auto"
+            className="min-h-10 w-full cursor-pointer appearance-none rounded-full border border-pill-line bg-pill pl-10 pr-10 text-sub font-semibold text-brand-800 transition-colors hover:border-brand-300 hover:bg-[#d3e4ff] sm:w-auto"
           >
             {periods.map((p) => (
               <option key={p} value={p} className="bg-white text-ink">
@@ -196,7 +200,7 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
         </div>
       )}
       {canRecordCash && (
-        <Button variant="secondary" size="md" aria-haspopup="dialog" onClick={() => setCashOpen(true)} className="min-h-10 rounded-full px-4 text-ink-2! font-normal">
+        <Button variant="secondary" size="md" aria-haspopup="dialog" onClick={() => setCashOpen(true)} className="min-h-10 rounded-full px-4">
           <CashCoinIcon size={16} />
           Contribuição em dinheiro
         </Button>
@@ -233,16 +237,17 @@ export function PainelData({ schoolId, section, period, permissions, onPeriodCha
         <div className="space-y-8">
           {summary.state === "loading" && <Skeleton label="Carregando o resumo do mês…" />}
           {summary.state === "ready" && (
-            <StatementIndicators
-              summary={summary.data}
-              pendings={
-                <>
-                  {extras?.goal && <GoalCard goal={extras.goal} canConfigure={canConfigure} />}
-                  {extras?.series && <EvolutionChart points={extras.series} />}
+            <>
+              <StatementIndicators summary={summary.data} />
+              {extras?.series && <BalanceTrend points={extras.series} />}
+              {/* O que pede ação (pendências) e a meta do mês: duas colunas da mesma largura e da mesma altura. */}
+              {(canReadStatement || extras?.goal) && (
+                <div className={`grid gap-4 ${canReadStatement && extras?.goal ? "lg:grid-cols-2" : ""}`}>
                   {canReadStatement && <PendingBlock pending={pending} />}
-                </>
-              }
-            />
+                  {extras?.goal && <GoalCard goal={extras.goal} canConfigure={canConfigure} />}
+                </div>
+              )}
+            </>
           )}
           {summary.state === "forbidden" && <Notice tone="info">O seu perfil não tem acesso aos números desta escola.</Notice>}
           {summary.state === "error" && <Notice tone="bad">{summary.message}</Notice>}
@@ -308,52 +313,53 @@ function PendingBlock({ pending }: { pending: Res<Page<PendingEntry>> }) {
 
   const items = pending.data.items;
   const known = new Set(PENDING_SECTIONS.map((s) => s.section));
-  // Cartoes do Figma: as 4 primeiras secoes sempre; "A receber" e "Outras" so quando houver. O total de cada cartao e
-  // a soma dos valores (em centavos) das linhas que a API devolveu, so para o resumo; o detalhe abre ao clicar.
-  const cards = [
-    ...PENDING_SECTIONS.map((s, index) => ({ ...s, index, rows: items.filter((e) => e.section === s.section) })),
-    { section: "OTHER", title: pendingSectionTitle("OTHER"), note: "", index: 99, rows: items.filter((e) => !known.has(e.section)) },
-  ].filter((c) => c.index < 4 || c.rows.length > 0);
+  // Uma linha por secao que tem item (uma "Nenhum item" nao pede nada de ninguem). A barra comporta 4 trechos: as 3
+  // secoes de mais valor e, se houver mais, "Demais pendencias" com o resto; o detalhe de cada uma abre ao clicar.
+  const all = [
+    ...PENDING_SECTIONS.map((s) => ({ ...s, rows: items.filter((e) => e.section === s.section) })),
+    { section: "OTHER", title: pendingSectionTitle("OTHER"), note: "", rows: items.filter((e) => !known.has(e.section)) },
+  ]
+    .filter((c) => c.rows.length > 0)
+    .map((c) => ({ ...c, total: c.rows.reduce((sum, row) => sum + row.amountCents, 0) }))
+    .sort((a, b) => b.total - a.total);
+  const cards =
+    all.length > BLUES.length
+      ? [...all.slice(0, BLUES.length - 1), { section: "REST", title: "Demais pendências", note: "", rows: all.slice(BLUES.length - 1).flatMap((c) => c.rows), total: all.slice(BLUES.length - 1).reduce((sum, c) => sum + c.total, 0) }]
+      : all;
   const opened = cards.find((c) => c.section === openSection) ?? null;
 
   return (
-    <section aria-labelledby="pending-title" className="rounded-[var(--r-lg)] border border-line p-6">
-      <h2 id="pending-title" className="text-[1rem] font-medium text-ink">
-        Pendências (fora do saldo)
+    <section aria-labelledby="pending-title" className="h-full rounded-[var(--r-lg)] border border-line p-6">
+      <h2 id="pending-title" className="flex items-center gap-2.5 text-[1rem] font-medium text-ink">
+        <ClockIcon size={20} className="text-ink-2" aria-hidden="true" />
+        Pendências
       </h2>
-      <p className="mt-0.5 text-foot text-ink-2">Nada daqui entra no saldo em caixa até ser pago ou confirmado.</p>
 
-      <ul className="mt-3 divide-y divide-line">
-        {cards.map((card) => {
-          const total = card.rows.reduce((sum, row) => sum + row.amountCents, 0);
-          const count = card.rows.length;
-          return (
-            <li key={card.section}>
-              <button
-                type="button"
-                disabled={count === 0}
-                aria-haspopup="dialog"
-                onClick={() => setOpenSection(card.section)}
-                className="flex min-h-[3.25rem] w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors enabled:hover:bg-info-soft/60 disabled:cursor-default"
-              >
-                <span className="min-w-0 flex-1 text-sub text-ink">{card.title}</span>
-                <span className="shrink-0 text-foot text-ink-2">{count === 0 ? "Nenhum item" : count === 1 ? "1 item" : `${count} itens`}</span>
-                <span className="w-28 shrink-0 text-right text-[0.9375rem] font-semibold tabular-nums text-brand-800">
-                  <Amount cents={total} />
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {cards.length > 0 && (
+        <div className="mt-6">
+          <SegmentBar
+            label="Pendências por situação"
+            segments={cards.map((card, i) => ({
+              key: card.section,
+              label: card.title,
+              weight: card.total,
+              value: formatBRL(card.total),
+              meta: card.rows.length === 1 ? "(1 item)" : `(${card.rows.length} itens)`,
+              color: BLUES[i]!,
+              onClick: () => setOpenSection(card.section),
+              popup: "dialog" as const,
+            }))}
+          />
+        </div>
+      )}
 
       {items.length === 0 && (
-        <p className="mt-5 text-body text-ink-2">
-          <strong className="font-semibold text-ink">Nenhuma pendência</strong>. Quando houver algo a pagar, a conferir ou a receber, aparece aqui.
+        <p className="mt-4 text-body text-ink-2">
+          <strong className="font-semibold text-ink">Nenhuma pendência</strong>
         </p>
       )}
       {pending.data.nextCursor && (
-        <p className="mt-4 text-foot text-ink-2">Há mais pendências do que as mostradas aqui: os totais acima cobrem só as exibidas.</p>
+        <p className="mt-4 text-sub text-ink-2">Há mais pendências do que as mostradas: os totais cobrem só as exibidas.</p>
       )}
 
       <Modal open={opened !== null} onClose={() => setOpenSection(null)} label={opened?.title ?? "Pendências"}>

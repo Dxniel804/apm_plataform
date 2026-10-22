@@ -110,7 +110,7 @@ for (const width of [320, 360]) {
     test("cartao 'Saldo em caixa' do painel cabe e o numero nao e cortado", async ({ page }) => {
       test.skip(!demoPassword(), "sem E2E_DEMO_PASSWORD_FILE/E2E_DEMO_PASSWORD");
       await loginAs(page);
-      await expect(page.getByRole("heading", { name: /saldo em caixa em/i })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^saldo em caixa$/i })).toBeVisible();
       const fit = await page.evaluate(() => {
         const title = document.querySelector("#indicators-title")!;
         const card = title.closest("section")!;
