@@ -138,7 +138,11 @@ Detalhes: [adr-ambiente-sandbox.md](adr-ambiente-sandbox.md). Na ordem, **uma co
    existiam e tudo que foi criado antes **nunca** são marcados. Só vale para escolas que vêm da Central; as
    configurações da escola (categorias, contas, regras) não são demonstração e seguem para produção.
    Ressalva: tudo que a escola faz no período em sandbox é demonstração, mesmo que fosse "de verdade".
-9. As cobranças do Pix simulado vivem na memória da API: um deploy no meio de um teste perde a cobrança pendente
+9. **Dados de demonstração (primeira entrada):** quando a primeira secretaria entra numa escola em sandbox **sem
+   nenhum lançamento**, o APM a preenche com um mês fechado e o corrente (contribuições, Pix, tarifas, despesas
+   aguardando decisão). Escola que já tem movimento nunca é preenchida. Não vem ainda: despesa aprovada/paga,
+   extratos, PDDE, impostos, campanhas e fechamento.
+10. As cobranças do Pix simulado vivem na memória da API: um deploy no meio de um teste perde a cobrança pendente
    (gere outra).
 
 ## Backup e restauração

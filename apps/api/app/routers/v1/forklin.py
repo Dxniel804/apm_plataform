@@ -26,6 +26,7 @@ from starlette.responses import RedirectResponse
 from app.auth import sessions as session_store
 from app.auth.deps import Db, Settings, public
 from app.auth.identity import (
+    list_memberships,
     provision_forklin_school,
     revoke_forklin_sessions,
     set_forklin_environment,
@@ -37,8 +38,11 @@ from app.auth.responses import problem_responses, set_session_cookies
 from app.auth.tokens import hash_token, looks_like_a_token, new_token
 from app.core.errors import ProblemError
 from app.db.request_context import bind_request_context
+from app.db.tenant import TenantContext, bind_tenant
+from app.demo import fill_demo_school
 from app.forklin import central
 from app.forklin.central import CentralError, MalformedEventError
+from app.forklin.environment import organization_environment
 from app.forklin.roles import local_role, school_name, school_slug
 from app.forklin.state import STATE_TTL_SECONDS, new_state, state_is_valid
 
@@ -57,6 +61,36 @@ def _record_environment(
     set_forklin_environment(db, central_org_id=central_org, environment=environment)
     if settings.forklin_environment_enabled:
         sync_sandbox_payment_account(db, central_org_id=central_org)
+
+
+def _fill_demo(
+    request: Request, settings: Settings, user_id: uuid.UUID, membership_id: uuid.UUID
+) -> None:
+    """The first secretaria of a sandbox school finds it with made-up data (app/demo.py). It runs in
+    a session of its own (the one of the request already acts as the person who is signing in) and
+    never gets in the way of the sign-in, which is already committed: a failure is only logged."""
+    if not settings.forklin_environment_enabled:
+        return
+    try:
+        with request.app.state.session_factory() as fresh:
+            bind_request_context(fresh, actor_type="SYSTEM")
+            membership = next(
+                (m for m in list_memberships(fresh, user_id) if m.membership_id == membership_id),
+                None,
+            )
+            if membership is None:
+                return
+            bind_tenant(fresh, TenantContext(membership.organization_id, membership.school_id))
+            if organization_environment(fresh, settings, membership.organization_id) == "sandbox":
+                fill_demo_school(
+                    fresh,
+                    org=membership.organization_id,
+                    school=membership.school_id,
+                    actor=user_id,
+                )
+            fresh.commit()
+    except Exception as error:
+        logger.warning("demo data could not be made: %s", type(error).__name__)
 
 
 def _state_cookie(settings: Settings) -> str:
@@ -201,6 +235,8 @@ def sso_callback(
         user_agent_hash=hashlib.sha256(agent.encode()).digest() if agent else None,
     )
     db.commit()
+    if role == "secretaria":
+        _fill_demo(request, settings, signed.user_id, signed.membership_id)
     response = _redirect(LANDING, settings, drop_state=from_button)
     set_session_cookies(response, settings, session_token, session_id, expires_at)
     return response

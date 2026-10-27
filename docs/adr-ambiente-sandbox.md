@@ -48,8 +48,26 @@ Pix** (a segunda e a terceira partes: `is_demo` nos dados do negócio e o Pix de
 - As chaves de negócio que um registro escondido poderia usar para travar um real (código de referência do
   lançamento, fechamento do mês, mesmo extrato, mesma linha, mesma chave de nota) valem só entre os reais.
 - Organização que não vem da Central (desenvolvimento, testes) nunca é marcada nem escondida.
-- **Falta:** a criação automática dos dados de demonstração ao virar sandbox (o script `seed_sandbox` precisa da
-  senha de administrador do banco, que a API não tem de propósito) e o mesmo nos outros produtos.
+
+## Parte 4: a escola em sandbox já vem com dados (`app/demo.py`)
+- **Quando:** na primeira entrada de uma **secretaria** numa escola em `sandbox` (chave ligada) que ainda **não tem
+  nenhum lançamento**. A escola, as categorias e a conta de pagamento simulada já nascem quando o produto é
+  contratado; os dados esperam essa primeira entrada porque os registros precisam de uma pessoa como autora e a
+  escola só tem pessoas depois que alguém entra.
+- **Como:** com a permissão normal da API, dentro do tenant da escola (os mesmos gatilhos e políticas de qualquer
+  pedido; nada é contornado). A pessoa que entra é a autora; nenhum usuário falso é criado. O banco marca tudo como
+  `is_demo` (parte 3), então some ao ir para produção.
+- **Segurança:** escola que já tem qualquer lançamento **nunca** é preenchida (uma escola de verdade mandada para
+  sandbox não é tocada); há trava (`pg_advisory_xact_lock`) contra duas primeiras entradas ao mesmo tempo; falha no
+  preenchimento só é registrada no log e nunca atrapalha o login.
+- **O que vem:** um mês fechado e o mês corrente (datas relativas a hoje): Pix da página dos pais (um pendente),
+  Pix direto, dinheiro, uma doação, tarifas bancárias e despesas aguardando decisão (enviada, correção pedida,
+  rascunho).
+- **O que NÃO vem (ainda):** despesas aprovadas/pagas e reembolso (ninguém decide uma despesa que enviou e a escola
+  tem uma pessoa só), extratos bancários e conciliação, PDDE, retenções de imposto, balancete, campanhas e o
+  fechamento do mês. O script `seed_sandbox` tem tudo isso, mas precisa da senha de administrador do banco, que a
+  API não tem de propósito.
+- **Outros produtos:** Diário e Patrimônio ainda não leem o modo nem criam dados de demonstração.
 
 ## Ligar em produção (ordem)
 1. Central com `ORG_ENVIRONMENT_ENABLED=true` (token com `org_env`, avisos com `environment`).

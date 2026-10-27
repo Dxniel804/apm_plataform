@@ -177,3 +177,86 @@ def test_the_business_keys_only_bind_the_real_rows(admin_engine: Engine) -> None
 def test_with_no_tenant_nothing_is_hidden(app_engine: Engine) -> None:
     with app_engine.connect() as conn:
         assert conn.execute(text("SELECT public.hides_demo()")).scalar_one() is False
+
+
+# --- the school comes with made-up data (app/demo.py) ---------------------------------------------
+
+
+def sign_in_secretaria(api: Any, fake: Central, org: uuid.UUID, environment: str) -> Any:
+    from tests.test_forklin_sso import land
+
+    code = fake.code_for(fake.token(org=str(org), org_env=environment))
+    return land(api, code)
+
+
+def test_the_first_secretaria_of_a_sandbox_school_finds_it_with_made_up_data(
+    apis: ApiFactory,
+    forklin: Central,  # noqa: F811
+    cleanup: Callable[[uuid.UUID], None],  # noqa: F811
+    admin_engine: Engine,
+    app_engine: Engine,
+) -> None:
+    api, org, _slug = make(apis, forklin, cleanup, admin_engine, "sandbox")
+    assert counts_as_the_school(app_engine, admin_engine, org)["financial_transactions"] == 0
+
+    assert sign_in_secretaria(api, forklin, org, "sandbox").headers["location"] == "/painel"
+
+    seen = counts_as_the_school(app_engine, admin_engine, org)
+    assert seen["financial_transactions"] > 40 and seen["contributions"] > 30
+    with admin_engine.connect() as conn:
+        not_marked = conn.execute(
+            text(
+                "SELECT count(*) FROM financial_transactions t JOIN organizations o "
+                "ON o.id = t.organization_id WHERE o.central_org_id = :c AND NOT t.is_demo"
+            ),
+            {"c": org},
+        ).scalar_one()
+    assert not_marked == 0  # every row of the made-up data is demonstration
+
+    # A second sign-in does not fill it twice.
+    sign_in_secretaria(sso_second(apis), forklin, org, "sandbox")
+    assert counts_as_the_school(app_engine, admin_engine, org) == seen
+
+    # In production the school sees none of it.
+    change(api, forklin, org, "production")
+    assert counts_as_the_school(app_engine, admin_engine, org)["financial_transactions"] == 0
+
+
+def sso_second(apis: ApiFactory) -> Any:
+    from tests.test_sandbox_public_flow import production_api
+
+    return production_api(apis)
+
+
+def test_a_production_school_is_not_filled(
+    apis: ApiFactory,
+    forklin: Central,  # noqa: F811
+    cleanup: Callable[[uuid.UUID], None],  # noqa: F811
+    admin_engine: Engine,
+    app_engine: Engine,
+) -> None:
+    api, org, _slug = make(apis, forklin, cleanup, admin_engine, "production")
+    assert sign_in_secretaria(api, forklin, org, "production").headers["location"] == "/painel"
+    with admin_engine.connect() as conn:
+        total = conn.execute(
+            text(
+                "SELECT count(*) FROM financial_transactions t JOIN organizations o "
+                "ON o.id = t.organization_id WHERE o.central_org_id = :c"
+            ),
+            {"c": org},
+        ).scalar_one()
+    assert total == 0
+
+
+def test_a_school_that_already_has_movement_is_never_filled(
+    apis: ApiFactory,
+    forklin: Central,  # noqa: F811
+    cleanup: Callable[[uuid.UUID], None],  # noqa: F811
+    admin_engine: Engine,
+    app_engine: Engine,
+) -> None:
+    api, org, slug = make(apis, forklin, cleanup, admin_engine, "sandbox")
+    paid_contribution(api, slug)  # one movement of the family page, before anybody signed in
+    before = counts_as_the_school(app_engine, admin_engine, org)
+    sign_in_secretaria(api, forklin, org, "sandbox")
+    assert counts_as_the_school(app_engine, admin_engine, org) == before
