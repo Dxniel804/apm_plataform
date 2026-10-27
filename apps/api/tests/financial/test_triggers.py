@@ -343,7 +343,7 @@ EXPECTED_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
-    "set_forklin_environment",
+    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account",
     # the PDDE accountability layer (0028)
     "pdde_classifications_check", "pdde_documents_check",
     # the tax guides (0029)
@@ -357,7 +357,7 @@ DEFINER_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
-    "set_forklin_environment",
+    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account",
 }  # fmt: skip
 
 

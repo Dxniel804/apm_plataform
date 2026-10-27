@@ -136,6 +136,10 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         # 0033 (docs/adr-ambiente-sandbox.md): only the environment of an organization of the
         # Central.
         ("organizations", "organizations_definer_update", "UPDATE", "apm_definer"),
+        # 0034 (docs/adr-ambiente-sandbox.md): only the SIMULATED account of a sandbox organization.
+        ("payment_accounts", "payment_accounts_definer_sandbox_select", "SELECT", "apm_definer"),
+        ("payment_accounts", "payment_accounts_definer_sandbox_insert", "INSERT", "apm_definer"),
+        ("payment_accounts", "payment_accounts_definer_sandbox_update", "UPDATE", "apm_definer"),
         ("schools", "schools_definer_insert", "INSERT", "apm_definer"),
         ("school_settings", "school_settings_definer_insert", "INSERT", "apm_definer"),
         ("categories", "categories_definer_insert", "INSERT", "apm_definer"),
@@ -241,6 +245,8 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
         "public.is_central_linked(p_user_id uuid, p_email text)",
         "public.set_forklin_environment(p_central_org_id uuid, p_environment text)",
+        "public.sync_sandbox_payment_account(p_central_org_id uuid)",
+        "public.school_has_active_account(p_school_id uuid)",
     }
 )
 

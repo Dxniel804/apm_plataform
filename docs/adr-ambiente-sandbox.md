@@ -26,6 +26,21 @@ Pix** (a segunda e a terceira partes: `is_demo` nos dados do negócio e o Pix de
   **não** diz "nenhum pagamento real" enquanto o Pix real não for recusado em sandbox (parte seguinte). Atrás de `FORKLIN_ENVIRONMENT_ENABLED` (padrão
   `false`): desligada, a rota responde `null` e nada na tela muda.
 
+## Parte 2: o link dos pais em sandbox (migração 0034)
+- Não existe gateway real (`REAL_PROVIDERS` está vazio): o banco de mentira é o único banco. Em produção ele só é
+  servido a uma organização em `sandbox` (`get_provider(..., sandbox_org=True)`); a rota de "pagar" dele
+  (`/dev/sandbox/pix/{txid}/pay`) idem, e responde 404 para qualquer outra.
+- A função `sync_sandbox_payment_account(central_org_id)` dá à escola em sandbox uma conta SIMULADA (provider
+  `SANDBOX`, id `sandbox`) e a desliga (`INACTIVE`) quando a escola vai para produção. Roda quando o modo chega
+  (aviso, evento ou token), só com `FORKLIN_ENVIRONMENT_ENABLED` ligada.
+- Sem conta ativa a escola não resolve (404): por isso a conta nasce junto com o modo, antes de alguém abrir o link.
+- A página pública devolve `environment`; em `sandbox` o site mostra o card "Ambiente de demonstração" antes da
+  contribuição. Escola em produção não passa pelo card.
+- A função `school_has_active_account` existe porque a política antiga de `schools` lia `payment_accounts` e, ao
+  gravar uma conta como `apm_definer`, o Postgres recusava o laço entre as políticas.
+- **Falta (próxima parte):** `is_demo`. O Pix de mentira vira lançamento no livro da escola e hoje continua lá
+  depois da troca para produção.
+
 ## Ligar em produção (ordem)
 1. Central com `ORG_ENVIRONMENT_ENABLED=true` (token com `org_env`, avisos com `environment`).
 2. Migração 0033 no APM (aditiva; as escolas atuais ficam `production`).

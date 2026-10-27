@@ -165,6 +165,17 @@ def set_forklin_environment(db: Session, *, central_org_id: UUID, environment: s
     return bool(changed)
 
 
+def sync_sandbox_payment_account(db: Session, *, central_org_id: UUID) -> bool:
+    """A sandbox organization gets a SIMULATED payment account (the fake bank pays it); a production
+    one loses it. True when the school ends up with an ACTIVE account
+    (docs/adr-ambiente-sandbox.md)."""
+    active: bool = db.execute(
+        text("SELECT public.sync_sandbox_payment_account(:central_org)"),
+        {"central_org": central_org_id},
+    ).scalar_one()
+    return bool(active)
+
+
 def is_central_linked(
     db: Session, *, user_id: UUID | None = None, email: str | None = None
 ) -> bool:

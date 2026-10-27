@@ -16,6 +16,8 @@ class PublicSchoolOut(BaseModel):
     slug: str
     name: str
     apm_name: str
+    # `sandbox` when the school is a demonstration; null while the switch is off.
+    environment: Literal["sandbox", "production"] | None = None
     accent_color: str
     accent_contrast_color: str
     suggested_amounts_cents: list[int]

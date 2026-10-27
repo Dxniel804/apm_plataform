@@ -41,6 +41,7 @@ def process_notification(
     event_id: str,
     txid: str,
     payload: dict[str, Any],
+    sandbox_org: bool = False,
 ) -> Result:
     """Everything after the notification was authenticated and the school bound (caller commits)."""
     event = db.execute(
@@ -90,7 +91,7 @@ def process_notification(
     if charge is None or charge[2] != "PENDING":
         return _finish(db, event, "IGNORED", "no pending charge for that txid")
 
-    payment = get_provider(provider, env).fetch_payment(target, txid)
+    payment = get_provider(provider, env, sandbox_org=sandbox_org).fetch_payment(target, txid)
     if (
         payment is None
         or payment.status != "PAID"

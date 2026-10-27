@@ -17,6 +17,7 @@ from app.core.config import ApiSettings
 from app.core.errors import ProblemError
 from app.db.request_context import bind_request_context
 from app.db.tenant import TenantContext, bind_tenant
+from app.forklin.environment import organization_environment
 from app.public import service
 from app.public.schemas import (
     ChargeOut,
@@ -86,7 +87,7 @@ def _open_existing(
     response_model=PublicSchoolOut,
     responses=problem_responses(404, 422),
 )
-def get_school(slug: str, db: Db) -> PublicSchoolOut:
+def get_school(slug: str, db: Db, settings: Settings) -> PublicSchoolOut:
     bind_request_context(db, actor_type="PUBLIC")
     school = service.resolve_school(db, slug)
     if school is None:
@@ -97,6 +98,7 @@ def get_school(slug: str, db: Db) -> PublicSchoolOut:
         slug=school.slug,
         name=school.name,
         apm_name=f"APM da {school.name}",
+        environment=organization_environment(db, settings, school.organization_id),
         accent_color=school.accent_color,
         accent_contrast_color=school.accent_contrast_color,
         suggested_amounts_cents=school.suggested_amounts_cents,

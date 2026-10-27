@@ -128,8 +128,15 @@ Detalhes: [adr-ambiente-sandbox.md](adr-ambiente-sandbox.md). Na ordem, **uma co
    `python -m central_api.cli set-organization-environment --organization <slug> --environment sandbox --allow-downgrade`.
    Em ~15 s o APM dela mostra a faixa. Para voltar: Admin → organização → *Passar para produção*.
    Se o aviso não chegar (sem `events_url`), a faixa aparece na **próxima entrada** da pessoa, pelo token.
-7. Enquanto o Pix de teste não existir, **não** use sandbox em escola que esteja recebendo contribuição: o modo
-   só mostra a faixa, não bloqueia pagamento real.
+7. **O link dos pais em sandbox** (migração `0034`): uma escola em sandbox ganha sozinha uma conta de pagamento
+   SIMULADA e o link de Configurações passa a abrir: a família vê o card "Ambiente de demonstração", segue para a
+   contribuição e o Pix é de mentira (botão "Simular pagamento (demonstração)"). Não existe gateway real: a única
+   "conta" possível é a simulada. Ao passar a escola para produção a conta simulada é desligada e o link deixa de abrir.
+8. **Ainda não existe o `is_demo`:** as contribuições de mentira feitas em sandbox ficam gravadas no livro da escola e
+   **continuam lá** depois da troca para produção. Use sandbox em escolas de teste, não em uma escola que vá operar
+   de verdade depois.
+9. As cobranças do Pix simulado vivem na memória da API: um deploy no meio de um teste perde a cobrança pendente
+   (gere outra).
 
 ## Backup e restauração
 São **duas** coisas, e as duas entram no plano:

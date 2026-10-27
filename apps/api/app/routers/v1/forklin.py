@@ -14,11 +14,13 @@ reaches the log, with no e-mail, name, token or secret.
 import hashlib
 import logging
 import re
+import uuid
 from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.orm import Session
 from starlette.responses import RedirectResponse
 
 from app.auth import sessions as session_store
@@ -28,6 +30,7 @@ from app.auth.identity import (
     revoke_forklin_sessions,
     set_forklin_environment,
     sso_sign_in,
+    sync_sandbox_payment_account,
 )
 from app.auth.ratelimit import client_ip
 from app.auth.responses import problem_responses, set_session_cookies
@@ -44,6 +47,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/forklin", tags=["forklin"])
 
 LANDING = "/painel"
+
+
+def _record_environment(
+    db: Session, settings: Settings, central_org: uuid.UUID, environment: str
+) -> None:
+    """Records the mode the Central named and, with the switch on, makes the payment account
+    of the school follow it (a sandbox school gets the simulated one, a production one loses it)."""
+    set_forklin_environment(db, central_org_id=central_org, environment=environment)
+    if settings.forklin_environment_enabled:
+        sync_sandbox_payment_account(db, central_org_id=central_org)
 
 
 def _state_cookie(settings: Settings) -> str:
@@ -163,7 +176,7 @@ def sso_callback(
     if claims.org_env is not None:
         # The Central names the mode of the organization in every token: the first sign-in after
         # a missed notice (or after the switch was turned on there) catches up.
-        set_forklin_environment(db, central_org_id=claims.org, environment=claims.org_env)
+        _record_environment(db, settings, claims.org, claims.org_env)
     if signed.outcome != "ok" or signed.user_id is None or signed.membership_id is None:
         db.rollback()
         word = {"conflict": "conflito", "org_unknown": "org"}.get(signed.outcome, "acesso")
@@ -259,9 +272,7 @@ def receive_event(body: EventBody, db: Db, settings: Settings) -> EventAccepted:
             db.rollback()
             raise ProblemError(409, "provision_failed", "The account could not be created")
         if event.environment is not None:
-            set_forklin_environment(
-                db, central_org_id=event.organization_id, environment=event.environment
-            )
+            _record_environment(db, settings, event.organization_id, event.environment)
         db.commit()
         return EventAccepted(status="created" if result.created else "exists")
 
@@ -271,9 +282,7 @@ def receive_event(body: EventBody, db: Db, settings: Settings) -> EventAccepted:
         and event.environment is not None
     ):
         # An unknown organization is a no-op that answers like a hit (the Central retries nothing).
-        set_forklin_environment(
-            db, central_org_id=event.organization_id, environment=event.environment
-        )
+        _record_environment(db, settings, event.organization_id, event.environment)
         db.commit()
         logger.info("forklin event environment processed")
         return EventAccepted(status="processed")

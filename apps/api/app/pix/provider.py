@@ -125,6 +125,12 @@ class SandboxPixProvider:
             record.end_to_end_id = "E" + secrets.token_hex(16)[:31]
             return record.target
 
+    def target_of(self, txid: str) -> ChargeTarget | None:
+        """Whose charge it is, without paying it (None: this process does not know that txid)."""
+        with self._lock:
+            record = self._charges.get(txid)
+            return None if record is None else record.target
+
     def reset(self) -> None:
         with self._lock:
             self._charges.clear()
@@ -147,11 +153,12 @@ def live_payments_enabled() -> bool:
     return os.environ.get("PIX_LIVE_ENABLED", "").strip().lower() == "true"
 
 
-def get_provider(name: str, env: str) -> PixProvider:
+def get_provider(name: str, env: str, *, sandbox_org: bool = False) -> PixProvider:
     """The provider of a payment account (its `provider` column). The sandbox is a fake bank that
-    lives in the memory of one process: it is never served in production. A real provider is served
-    only when its adapter exists AND the kill switch is on."""
-    if name == SANDBOX and env != "production":
+    lives in the memory of one process: it is never served in production, except for an organization
+    that the Central put in `sandbox` (`sandbox_org`, docs/adr-ambiente-sandbox.md): there it is the
+    point. A real provider is served only when its adapter exists AND the kill switch is on."""
+    if name == SANDBOX and (env != "production" or sandbox_org):
         return _SANDBOX
     build = REAL_PROVIDERS.get(name)
     if build is None:

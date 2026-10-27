@@ -589,7 +589,13 @@ DEFINER_COLUMNS = {
     },
     ("payment_accounts", "SELECT"): {
         "id", "organization_id", "school_id", "provider", "status", "webhook_secret_hash",
+        "external_account_id",
     },
+    # 0034: the simulated account of a sandbox organization (docs/adr-ambiente-sandbox.md)
+    ("payment_accounts", "INSERT"): {
+        "organization_id", "school_id", "provider", "external_account_id", "status", "secret_ref",
+    },
+    ("payment_accounts", "UPDATE"): {"status", "updated_at"},
     ("contributions", "SELECT"): {
         "transaction_id", "organization_id", "school_id", "receipt_token_hash",
         "receipt_expires_at",

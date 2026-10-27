@@ -27,7 +27,7 @@ def _module() -> Any:
 
 
 BASE: str = _module().down_revision
-HEAD_LABEL = "0033_org_environment (head)"
+HEAD_LABEL = "0034_sandbox_payment_account (head)"
 FINANCIAL = {
     "audit_logs", "categories", "contributions", "expense_attachments", "expenses",
     "financial_transactions", "monthly_closings", "payment_accounts", "pix_charges", "refunds",

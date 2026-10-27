@@ -228,6 +228,20 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "school_has_active_account(uuid)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "s",
+    ),
+    "sync_sandbox_payment_account(uuid)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "v",
+    ),
     "set_forklin_environment(uuid,text)": (
         "apm_definer",
         True,
@@ -353,6 +367,10 @@ DEFINER_POLICIES = {
     "organizations.organizations_definer_insert",
     # 0033 (docs/adr-ambiente-sandbox.md)
     "organizations.organizations_definer_update",
+    # 0034 (docs/adr-ambiente-sandbox.md)
+    "payment_accounts.payment_accounts_definer_sandbox_select",
+    "payment_accounts.payment_accounts_definer_sandbox_insert",
+    "payment_accounts.payment_accounts_definer_sandbox_update",
     "schools.schools_definer_insert",
     "school_settings.school_settings_definer_insert",
     "categories.categories_definer_insert",
@@ -516,9 +534,9 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + the 2 of the revocation by the Central (0025, both of the definer)
     # + the 2 of the balancete balances (0027) + the 5 of the PDDE (0028)
     # + the 5 of the tax guides (0029) + the 4 of the PDDE forms (0030)
-    # + the 1 of the environment of an organization (0033)
+    # + the 1 of the environment of an organization (0033) + the 3 of the simulated account (0034)
     assert len(policies) == (
-        30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4 + 1
+        30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4 + 1 + 3
     )
     open_ones = set()
     for name, qual, check, roles in policies:

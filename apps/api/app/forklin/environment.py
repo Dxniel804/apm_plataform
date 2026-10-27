@@ -7,7 +7,8 @@ demonstration on the screen. With `FORKLIN_ENVIRONMENT_ENABLED` off the answer i
 the screen depends on a mode the Central may not even be sending.
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -20,6 +21,25 @@ from app.db.tenant import TenantContext
 from app.routers.deps import get_tenant_db, require_tenant_context
 
 router = APIRouter(prefix="/environment", tags=["environment"])
+
+
+def organization_environment(
+    db: Session, settings: Any, organization_id: UUID
+) -> Literal["sandbox", "production"] | None:
+    """The environment of an organization, for the code that already has its tenant bound. None
+    while FORKLIN_ENVIRONMENT_ENABLED is off (nothing depends on a mode not yet sent)."""
+    if not settings.forklin_environment_enabled:
+        return None
+    value = db.execute(
+        text("SELECT environment FROM organizations WHERE id = :organization"),
+        {"organization": organization_id},
+    ).scalar_one_or_none()
+    return value if value in ("sandbox", "production") else None
+
+
+def is_sandbox(db: Session, settings: Any, organization_id: UUID) -> bool:
+    return organization_environment(db, settings, organization_id) == "sandbox"
+
 
 TenantDb = Annotated[Session, Depends(get_tenant_db)]
 Tenant = Annotated[TenantContext, Depends(require_tenant_context)]
@@ -42,10 +62,6 @@ def get_environment(
     db: TenantDb,
     settings: Settings,
 ) -> EnvironmentOut:
-    if not settings.forklin_environment_enabled:
-        return EnvironmentOut(environment=None)
-    value = db.execute(
-        text("SELECT environment FROM organizations WHERE id = :organization"),
-        {"organization": tenant.organization_id},
-    ).scalar_one_or_none()
-    return EnvironmentOut(environment=value if value in ("sandbox", "production") else None)
+    return EnvironmentOut(
+        environment=organization_environment(db, settings, tenant.organization_id)
+    )

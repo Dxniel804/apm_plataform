@@ -23,6 +23,7 @@ from app.auth.tokens import b64url, keyed_digest, looks_like_a_token
 from app.contributions.expiry import expire_charges, expire_contribution
 from app.core.config import ApiSettings
 from app.core.errors import ProblemError
+from app.forklin.environment import is_sandbox
 from app.pix.provider import ChargeTarget, get_provider
 from app.public.schemas import ContributionIn, Identification
 
@@ -319,7 +320,9 @@ def open_charge(
     if account is None:
         raise ProblemError(409, "payment_unavailable", "This school cannot receive Pix right now")
     txid = uuid.uuid4().hex
-    created = get_provider(account[1], settings.env).create_charge(
+    created = get_provider(
+        account[1], settings.env, sandbox_org=is_sandbox(db, settings, school.organization_id)
+    ).create_charge(
         ChargeTarget(school.organization_id, school.school_id, account[0]),
         txid=txid,
         amount_cents=amount_cents,
