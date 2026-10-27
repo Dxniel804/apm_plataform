@@ -180,6 +180,11 @@ class ApiSettings(Settings):
     forklin_product_slug: str = "apm-digital"
     # The credential of the product (shown once by the Central). Only in the environment.
     forklin_product_secret: SecretStr | None = None
+    # The environment of the organization (sandbox or production) comes from the Central
+    # (0033). The product always RECORDS what it is told; this switch turns on what depends on it
+    # (the notice on the screen, and later the simulated Pix). Turn on the Central first: an
+    # organization the Central never told about is a sandbox here.
+    forklin_environment_enabled: bool = False
 
     @field_validator("auth_secret")
     @classmethod

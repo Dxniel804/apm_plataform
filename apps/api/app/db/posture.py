@@ -133,6 +133,9 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
         ("users", "users_definer_link", "UPDATE", "apm_definer"),
         ("memberships", "memberships_definer_update", "UPDATE", "apm_definer"),
         ("organizations", "organizations_definer_insert", "INSERT", "apm_definer"),
+        # 0033 (docs/adr-ambiente-sandbox.md): only the environment of an organization of the
+        # Central.
+        ("organizations", "organizations_definer_update", "UPDATE", "apm_definer"),
         ("schools", "schools_definer_insert", "INSERT", "apm_definer"),
         ("school_settings", "school_settings_definer_insert", "INSERT", "apm_definer"),
         ("categories", "categories_definer_insert", "INSERT", "apm_definer"),
@@ -237,6 +240,7 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "p_full_name text, p_role text)",
         "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
         "public.is_central_linked(p_user_id uuid, p_email text)",
+        "public.set_forklin_environment(p_central_org_id uuid, p_environment text)",
     }
 )
 

@@ -203,6 +203,7 @@ def test_the_closed_list_of_security_definer_functions_is_the_thirteen_of_the_ad
                 "p_email text, p_full_name text, p_role text)",
                 "public.revoke_forklin_sessions(p_central_user_id uuid, p_central_org_id uuid)",
                 "public.is_central_linked(p_user_id uuid, p_email text)",
+                "public.set_forklin_environment(p_central_org_id uuid, p_environment text)",
             }
         )
         == posture.ALLOWED_SECURITY_DEFINER

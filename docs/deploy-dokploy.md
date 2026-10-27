@@ -61,6 +61,7 @@ Crie uma aplicação do tipo **Compose**: repositório do APM, branch `main`, ca
 | `FORKLIN_CORE_ENABLED` | não | `false` até o passo 5; depois `true` |
 | `API_CENTRAL_URL` | com a Forklin | URL **interna** da Central, só o nome do serviço na rede do Dokploy (como a do App: `http://<servico>:8000`, sem pontos no nome), ou a pública `https://`. Qualquer outro `http://` é recusado em produção |
 | `FORKLIN_APP_URL` | com a Forklin | `https://` do App Forklin. A API e o **site** a leem (o site, para o botão "Voltar para o painel"; sem ela o botão não aparece) |
+| `FORKLIN_ENVIRONMENT_ENABLED` | não | `false` (padrão). Liga a faixa de "ambiente de demonstração"; ordem no passo 6 |
 | `FORKLIN_PRODUCT_SLUG` | não | `apm-digital` (padrão) |
 | `FORKLIN_PRODUCT_SECRET` | com a Forklin | o segredo que a Central mostrou **uma vez** no passo 5 |
 | `TRUSTED_PROXY_IPS` | não | `*` (padrão): a API só é alcançada pelo Traefik |
@@ -110,6 +111,25 @@ Na ordem (cada item na ferramenta indicada):
    o aviso). Organizações que já tinham o APM contratado antes: `resend-product-notices --product apm-digital`.
 
 Detalhes e o raciocínio: [adr-forklin-sso.md](adr-forklin-sso.md).
+
+## 6. Ambiente sandbox / produção por organização
+Detalhes: [adr-ambiente-sandbox.md](adr-ambiente-sandbox.md). Na ordem, **uma coisa por vez**:
+1. **Backup do banco do APM** (e o da Central) antes de qualquer migração.
+2. **Central** (versão nova, `ORG_ENVIRONMENT_ENABLED` desligada): a migração `0019` marca **todas** as
+   organizações que já existem como `production`. Nada muda para ninguém.
+3. **APM** (esta versão, `FORKLIN_ENVIRONMENT_ENABLED` desligada): a migração `0033` marca as escolas atuais
+   como `production` e tira da aplicação o direito de alterar `organizations` além de `name`
+   (a versão antiga do APM continua funcionando durante a troca: ela só altera `name`).
+4. **Central:** `ORG_ENVIRONMENT_ENABLED=true` e reimplantar. O token passa a levar `org_env` e a mudança de
+   modo é avisada aos produtos.
+5. **APM:** `FORKLIN_ENVIRONMENT_ENABLED=true` e reimplantar. Escolas em `production` **não mudam**; só uma
+   escola em `sandbox` mostra a faixa.
+6. **Teste com uma organização que já existe** (terminal do Dokploy, no contêiner da Central):
+   `python -m central_api.cli set-organization-environment --organization <slug> --environment sandbox --allow-downgrade`.
+   Em ~15 s o APM dela mostra a faixa. Para voltar: Admin → organização → *Passar para produção*.
+   Se o aviso não chegar (sem `events_url`), a faixa aparece na **próxima entrada** da pessoa, pelo token.
+7. Enquanto o Pix de teste não existir, **não** use sandbox em escola que esteja recebendo contribuição: o modo
+   só mostra a faixa, não bloqueia pagamento real.
 
 ## Backup e restauração
 São **duas** coisas, e as duas entram no plano:

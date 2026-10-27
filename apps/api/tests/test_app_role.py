@@ -228,6 +228,13 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "set_forklin_environment(uuid,text)": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
+        "v",
+    ),
     "is_central_linked(uuid,text)": (
         "apm_definer",
         True,
@@ -344,6 +351,8 @@ DEFINER_POLICIES = {
     "sessions.sessions_definer_update",
     "memberships.memberships_definer_update",
     "organizations.organizations_definer_insert",
+    # 0033 (docs/adr-ambiente-sandbox.md)
+    "organizations.organizations_definer_update",
     "schools.schools_definer_insert",
     "school_settings.school_settings_definer_insert",
     "categories.categories_definer_insert",
@@ -507,7 +516,10 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + the 2 of the revocation by the Central (0025, both of the definer)
     # + the 2 of the balancete balances (0027) + the 5 of the PDDE (0028)
     # + the 5 of the tax guides (0029) + the 4 of the PDDE forms (0030)
-    assert len(policies) == 30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4
+    # + the 1 of the environment of an organization (0033)
+    assert len(policies) == (
+        30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4 + 1
+    )
     open_ones = set()
     for name, qual, check, roles in policies:
         if qual.strip().lower() == "true" or check.strip().lower() == "true":
@@ -521,7 +533,7 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
 # --- the grants of apm_app, exactly (a grant added by mistake or by tampering fails here) ---------
 
 ALL_COLUMNS = {
-    "organizations": {"id", "name", "slug", "created_at", "updated_at"},
+    "organizations": {"id", "name", "slug", "environment", "created_at", "updated_at"},
     "schools": {
         "id",
         "organization_id",

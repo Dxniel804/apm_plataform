@@ -25,6 +25,8 @@ JWKS_LIFESPAN_SECONDS = 300
 # Only EdDSA: `none`, HS256 (a public key used as a secret) and every other algorithm are refused.
 ALGORITHMS = ["EdDSA"]
 EVENT_PRODUCT_CONTRACTED = "organization.product_contracted"
+EVENT_ENVIRONMENT_CHANGED = "organization.environment_changed"
+ENVIRONMENTS = ("sandbox", "production")
 # The events that END the open sessions of one person (docs/adr-forklin-sso.md, section 9). The
 # list is an ALLOWLIST: any other name is ignored. `organization.<status>` is one entry per status
 # of the Central other than `active` (enum OrganizationStatus: suspended, inactive); a new status
@@ -58,6 +60,8 @@ class AccessClaims:
     email: str
     name: str
     org_name: str | None
+    # `sandbox` or `production` when the Central says it (ORG_ENVIRONMENT_ENABLED there); else None.
+    org_env: str | None
 
 
 @dataclass(frozen=True)
@@ -71,6 +75,8 @@ class CentralEvent:
     organization_id: uuid.UUID | None
     organization_name: str | None
     user_id: uuid.UUID | None
+    # Only for the contract notice and the change of environment; None if absent or unknown.
+    environment: str | None = None
 
 
 class MalformedEventError(CentralError):
@@ -170,6 +176,10 @@ def _uuid(value: object, what: str) -> uuid.UUID:
         raise CentralError("indisponivel", f"{what} is not a UUID") from None
 
 
+def _environment(value: object) -> str | None:
+    return value if isinstance(value, str) and value in ENVIRONMENTS else None
+
+
 def _text(value: object, limit: int) -> str | None:
     if not isinstance(value, str):
         return None
@@ -190,6 +200,7 @@ def verify_access_token(settings: ApiSettings, token: str) -> AccessClaims:
         email=email.lower(),
         name=name,
         org_name=_text(claims.get("org_name"), 120),
+        org_env=_environment(claims.get("org_env")),
     )
 
 
@@ -209,6 +220,19 @@ def verify_event(settings: ApiSettings, token: str) -> CentralEvent:
             organization_id=_uuid(claims.get("organization_id"), "organization_id"),
             organization_name=_text(claims.get("organization_name"), 120),
             user_id=None,
+            environment=_environment(claims.get("environment")),
+        )
+    if event == EVENT_ENVIRONMENT_CHANGED:
+        environment = _environment(claims.get("environment"))
+        if environment is None:
+            raise MalformedEventError("acesso", "environment event without a known environment")
+        return CentralEvent(
+            event=event,
+            jti=jti,
+            organization_id=_uuid(claims.get("organization_id"), "organization_id"),
+            organization_name=None,
+            user_id=None,
+            environment=environment,
         )
     if event in REVOKING_EVENTS:
         try:

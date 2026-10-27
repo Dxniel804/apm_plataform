@@ -61,6 +61,9 @@ services:
       FORKLIN_APP_URL: ${FORKLIN_APP_URL:-}
       FORKLIN_PRODUCT_SLUG: ${FORKLIN_PRODUCT_SLUG:-apm-digital}
       FORKLIN_PRODUCT_SECRET: ${FORKLIN_PRODUCT_SECRET:-}
+      # Ambiente sandbox/producao da organizacao, dito pela Central (docs/adr-ambiente-sandbox.md).
+      # Desligada = o APM so registra o modo e nada na tela muda.
+      FORKLIN_ENVIRONMENT_ENABLED: ${FORKLIN_ENVIRONMENT_ENABLED:-false}
     volumes:
       # Fotos das notas e comprovantes: ENTRAM NO BACKUP junto com o banco.
       - attachments:/attachments

@@ -23,7 +23,12 @@ from starlette.responses import RedirectResponse
 
 from app.auth import sessions as session_store
 from app.auth.deps import Db, Settings, public
-from app.auth.identity import provision_forklin_school, revoke_forklin_sessions, sso_sign_in
+from app.auth.identity import (
+    provision_forklin_school,
+    revoke_forklin_sessions,
+    set_forklin_environment,
+    sso_sign_in,
+)
 from app.auth.ratelimit import client_ip
 from app.auth.responses import problem_responses, set_session_cookies
 from app.auth.tokens import hash_token, looks_like_a_token, new_token
@@ -155,6 +160,10 @@ def sso_callback(
             full_name=claims.name,
             role=role,
         )
+    if claims.org_env is not None:
+        # The Central names the mode of the organization in every token: the first sign-in after
+        # a missed notice (or after the switch was turned on there) catches up.
+        set_forklin_environment(db, central_org_id=claims.org, environment=claims.org_env)
     if signed.outcome != "ok" or signed.user_id is None or signed.membership_id is None:
         db.rollback()
         word = {"conflict": "conflito", "org_unknown": "org"}.get(signed.outcome, "acesso")
@@ -249,8 +258,25 @@ def receive_event(body: EventBody, db: Db, settings: Settings) -> EventAccepted:
         if result is None:
             db.rollback()
             raise ProblemError(409, "provision_failed", "The account could not be created")
+        if event.environment is not None:
+            set_forklin_environment(
+                db, central_org_id=event.organization_id, environment=event.environment
+            )
         db.commit()
         return EventAccepted(status="created" if result.created else "exists")
+
+    if (
+        event.event == central.EVENT_ENVIRONMENT_CHANGED
+        and event.organization_id is not None
+        and event.environment is not None
+    ):
+        # An unknown organization is a no-op that answers like a hit (the Central retries nothing).
+        set_forklin_environment(
+            db, central_org_id=event.organization_id, environment=event.environment
+        )
+        db.commit()
+        logger.info("forklin event environment processed")
+        return EventAccepted(status="processed")
 
     if event.event in central.REVOKING_EVENTS and event.user_id and event.organization_id:
         revoked = revoke_forklin_sessions(

@@ -227,6 +227,7 @@ def test_upgrade_creates_everything_as_a_createrole_admin(clean_cluster: CleanCl
         "sso_sign_in": "apm_definer",
         "revoke_forklin_sessions": "apm_definer",
         "is_central_linked": "apm_definer",
+        "set_forklin_environment": "apm_definer",
         "resolve_school_public": "apm_definer",
         "resolve_webhook_target": "apm_definer",
         "resolve_receipt": "apm_definer",

@@ -556,7 +556,8 @@ DEFINER_COLUMNS = {
     },
     ("memberships", "SELECT"): {"id", "user_id", "organization_id", "school_id", "role", "status"},
     ("memberships", "INSERT"): {"user_id", "organization_id", "school_id", "role", "status"},
-    ("organizations", "SELECT"): {"id", "name", "slug", "central_org_id"},
+    ("organizations", "SELECT"): {"id", "name", "slug", "central_org_id", "environment"},
+    ("organizations", "UPDATE"): {"environment", "updated_at"},
     ("schools", "SELECT"): {"id", "organization_id", "name", "slug"},
     (
         "invitations",

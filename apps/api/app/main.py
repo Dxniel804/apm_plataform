@@ -15,6 +15,7 @@ from app.core.middleware import BodyLimitMiddleware, OriginCheckMiddleware, Requ
 from app.db.posture import PostureError, assert_posture
 from app.db.session import build_engine, build_session_factory
 from app.expenses.router import router as expenses_router
+from app.forklin.environment import router as environment_router
 from app.ocr.router import router as ocr_router
 from app.pdde.router import router as pdde_router
 from app.reconciliation.router import router as reconciliation_router
@@ -85,6 +86,7 @@ def create_app(
     app.include_router(staff_requests_router, prefix="/api/v1")  # staff requests (0012)
     app.include_router(campaigns_router, prefix="/api/v1")  # campaigns of the management (0013)
     app.include_router(school_settings_router, prefix="/api/v1")  # settings and public link (0015)
+    app.include_router(environment_router, prefix="/api/v1")  # sandbox or production (0033)
     app.include_router(reconciliation_router, prefix="/api/v1")  # bank reconciliation (0017)
     app.include_router(pdde_router, prefix="/api/v1")  # PDDE accountability (0028)
     app.include_router(tax_router, prefix="/api/v1")  # tax guides (0029)

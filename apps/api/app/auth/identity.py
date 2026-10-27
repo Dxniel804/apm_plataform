@@ -155,6 +155,16 @@ def provision_forklin_school(
     return None if row is None else ProvisionedSchool(*row)
 
 
+def set_forklin_environment(db: Session, *, central_org_id: UUID, environment: str) -> bool:
+    """Records the environment the Central named for an organization (`sandbox` or `production`).
+    True when something changed; False for an unknown organization or value, or no change."""
+    changed: bool = db.execute(
+        text("SELECT public.set_forklin_environment(:central_org, :environment)"),
+        {"central_org": central_org_id, "environment": environment},
+    ).scalar_one()
+    return bool(changed)
+
+
 def is_central_linked(
     db: Session, *, user_id: UUID | None = None, email: str | None = None
 ) -> bool:

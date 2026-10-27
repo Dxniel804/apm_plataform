@@ -19,6 +19,7 @@ class Organization(TimestampMixin, Base):
         Index("uq_organizations_central_org_id", "central_org_id", unique=True),
         CheckConstraint(f"slug ~ '{SLUG_PATTERN}'", name="slug_format"),
         CheckConstraint("length(btrim(name)) > 0", name="name_not_blank"),
+        CheckConstraint("environment IN ('sandbox', 'production')", name="environment_valid"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -26,3 +27,6 @@ class Organization(TimestampMixin, Base):
     slug: Mapped[str] = mapped_column(Text)
     # Only the SSO functions of apm_definer read it; the application role does not.
     central_org_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, deferred=True)
+    # `sandbox` (demonstration) or `production`, as the Central says (0033). Only the definer
+    # function `set_forklin_environment` changes it; the application role cannot.
+    environment: Mapped[str] = mapped_column(Text, server_default="sandbox")

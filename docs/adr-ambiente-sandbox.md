@@ -1,0 +1,37 @@
+# ADR: ambiente Sandbox ou Produção no APM (primeira parte: o modo)
+
+**Status:** implementado (branch `feat/org-environment`; chave desligada por padrão) · segue o ADR do ambiente da Central
+(`api_central`, `docs/adr/NNNN-ambiente-sandbox-producao.md`) e estende [adr-forklin-sso.md](adr-forklin-sso.md).
+
+## O que o APM faz
+A Central decide, por organização, se todos os produtos dela rodam em demonstração (`sandbox`) ou de
+verdade (`production`). O APM **só registra** o que a Central diz e mostra isso. Esta parte **não muda o
+Pix** (a segunda e a terceira partes: `is_demo` nos dados do negócio e o Pix de teste persistente).
+
+- **Coluna `organizations.environment`** (migração 0033). As organizações que já existem ficam
+  `production` (já operam; nada real vira demonstração). O padrão de uma nova é `sandbox`.
+- **Como chega:**
+  1. o aviso `organization.product_contracted` pode trazer `environment`;
+  2. o evento `organization.environment_changed` (`environment` obrigatório; outro valor é 400);
+  3. o claim `org_env` do token de cada entrada (recupera um aviso perdido).
+  Qualquer valor fora de `sandbox`/`production` é ignorado. Token sem o claim não muda nada.
+- **Quem grava:** só a função `set_forklin_environment(central_org_id, environment)`, do `apm_definer`,
+  para organizações que vieram da Central. Organização desconhecida é um não-fazer que responde como um
+  acerto.
+- **Corrige uma folga:** o papel da aplicação (`apm_app`) podia atualizar **todas** as colunas de
+  `organizations` (grant de tabela). Agora só `name` e `updated_at`: nenhuma sessão de escola muda o
+  próprio modo, nem o `central_org_id`.
+- **Tela:** `GET /api/v1/environment` (qualquer pessoa com sessão) devolve o modo; o painel mostra a faixa
+  "Você está no ambiente de demonstração. Os dados desta escola são de demonstração." em `sandbox`. A faixa
+  **não** diz "nenhum pagamento real" enquanto o Pix real não for recusado em sandbox (parte seguinte). Atrás de `FORKLIN_ENVIRONMENT_ENABLED` (padrão
+  `false`): desligada, a rota responde `null` e nada na tela muda.
+
+## Ligar em produção (ordem)
+1. Central com `ORG_ENVIRONMENT_ENABLED=true` (token com `org_env`, avisos com `environment`).
+2. Migração 0033 no APM (aditiva; as escolas atuais ficam `production`).
+3. `FORKLIN_ENVIRONMENT_ENABLED=true` no APM. **Antes do passo 1, uma escola criada pela Central nasce
+   `sandbox` aqui** (padrão seguro) e só vira `production` quando a Central disser.
+
+## Rollback
+`FORKLIN_ENVIRONMENT_ENABLED=false` (a faixa some e a rota responde `null`). A migração tem `downgrade`
+(devolve o grant de `UPDATE` da tabela inteira ao `apm_app` e remove a coluna e a função).

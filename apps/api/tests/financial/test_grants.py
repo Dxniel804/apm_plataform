@@ -236,6 +236,7 @@ DEFINER_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
+    "set_forklin_environment",
 }  # fmt: skip
 # The only functions of the financial schema the application role may call.
 CALLABLE_FUNCTIONS = {
