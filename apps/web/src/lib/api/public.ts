@@ -85,6 +85,7 @@ export function parsePublicSchool(body: unknown): PublicSchool | null {
     slug,
     name,
     apmName,
+    environment: body.environment === "sandbox" || body.environment === "production" ? body.environment : null,
     accentColor,
     suggestedAmountsCents: suggested,
     allowCustomAmount: body.allow_custom_amount,

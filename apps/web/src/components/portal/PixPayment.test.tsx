@@ -161,7 +161,7 @@ describe("PixPayment: QR, copia e cola e simulacao do sandbox", () => {
 
   it("payload PIX-SANDBOX: mostra o botao de simular e avisa que e teste", () => {
     setup(() => Promise.resolve(ok(base)));
-    expect(screen.getByRole("button", { name: "Simular pagamento (somente desenvolvimento)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Simular pagamento (demonstração)" })).toBeInTheDocument();
     expect(screen.getByText(/Pix de teste \(sandbox\)/)).toBeInTheDocument();
   });
 
@@ -177,7 +177,7 @@ describe("PixPayment: QR, copia e cola e simulacao do sandbox", () => {
     let current = base;
     const fetchState = vi.fn(() => Promise.resolve(ok(current)));
     setup(fetchState);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Simular pagamento (somente desenvolvimento)" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Simular pagamento (demonstração)" }));
     expect(sandboxPay).toHaveBeenCalledWith(TXID);
     // a API ainda diz pendente: a tela continua aguardando
     await waitFor(() => expect(fetchState).toHaveBeenCalled());
@@ -189,7 +189,7 @@ describe("PixPayment: QR, copia e cola e simulacao do sandbox", () => {
   it("falha na simulacao: aviso, sem pago", async () => {
     vi.spyOn(api.public, "sandboxPay").mockResolvedValue({ ok: false, error: { kind: "problem", status: 404, code: "not_found" } });
     setup(() => Promise.resolve(ok(base)));
-    await userEvent.setup().click(screen.getByRole("button", { name: "Simular pagamento (somente desenvolvimento)" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Simular pagamento (demonstração)" }));
     expect(await screen.findByText(/Não foi possível simular/)).toBeInTheDocument();
     expect(screen.queryByText("Pagamento confirmado")).not.toBeInTheDocument();
   });

@@ -114,6 +114,8 @@ export interface PublicSchool {
   name: string;
   /** Nome curto da APM, ex.: "APM da Escola Exemplo". */
   apmName: string;
+  /** "sandbox" = escola de demonstracao (dados e pagamento ficticios). null = a Central nao informa. */
+  environment?: "sandbox" | "production" | null;
   /** Cor da escola (hex). O frontend deriva dai o tema com contraste AA. */
   accentColor: string;
   /** Valores sugeridos (centavos), na ordem da API. */

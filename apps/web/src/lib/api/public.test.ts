@@ -16,6 +16,21 @@ const KEY = "11111111-1111-4111-8111-111111111111";
 const ok = (body: unknown, status = 200) => vi.fn().mockResolvedValue(json(body, status, { "Content-Type": "application/json" }));
 const init = (fetchImpl: ReturnType<typeof vi.fn>, call = 0) => fetchImpl.mock.calls[call]![1] as RequestInit & { headers: Record<string, string> };
 
+describe("o ambiente da escola publica", () => {
+  it("le sandbox/production e trata o resto (ou a ausencia) como desconhecido", async () => {
+    for (const [sent, expected] of [
+      ["sandbox", "sandbox"],
+      ["production", "production"],
+      ["staging", null],
+      [undefined, null],
+      [null, null],
+    ] as const) {
+      const result = await getPublicSchool("x", { fetchImpl: ok({ ...SCHOOL_BODY, environment: sent }) });
+      expect(result.ok && result.data.environment).toBe(expected);
+    }
+  });
+});
+
 describe("getPublicSchool", () => {
   it("GET /api/v1/public/schools/{slug}: snake_case vira camelCase e campos ausentes viram OCULTOS", async () => {
     const fetchImpl = ok({ ...SCHOOL_BODY, identification: { guardian_name: "REQUIRED", contributor_email: "OPTIONAL" } });

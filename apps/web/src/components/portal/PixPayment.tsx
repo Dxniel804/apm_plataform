@@ -113,7 +113,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
     const result = await api.public.sandboxPay(txid);
     setSimulating(false);
     if (result.ok) refresh();
-    else setSimulateMessage("Não foi possível simular o pagamento (isso só existe em desenvolvimento).");
+    else setSimulateMessage("Não foi possível simular o pagamento agora. Tente de novo.");
   }
 
   if (notFound) {
@@ -314,7 +314,7 @@ export function PixPayment({ slug, token, initial, onRestart, fetchState, pollMs
       {txid && (
         <div className="mt-2 border-t border-dashed border-line pt-4">
           <Button variant="secondary" size="md" onClick={simulatePayment} disabled={simulating} aria-busy={simulating}>
-            {simulating ? "Simulando…" : "Simular pagamento (somente desenvolvimento)"}
+            {simulating ? "Simulando…" : "Simular pagamento (demonstração)"}
           </Button>
           <div aria-live="polite">
             {simulateMessage && <p className="mt-2 text-sub font-medium text-bad">{simulateMessage}</p>}

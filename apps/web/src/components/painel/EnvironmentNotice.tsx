@@ -1,8 +1,8 @@
 /**
  * Aviso fixo do ambiente de demonstracao (docs/adr-ambiente-sandbox.md): a organizacao esta em
- * `sandbox`, entao os dados desta escola sao de demonstracao. Some quando ela vai para producao.
- * Nao e um erro: texto sobrio, sem cor de alerta. Ainda NAO promete "nenhum pagamento real": isso so
- * entra quando o backend recusar o Pix real em sandbox (a parte seguinte do ADR).
+ * `sandbox`, entao os dados desta escola sao de demonstracao e o pagamento e simulado (nao existe
+ * gateway: o banco de mentira e o unico). Some quando ela vai para producao. Nao e um erro: texto
+ * sobrio, sem cor de alerta.
  */
 export function EnvironmentNotice() {
   return (
@@ -12,7 +12,7 @@ export function EnvironmentNotice() {
     >
       <span aria-hidden="true" className="mt-[0.4em] size-1.5 shrink-0 rounded-full bg-info" />
       <span>
-        <b className="font-medium text-ink">Você está no ambiente de demonstração.</b> Os dados desta escola são de demonstração.
+        <b className="font-medium text-ink">Você está no ambiente de demonstração.</b> Os dados desta escola são de demonstração e o pagamento é simulado.
       </span>
     </p>
   );

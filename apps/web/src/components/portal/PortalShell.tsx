@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowLeftIcon } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Logo";
 import type { PublicSchool } from "@/lib/api/types";
+import { SandboxGate } from "./SandboxGate";
 import { SchoolMonogram } from "./SchoolMonogram";
 
 /**
@@ -10,7 +11,7 @@ import { SchoolMonogram } from "./SchoolMonogram";
  * centro. O conteudo de cada tela entra numa `PortalSheet` (folha branca de cantos arredondados).
  * A cor e a da marca; a escola aparece pelo nome.
  */
-export function PortalShell({ children }: { school: PublicSchool; children: ReactNode }) {
+export function PortalShell({ school, children }: { school: PublicSchool; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="mx-auto grid w-full max-w-5xl grid-cols-[2.75rem_1fr_2.75rem] items-center px-4 pt-3 sm:px-8 sm:pt-6">
@@ -27,7 +28,7 @@ export function PortalShell({ children }: { school: PublicSchool; children: Reac
         <span aria-hidden="true" />
       </header>
       <main id="conteudo" tabIndex={-1} className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pt-3 outline-none sm:px-8 sm:pb-8">
-        {children}
+        <SandboxGate active={school.environment === "sandbox"}>{children}</SandboxGate>
       </main>
     </div>
   );
