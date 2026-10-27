@@ -38,8 +38,18 @@ Pix** (a segunda e a terceira partes: `is_demo` nos dados do negócio e o Pix de
   contribuição. Escola em produção não passa pelo card.
 - A função `school_has_active_account` existe porque a política antiga de `schools` lia `payment_accounts` e, ao
   gravar uma conta como `apm_definer`, o Postgres recusava o laço entre as políticas.
-- **Falta (próxima parte):** `is_demo`. O Pix de mentira vira lançamento no livro da escola e hoje continua lá
-  depois da troca para produção.
+
+## Parte 3: `is_demo` (migração 0035)
+- 24 tabelas de atividade (livro, Pix, despesas, campanhas, pedidos, extratos, PDDE, retenções) ganham `is_demo`.
+  A configuração da escola (categorias, contas, regras, entidades) não.
+- Um gatilho marca `is_demo` na criação (organização da Central em sandbox). Ninguém precisa lembrar de marcar.
+- `hides_demo()` + uma política RESTRITIVA por tabela (`<tabela>_hide_demo`) escondem o que é demonstração de uma
+  organização em produção. Nenhuma consulta, relatório ou exportação precisa saber disso.
+- As chaves de negócio que um registro escondido poderia usar para travar um real (código de referência do
+  lançamento, fechamento do mês, mesmo extrato, mesma linha, mesma chave de nota) valem só entre os reais.
+- Organização que não vem da Central (desenvolvimento, testes) nunca é marcada nem escondida.
+- **Falta:** a criação automática dos dados de demonstração ao virar sandbox (o script `seed_sandbox` precisa da
+  senha de administrador do banco, que a API não tem de propósito) e o mesmo nos outros produtos.
 
 ## Ligar em produção (ordem)
 1. Central com `ORG_ENVIRONMENT_ENABLED=true` (token com `org_env`, avisos com `environment`).

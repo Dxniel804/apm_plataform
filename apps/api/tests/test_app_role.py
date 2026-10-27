@@ -7,6 +7,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError
 
 from app.core.config import AdminSettings
+from app.db.posture import DEMO_TABLES
 from app.db.tenant import TenantContext
 from tests.dbsupport import Tenants, transaction
 from tests.financial.test_isolation import TABLES as FINANCIAL_TABLES
@@ -228,6 +229,20 @@ FUNCTIONS = {
         {"apm_definer=X/apm_definer", "apm_app=X/apm_definer"},
         "v",
     ),
+    "set_is_demo()": (
+        "apm_owner",
+        False,
+        ["search_path=pg_catalog"],
+        {"apm_owner=X/apm_owner"},
+        "v",
+    ),
+    "hides_demo()": (
+        "apm_definer",
+        True,
+        ["search_path=pg_catalog"],
+        {"apm_definer=X/apm_definer", "apm_app=X/apm_definer", "apm_owner=X/apm_definer"},
+        "s",
+    ),
     "school_has_active_account(uuid)": (
         "apm_definer",
         True,
@@ -446,7 +461,13 @@ def test_the_policies_that_let_apm_definer_through_are_exactly_the_closed_list(
 
     to_definer = {r[0] for r in rows if r[1] == ["apm_definer"]}
     assert to_definer == DEFINER_POLICIES
-    assert {r[2] for r in rows} == {"PERMISSIVE"}  # and no RESTRICTIVE one hides behind the list
+    # No RESTRICTIVE policy hides behind the list, except the 24 `<table>_hide_demo` of 0035 (they
+    # only ever REMOVE rows: demonstration data of an organization in production).
+    restrictive = {r[0] for r in rows if r[2] == "RESTRICTIVE"}
+    assert {name.split(".")[1] for name in restrictive} == {
+        f"{table}_hide_demo" for table in DEMO_TABLES
+    }
+    assert {r[2] for r in rows if r[0] not in restrictive} == {"PERMISSIVE"}
 
 
 def test_apm_definer_owns_nothing_but_its_functions_and_has_no_other_membership(
@@ -535,8 +556,9 @@ def test_there_is_no_system_mode_and_the_open_policies_are_the_closed_list_of_ap
     # + the 2 of the balancete balances (0027) + the 5 of the PDDE (0028)
     # + the 5 of the tax guides (0029) + the 4 of the PDDE forms (0030)
     # + the 1 of the environment of an organization (0033) + the 3 of the simulated account (0034)
+    # + the 24 restrictive `<table>_hide_demo` (0035)
     assert len(policies) == (
-        30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4 + 1 + 3
+        30 + 37 + 4 + 2 + 5 + 8 + 3 + 2 + 7 + 2 + 3 + 7 + 4 + 2 + 2 + 5 + 5 + 4 + 1 + 3 + 24
     )
     open_ones = set()
     for name, qual, check, roles in policies:

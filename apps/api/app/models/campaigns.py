@@ -36,6 +36,7 @@ from app.models.financial_common import (
     scope_constraints,
     user_fk,
 )
+from app.models.mixins import DemoMixin
 
 CAMPAIGN_STATUSES = ("DRAFT", "ACTIVE", "ENDED")
 IMAGE_CONTENT_TYPES = ("image/png", "image/jpeg", "image/webp")
@@ -72,7 +73,7 @@ def _image_checks(prefix: str) -> tuple[CheckConstraint, ...]:
     )
 
 
-class Campaign(ScopeMixin, Base):
+class Campaign(DemoMixin, ScopeMixin, Base):
     __tablename__ = "campaigns"
     __table_args__ = (
         *scope_constraints("campaigns"),
@@ -112,7 +113,7 @@ class Campaign(ScopeMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class CampaignItem(ScopeMixin, Base):
+class CampaignItem(DemoMixin, ScopeMixin, Base):
     """A product of a campaign. Never deleted: one that was sold is switched off."""
 
     __tablename__ = "campaign_items"
@@ -168,7 +169,7 @@ class CampaignItem(ScopeMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class ContributionItem(ScopeMixin, Base):
+class ContributionItem(DemoMixin, ScopeMixin, Base):
     """What an order bought: a COPY of the name and of the price, written once and never changed."""
 
     __tablename__ = "contribution_items"
@@ -225,7 +226,7 @@ class ContributionItem(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class CampaignDelivery(ScopeMixin, Base):
+class CampaignDelivery(DemoMixin, ScopeMixin, Base):
     """The delivery state of an order of a campaign (0014): a row appears when the management first
     marks the order, and it can be switched back. The database accepts DELIVERED only for a PAID
     order of a campaign."""
@@ -257,7 +258,7 @@ class CampaignDelivery(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class ContributionFee(ScopeMixin, Base):
+class ContributionFee(DemoMixin, ScopeMixin, Base):
     """The fee the gateway kept from a PAID contribution (0016): written once, with the gross
     amount of the ledger row, and never changed. `net_cents` is computed by the database."""
 

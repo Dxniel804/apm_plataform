@@ -34,7 +34,7 @@ from app.models.financial_common import (
     scope_constraints,
     user_fk,
 )
-from app.models.mixins import TimestampMixin
+from app.models.mixins import DemoMixin, TimestampMixin
 
 DIRECTIONS = ("IN", "OUT")
 ORIGIN_TYPES = (
@@ -72,7 +72,7 @@ PAYMENT_METHODS = ("PIX", "CARD", "CASH", "OTHER")
 ATTACHMENT_KINDS = ("INVOICE", "PAYMENT_PROOF", "OTHER")
 
 
-class FinancialTransaction(ScopeMixin, TimestampMixin, Base):
+class FinancialTransaction(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """A movement of money (or the promise of one) of a school. Never edited once final."""
 
     __tablename__ = "financial_transactions"
@@ -88,8 +88,13 @@ class FinancialTransaction(ScopeMixin, TimestampMixin, Base):
             "kind",
             name="uq_financial_transactions_id_organization_id_school_id_kind",
         ),
-        UniqueConstraint(
-            "school_id", "reference_code", name="uq_financial_transactions_school_id_reference_code"
+        # Unique among the REAL rows: a hidden demonstration row must not block a real one (0035).
+        Index(
+            "uq_financial_transactions_school_id_reference_code",
+            "school_id",
+            "reference_code",
+            unique=True,
+            postgresql_where=text("NOT is_demo"),
         ),
         ForeignKeyConstraint(
             ["parent_transaction_id", "organization_id", "school_id", "parent_kind"],
@@ -219,7 +224,7 @@ class FinancialTransaction(ScopeMixin, TimestampMixin, Base):
     reference_code: Mapped[int] = mapped_column(BigInteger, server_default=FetchedValue())
 
 
-class Contribution(ScopeMixin, TimestampMixin, Base):
+class Contribution(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """Detail of a CONTRIBUTION: how it was made and who gave (optional, per school setting)."""
 
     __tablename__ = "contributions"
@@ -329,7 +334,7 @@ class Contribution(ScopeMixin, TimestampMixin, Base):
     review_decision_reason: Mapped[str | None] = mapped_column(Text)
 
 
-class Expense(ScopeMixin, TimestampMixin, Base):
+class Expense(DemoMixin, ScopeMixin, TimestampMixin, Base):
     __tablename__ = "expenses"
     __table_args__ = (
         *scope_constraints("expenses"),
@@ -399,7 +404,7 @@ class Expense(ScopeMixin, TimestampMixin, Base):
     fund: Mapped[str | None] = mapped_column(Text)
 
 
-class Reimbursement(ScopeMixin, TimestampMixin, Base):
+class Reimbursement(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """Money the APM pays back to a collaborator who paid an expense. Paid outside the system."""
 
     __tablename__ = "reimbursements"
@@ -426,7 +431,7 @@ class Reimbursement(ScopeMixin, TimestampMixin, Base):
     payment_reference: Mapped[str | None] = mapped_column(Text)
 
 
-class Refund(ScopeMixin, TimestampMixin, Base):
+class Refund(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """A DEVOLUÇÃO: money that comes BACK to the APM (always IN). The parent is optional."""
 
     __tablename__ = "refunds"
@@ -453,7 +458,7 @@ class Refund(ScopeMixin, TimestampMixin, Base):
     confirmed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
 
 
-class ExpenseAttachment(ScopeMixin, TimestampMixin, Base):
+class ExpenseAttachment(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """A receipt attached to an expense. Insert-only; the bytes live behind a storage key."""
 
     __tablename__ = "expense_attachments"

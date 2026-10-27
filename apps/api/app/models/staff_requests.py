@@ -30,13 +30,14 @@ from app.models.financial_common import (
     scope_constraints,
     user_fk,
 )
+from app.models.mixins import DemoMixin
 
 REQUEST_CATEGORIES = ("SUPPLIES", "MAINTENANCE", "EVENT", "FINANCE", "OTHER")
 REQUEST_STATUSES = ("OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED")
 IMAGE_CONTENT_TYPES = ("image/png", "image/jpeg", "image/webp")
 
 
-class StaffRequest(ScopeMixin, Base):
+class StaffRequest(DemoMixin, ScopeMixin, Base):
     __tablename__ = "staff_requests"
     __table_args__ = (
         *scope_constraints("staff_requests"),
@@ -96,7 +97,7 @@ class StaffRequest(ScopeMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class StaffRequestAttachment(ScopeMixin, Base):
+class StaffRequestAttachment(DemoMixin, ScopeMixin, Base):
     """A photo of a request. Insert-only; the bytes live behind a storage key."""
 
     __tablename__ = "staff_request_attachments"

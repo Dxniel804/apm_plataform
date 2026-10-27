@@ -32,7 +32,7 @@ from app.models.financial_common import (
     scope_constraints,
     user_fk,
 )
-from app.models.mixins import TimestampMixin
+from app.models.mixins import DemoMixin, TimestampMixin
 
 PROVIDERS = ("BB", "SANDBOX", "ASAAS", "PAGARME")
 REPORT_GROUPS = ("CONTRIBUTIONS", "OTHER_INCOME", "EXPENSES_REIMBURSEMENTS", "REFUNDS")
@@ -221,7 +221,7 @@ class PaymentAccount(ScopeMixin, TimestampMixin, Base):
     webhook_secret_hash: Mapped[str | None] = mapped_column(Text, deferred=True)
 
 
-class PixCharge(ScopeMixin, TimestampMixin, Base):
+class PixCharge(DemoMixin, ScopeMixin, TimestampMixin, Base):
     """A dynamic Pix charge of a contribution. Only the provider's answer confirms it (ADR-011)."""
 
     __tablename__ = "pix_charges"
@@ -331,7 +331,7 @@ class PixCharge(ScopeMixin, TimestampMixin, Base):
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
-class WebhookEvent(Base):
+class WebhookEvent(DemoMixin, Base):
     """A provider notification, kept raw. Idempotent by UNIQUE; never trusted alone (ADR-011)."""
 
     __tablename__ = "webhook_events"
@@ -470,7 +470,7 @@ class AuditLog(Base):
     )
 
 
-class MonthlyClosing(ScopeMixin, Base):
+class MonthlyClosing(DemoMixin, ScopeMixin, Base):
     """A closed month. Every figure, the hash and the breakdown are computed by the database."""
 
     __tablename__ = "monthly_closings"
@@ -526,7 +526,7 @@ class MonthlyClosing(ScopeMixin, Base):
             "school_id",
             "period_start",
             unique=True,
-            postgresql_where=text("reopened_at IS NULL"),
+            postgresql_where=text("reopened_at IS NULL AND NOT is_demo"),
         ),
         Index("ix_monthly_closings_school_id", "school_id"),
         Index("ix_monthly_closings_organization_id", "organization_id"),

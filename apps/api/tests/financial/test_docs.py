@@ -18,7 +18,7 @@ from tests.financial.test_isolation import TABLES
 ROOT = API_DIR.parents[1] if len(API_DIR.parents) > 1 else API_DIR.parent
 DOC = ROOT / "docs" / "financial-model.md"
 # The two triggers every table has are documented as a pattern.
-PATTERNS = ("_no_delete", "_no_truncate")
+PATTERNS = ("_no_delete", "_no_truncate", "_10_is_demo")
 
 
 @pytest.fixture(scope="module")

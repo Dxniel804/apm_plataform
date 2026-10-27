@@ -21,9 +21,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.financial_common import ScopeMixin, fin_pk, in_list, scope_constraints, user_fk
+from app.models.mixins import DemoMixin
 
 
-class BalanceteBalance(ScopeMixin, Base):
+class BalanceteBalance(DemoMixin, ScopeMixin, Base):
     __tablename__ = "balancete_balances"
     __table_args__ = (
         *scope_constraints("balancete_balances"),

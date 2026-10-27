@@ -132,9 +132,12 @@ Detalhes: [adr-ambiente-sandbox.md](adr-ambiente-sandbox.md). Na ordem, **uma co
    SIMULADA e o link de Configurações passa a abrir: a família vê o card "Ambiente de demonstração", segue para a
    contribuição e o Pix é de mentira (botão "Simular pagamento (demonstração)"). Não existe gateway real: a única
    "conta" possível é a simulada. Ao passar a escola para produção a conta simulada é desligada e o link deixa de abrir.
-8. **Ainda não existe o `is_demo`:** as contribuições de mentira feitas em sandbox ficam gravadas no livro da escola e
-   **continuam lá** depois da troca para produção. Use sandbox em escolas de teste, não em uma escola que vá operar
-   de verdade depois.
+8. **`is_demo` (migração `0035`):** tudo que é criado enquanto a escola está em sandbox é marcado como demonstração
+   pelo próprio banco. Ao passar para produção **nada é apagado, mas o banco esconde** o que é demonstração (telas,
+   totais, relatórios, exportações). Voltando para sandbox (comando do operador), volta a aparecer. Escolas que já
+   existiam e tudo que foi criado antes **nunca** são marcados. Só vale para escolas que vêm da Central; as
+   configurações da escola (categorias, contas, regras) não são demonstração e seguem para produção.
+   Ressalva: tudo que a escola faz no período em sandbox é demonstração, mesmo que fosse "de verdade".
 9. As cobranças do Pix simulado vivem na memória da API: um deploy no meio de um teste perde a cobrança pendente
    (gere outra).
 

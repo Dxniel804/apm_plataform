@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.financial_common import ScopeMixin, fin_pk, in_list, scope_constraints, user_fk
+from app.models.mixins import DemoMixin
 
 
 class TaxRule(ScopeMixin, Base):
@@ -78,7 +79,7 @@ class TaxRule(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class TaxRetention(ScopeMixin, Base):
+class TaxRetention(DemoMixin, ScopeMixin, Base):
     __tablename__ = "tax_retentions"
     __table_args__ = (
         *scope_constraints("tax_retentions"),

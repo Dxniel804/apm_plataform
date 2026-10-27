@@ -259,6 +259,12 @@ for _table in [
         B, {TRU}, "forbid_truncate", "STATEMENT"
     )
 
+# 0035: the mark `is_demo` is set by a BEFORE INSERT trigger on each table of activity.
+from app.db.posture import DEMO_TABLES  # noqa: E402
+
+for _table in DEMO_TABLES:
+    EXPECTED_TRIGGERS[(_table, f"{_table}_10_is_demo")] = _t(B, {INS}, "set_is_demo")
+
 # Within a table and a timing, triggers fire in alphabetical order: this is the order the model needs.
 EXPECTED_ORDER: dict[tuple[str, str, str], list[str]] = {
     ("financial_transactions", B, INS): [
@@ -315,6 +321,11 @@ EXPECTED_ORDER: dict[tuple[str, str, str], list[str]] = {
     ],
 }
 
+for (_table, _timing, _event), _names in EXPECTED_ORDER.items():
+    if _timing == B and _event == INS and _table in DEMO_TABLES:
+        _names.append(f"{_table}_10_is_demo")
+        _names.sort()  # triggers of a table and a timing fire in alphabetical order
+
 EXPECTED_FUNCTIONS = {
     "app_org", "app_school", "assert_active_member", "assert_anonymize_only",
     "assert_immutable_columns", "assert_set_once_columns", "audit_logs_fill_actor",
@@ -343,7 +354,8 @@ EXPECTED_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
-    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account",
+    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account", "hides_demo",
+    "set_is_demo",
     # the PDDE accountability layer (0028)
     "pdde_classifications_check", "pdde_documents_check",
     # the tax guides (0029)
@@ -357,7 +369,7 @@ DEFINER_FUNCTIONS = {
     "find_schools_with_stale_contributions",
     "request_password_reset", "consume_password_reset",
     "provision_forklin_school", "sso_sign_in", "revoke_forklin_sessions", "is_central_linked",
-    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account",
+    "set_forklin_environment", "sync_sandbox_payment_account", "school_has_active_account", "hides_demo",
 }  # fmt: skip
 
 

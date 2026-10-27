@@ -72,6 +72,39 @@ DEFINER_ROLE = "apm_definer"
 # Who owns the tenant tables.
 EXPECTED_TABLE_OWNER = "apm_owner"
 
+# The tables with the mark `is_demo` (0035): each has ONE restrictive SELECT policy
+# `<table>_hide_demo` that hides the demonstration rows of an organization in production. They are
+# the only restrictive policies that may exist; every other policy must be permissive.
+DEMO_TABLES: tuple[str, ...] = (
+    "financial_transactions",
+    "contributions",
+    "contribution_items",
+    "contribution_fees",
+    "pix_charges",
+    "webhook_events",
+    "refunds",
+    "reimbursements",
+    "expenses",
+    "expense_attachments",
+    "monthly_closings",
+    "campaigns",
+    "campaign_items",
+    "campaign_deliveries",
+    "staff_requests",
+    "staff_request_attachments",
+    "bank_statement_imports",
+    "bank_statement_lines",
+    "bank_line_resolutions",
+    "balancete_balances",
+    "pdde_classifications",
+    "pdde_documents",
+    "pdde_carryovers",
+    "tax_retentions",
+)
+RESTRICTIVE_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
+    (table, f"{table}_hide_demo", "SELECT", "public") for table in DEMO_TABLES
+)
+
 # Every policy that may exist, as (table, policy, command, roles). Closed on purpose: a missing one
 # opens a door, an extra one (a permissive policy someone added) opens another. Extend it in the
 # same migration that adds a policy (docs/tenancy.md, "How to create a new tenant table").
@@ -224,6 +257,9 @@ EXPECTED_POLICIES: frozenset[tuple[str, str, str, str]] = frozenset(
     }
 )
 
+# The restrictive ones of 0035 are part of the closed list too.
+EXPECTED_POLICIES = EXPECTED_POLICIES | RESTRICTIVE_POLICIES
+
 # The SECURITY DEFINER functions that may exist, as `schema.name(argument types)`. The list is
 # closed on purpose: the three of TASK-004 (ADR-016), the three of the public flow (0008,
 # ADR-018) and the one of the expiry job (0009, ADR-019); a later task adds its own by an ADR.
@@ -247,6 +283,7 @@ ALLOWED_SECURITY_DEFINER: frozenset[str] = frozenset(
         "public.set_forklin_environment(p_central_org_id uuid, p_environment text)",
         "public.sync_sandbox_payment_account(p_central_org_id uuid)",
         "public.school_has_active_account(p_school_id uuid)",
+        "public.hides_demo()",
     }
 )
 
@@ -348,7 +385,10 @@ def check_posture(connection: Connection) -> list[str]:
     found_policies: set[tuple[str, str, str, str]] = set()
     for table, policy, command, roles, permissive in connection.execute(_POLICIES_QUERY):
         found_policies.add((table, policy, command, roles))
-        if permissive != "PERMISSIVE":
+        if (table, policy, command, roles) in RESTRICTIVE_POLICIES:
+            if permissive != "RESTRICTIVE":
+                findings.append(f"policy_not_restrictive:{table}.{policy}")
+        elif permissive != "PERMISSIVE":
             findings.append(f"policy_not_permissive:{table}.{policy}")
     for table, policy, _command, _roles in sorted(EXPECTED_POLICIES - found_policies):
         findings.append(f"policy_missing:{table}.{policy}")

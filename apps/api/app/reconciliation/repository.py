@@ -109,7 +109,7 @@ def insert_line(
             "bank_account_id, posted_on, amount_cents, memo, bank_ref, end_to_end_id, looks_like_fee, "
             "needs_review) VALUES (:org, :school, :import, :account, :day, :amount, :memo, :ref, "
             ":e2e, :fee, :review) "
-            "ON CONFLICT (school_id, bank_account_id, bank_ref) DO NOTHING"
+            "ON CONFLICT (school_id, bank_account_id, bank_ref) WHERE NOT is_demo DO NOTHING"
         ),
         {
             "org": organization_id, "school": school_id, "import": import_id, "account": account_id,

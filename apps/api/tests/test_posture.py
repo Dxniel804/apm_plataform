@@ -206,6 +206,7 @@ def test_the_closed_list_of_security_definer_functions_is_the_thirteen_of_the_ad
                 "public.set_forklin_environment(p_central_org_id uuid, p_environment text)",
                 "public.sync_sandbox_payment_account(p_central_org_id uuid)",
                 "public.school_has_active_account(p_school_id uuid)",
+                "public.hides_demo()",
             }
         )
         == posture.ALLOWED_SECURITY_DEFINER

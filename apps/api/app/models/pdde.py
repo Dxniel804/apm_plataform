@@ -25,6 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.financial_common import ScopeMixin, fin_pk, in_list, scope_constraints, user_fk
+from app.models.mixins import DemoMixin
 
 
 def _line_fk(table: str) -> ForeignKeyConstraint:
@@ -36,7 +37,7 @@ def _line_fk(table: str) -> ForeignKeyConstraint:
     )
 
 
-class PddeClassification(ScopeMixin, Base):
+class PddeClassification(DemoMixin, ScopeMixin, Base):
     __tablename__ = "pdde_classifications"
     __table_args__ = (
         *scope_constraints("pdde_classifications"),
@@ -104,7 +105,7 @@ class PddeClassification(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class PddeDocument(ScopeMixin, Base):
+class PddeDocument(DemoMixin, ScopeMixin, Base):
     __tablename__ = "pdde_documents"
     __table_args__ = (
         *scope_constraints("pdde_documents"),
@@ -142,7 +143,7 @@ class PddeDocument(ScopeMixin, Base):
             "school_id",
             "access_key",
             unique=True,
-            postgresql_where=text("access_key IS NOT NULL AND voided_at IS NULL"),
+            postgresql_where=text("access_key IS NOT NULL AND voided_at IS NULL AND NOT is_demo"),
         ),
     )
 
@@ -187,7 +188,7 @@ class PddeEntity(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class PddeCarryover(ScopeMixin, Base):
+class PddeCarryover(DemoMixin, ScopeMixin, Base):
     __tablename__ = "pdde_carryovers"
     __table_args__ = (
         *scope_constraints("pdde_carryovers"),

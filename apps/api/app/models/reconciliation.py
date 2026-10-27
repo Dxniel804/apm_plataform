@@ -25,6 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.financial_common import ScopeMixin, fin_pk, in_list, scope_constraints, user_fk
+from app.models.mixins import DemoMixin
 
 
 class BankAccount(ScopeMixin, Base):
@@ -65,7 +66,7 @@ class BankAccount(ScopeMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class BankStatementImport(ScopeMixin, Base):
+class BankStatementImport(DemoMixin, ScopeMixin, Base):
     __tablename__ = "bank_statement_imports"
     __table_args__ = (
         *scope_constraints("bank_statement_imports"),
@@ -82,8 +83,12 @@ class BankStatementImport(ScopeMixin, Base):
             "school_id",
             name="uq_bank_statement_imports_id_organization_id_school_id",
         ),
-        UniqueConstraint(
-            "school_id", "file_sha256", name="uq_bank_statement_imports_school_id_file_sha256"
+        Index(
+            "uq_bank_statement_imports_school_id_file_sha256",
+            "school_id",
+            "file_sha256",
+            unique=True,
+            postgresql_where=text("NOT is_demo"),
         ),
         CheckConstraint("file_sha256 ~ '^[0-9a-f]{64}$'", name="sha256_format"),
         CheckConstraint("period_start <= period_end", name="period_in_order"),
@@ -108,7 +113,7 @@ class BankStatementImport(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class BankStatementLine(ScopeMixin, Base):
+class BankStatementLine(DemoMixin, ScopeMixin, Base):
     __tablename__ = "bank_statement_lines"
     __table_args__ = (
         *scope_constraints("bank_statement_lines"),
@@ -128,11 +133,13 @@ class BankStatementLine(ScopeMixin, Base):
             name="fk_bank_statement_lines_bank_account_id_bank_accounts",
             ondelete="RESTRICT",
         ),
-        UniqueConstraint(
+        Index(
+            "uq_bank_statement_lines_school_id_bank_account_id_bank_ref",
             "school_id",
             "bank_account_id",
             "bank_ref",
-            name="uq_bank_statement_lines_school_id_bank_account_id_bank_ref",
+            unique=True,
+            postgresql_where=text("NOT is_demo"),
         ),
         CheckConstraint(
             "amount_cents <> 0 AND abs(amount_cents) <= 100000000000", name="amount_range"
@@ -159,7 +166,7 @@ class BankStatementLine(ScopeMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class BankLineResolution(ScopeMixin, Base):
+class BankLineResolution(DemoMixin, ScopeMixin, Base):
     """What the management decided about a statement line (0018): written once, never changed."""
 
     __tablename__ = "bank_line_resolutions"

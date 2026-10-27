@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Uuid, func, text
+from sqlalchemy import Boolean, DateTime, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -17,3 +17,10 @@ class TimestampMixin:
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class DemoMixin:
+    """`is_demo` (0035): set by the database on insert (a Central organization in sandbox) and never
+    by the application. Hidden by a restrictive policy once the organization is in production."""
+
+    is_demo: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
