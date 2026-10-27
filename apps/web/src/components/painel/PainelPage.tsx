@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { PainelShell } from "@/components/painel/PainelShell";
 import { SessionUnavailable } from "@/components/painel/SessionUnavailable";
-import { getServerSession } from "@/lib/api/server";
+import { getServerEnvironment, getServerSession } from "@/lib/api/server";
 import { forklinPanelUrl, withoutStaffRegistration } from "@/lib/forklin";
 import { parseCampaignTab, parsePeriod, parseSection, parseWallet } from "@/lib/painel-section";
 import { areaHref, areasFor, homeArea, type PainelArea } from "@/lib/permissions";
@@ -52,9 +52,10 @@ export async function PainelPage({ area, tipo, mes, carteira, aba, campaignId }:
     if (!allowed && home !== area) redirect(areaHref(home));
   }
 
+  const environment = await getServerEnvironment();
   const tab = (Array.isArray(aba) ? aba[0] : aba) === "minhas" ? "minhas" : "fila";
   const campaignTab = parseCampaignTab(Array.isArray(aba) ? aba[0] : aba);
   return (
-    <PainelShell session={session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} wallet={parseWallet(carteira)} campaignId={campaignId} campaignTab={campaignTab} forklinUrl={forklinPanelUrl()} />
+    <PainelShell session={session} area={area} section={parseSection(tipo)} tab={tab} period={parsePeriod(mes)} wallet={parseWallet(carteira)} campaignId={campaignId} campaignTab={campaignTab} forklinUrl={forklinPanelUrl()} environment={environment} />
   );
 }

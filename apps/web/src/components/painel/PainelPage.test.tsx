@@ -5,8 +5,8 @@ import type { ServerSession } from "@/lib/api/server";
 import type { Session } from "@/lib/api/types";
 import { SCHOOL_MEMBERSHIP, sessionBody } from "@/test-utils/auth-fixtures";
 
-const auth = vi.hoisted(() => ({ current: { state: "anonymous" } as unknown }));
-vi.mock("@/lib/api/server", () => ({ getServerSession: async () => auth.current }));
+const auth = vi.hoisted(() => ({ current: { state: "anonymous" } as unknown, environment: null as string | null }));
+vi.mock("@/lib/api/server", () => ({ getServerSession: async () => auth.current, getServerEnvironment: async () => auth.environment }));
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
@@ -35,6 +35,7 @@ const withPermissions = (permissions: string[], extra: Record<string, unknown> =
 
 beforeEach(() => {
   auth.current = { state: "anonymous" };
+  auth.environment = null;
   vi.unstubAllEnvs();
 });
 
@@ -108,5 +109,21 @@ describe("Equipe e a Central Forklin (docs/adr-forklin-sso.md, secao 8)", () => 
     expect(html).not.toContain("/painel/equipe");
     expect(html).toContain('href="/painel/despesas"');
     await expect(render(secretaria(), "equipe")).rejects.toThrow("NEXT_REDIRECT:/painel");
+  });
+});
+
+describe("o aviso do ambiente de demonstracao", () => {
+  const staff = () => withPermissions(["dashboard:read"]);
+
+  it("em sandbox o painel avisa que e demonstracao", async () => {
+    auth.environment = "sandbox";
+    expect(await render(staff())).toContain("Você está no ambiente de demonstração.");
+  });
+
+  it("em producao, ou sem a informacao da Central, nao mostra aviso", async () => {
+    auth.environment = "production";
+    expect(await render(staff())).not.toContain("ambiente de demonstração");
+    auth.environment = null;
+    expect(await render(staff())).not.toContain("ambiente de demonstração");
   });
 });

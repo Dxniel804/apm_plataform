@@ -49,6 +49,36 @@ export async function getServerSession(fetchImpl: typeof fetch = fetch): Promise
   }
 }
 
+export type Environment = "sandbox" | "production";
+
+/**
+ * O ambiente da organizacao da sessao (GET /api/v1/environment, docs/adr-ambiente-sandbox.md): `sandbox`
+ * e demonstracao, `production` e de verdade, `null` quando a Central nao informa (chave desligada) ou a
+ * API nao responde. So decide um aviso na tela: na duvida, nao mostra nada.
+ */
+export async function getServerEnvironment(fetchImpl: typeof fetch = fetch): Promise<Environment | null> {
+  const jar = await cookies();
+  const pairs = SESSION_COOKIES.flatMap((name) => {
+    const value = jar.get(name)?.value;
+    return value ? [`${name}=${value}`] : [];
+  });
+  if (pairs.length === 0) return null;
+  try {
+    const response = await fetchImpl(`${serverApiOrigin()}/api/v1/environment`, {
+      method: "GET",
+      headers: { Accept: "application/json", Cookie: pairs.join("; ") },
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (response.status !== 200) return null;
+    const body: unknown = await response.json();
+    const value = typeof body === "object" && body !== null ? (body as { environment?: unknown }).environment : null;
+    return value === "sandbox" || value === "production" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * fetch do servidor do Next para a API: o mesmo cliente tipado (src/lib/api/public.ts) funciona nas
  * paginas de servidor se o caminho `/api/...` ganhar a origem da API. Sem cookies: so rotas publicas.

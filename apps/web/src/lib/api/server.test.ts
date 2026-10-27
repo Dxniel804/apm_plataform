@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-import { getServerSession, serverApiOrigin } from "./server";
+import { getServerEnvironment, getServerSession, serverApiOrigin } from "./server";
 
 const SESSION_VALUE = "s".repeat(43);
 
@@ -68,5 +68,36 @@ describe("getServerSession", () => {
     expect(await getServerSession(vi.fn().mockResolvedValue(problem("internal_error", 500)))).toEqual({ state: "unavailable" });
     expect(await getServerSession(vi.fn().mockResolvedValue(new Response("<html>", { status: 200 })))).toEqual({ state: "unavailable" });
     expect(await getServerSession(vi.fn().mockResolvedValue(json({ foo: 1 })))).toEqual({ state: "unavailable" });
+  });
+});
+
+describe("getServerEnvironment", () => {
+  it("sem cookie de sessao: nada, sem chamar a API", async () => {
+    const fetchImpl = vi.fn();
+    expect(await getServerEnvironment(fetchImpl as unknown as typeof fetch)).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("repassa o cookie e devolve so um dos dois valores conhecidos", async () => {
+    jar.values.set("apm_session", SESSION_VALUE);
+    const fetchImpl = vi.fn(async () => json({ environment: "sandbox" }));
+    expect(await getServerEnvironment(fetchImpl as unknown as typeof fetch)).toBe("sandbox");
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toMatch(/\/api\/v1\/environment$/);
+    expect((init.headers as Record<string, string>).Cookie).toBe(`apm_session=${SESSION_VALUE}`);
+
+    expect(await getServerEnvironment((async () => json({ environment: "production" })) as unknown as typeof fetch)).toBe("production");
+    expect(await getServerEnvironment((async () => json({ environment: null })) as unknown as typeof fetch)).toBeNull();
+    expect(await getServerEnvironment((async () => json({ environment: "staging" })) as unknown as typeof fetch)).toBeNull();
+  });
+
+  it("na duvida (erro da API ou rede fora) nao mostra nada", async () => {
+    jar.values.set("apm_session", SESSION_VALUE);
+    expect(await getServerEnvironment((async () => problem("boom", 500)) as unknown as typeof fetch)).toBeNull();
+    expect(
+      await getServerEnvironment((async () => {
+        throw new Error("rede");
+      }) as unknown as typeof fetch),
+    ).toBeNull();
   });
 });

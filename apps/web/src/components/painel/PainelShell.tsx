@@ -19,7 +19,9 @@ import { describeAuthError, isSessionLost } from "@/lib/auth-messages";
 import { sectionHref, walletHref, type CampaignTab, type PainelSection, type Wallet } from "@/lib/painel-section";
 import { areasFor, type PainelArea } from "@/lib/permissions";
 import { ROLE_LABELS, membershipTitle } from "@/lib/roles";
+import type { Environment } from "@/lib/api/server";
 import { ContextChooser } from "./ContextChooser";
+import { EnvironmentNotice } from "./EnvironmentNotice";
 import { KIND_META } from "./kinds";
 import { navFor } from "./nav";
 import { DashboardWallets } from "./DashboardWallets";
@@ -46,6 +48,8 @@ interface PainelShellProps {
   campaignTab?: CampaignTab;
   /** Destino do botao "Voltar para o painel" (Forklin), lido no servidor; ausente = sem botao. */
   forklinUrl?: string | null;
+  /** Modo da organizacao, lido no servidor: em `sandbox` o painel avisa que e demonstracao. */
+  environment?: Environment | null;
 }
 
 /* Preferencia "barra lateral recolhida": conveniencia so deste navegador (localStorage), nunca estado de negocio. */
@@ -71,7 +75,7 @@ const writeCollapsed = (value: boolean) => {
   collapsedListeners.forEach((listener) => listener());
 };
 
-export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, wallet = "apm", campaignId, campaignTab = "resumo", forklinUrl = null }: PainelShellProps) {
+export function PainelShell({ session, area = "resumo", section = "resumo", tab = "fila", period, wallet = "apm", campaignId, campaignTab = "resumo", forklinUrl = null, environment = null }: PainelShellProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -185,6 +189,8 @@ export function PainelShell({ session, area = "resumo", section = "resumo", tab 
             <BoxArrowInRightIcon size={20} />
           </button>
         </header>
+
+        {environment === "sandbox" ? <EnvironmentNotice /> : null}
 
         <main
           id="conteudo"
